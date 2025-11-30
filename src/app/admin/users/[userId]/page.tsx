@@ -12,7 +12,7 @@ import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import { UserStats } from '@/components/user-stats';
 
-const ADMIN_EMAIL = 'rovinduthamu@gmail.com';
+const ADMIN_EMAIL = 'rovindu2007@gmail.com';
 
 interface AppUser {
     id: string;

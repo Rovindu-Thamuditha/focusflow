@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { useUser, useAuth } from "@/firebase";
 import { BarChart2 } from 'lucide-react';
 
-const ADMIN_EMAIL = 'rovinduthamu@gmail.com';
+const ADMIN_EMAIL = 'rovindu2007@gmail.com';
 
 interface MainHeaderProps {
   totalFocusedTime: number;
