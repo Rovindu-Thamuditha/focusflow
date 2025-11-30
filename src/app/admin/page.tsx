@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -168,10 +169,8 @@ export default function AdminPage() {
                         {u.id !== user.uid ? (
                             <>
                                 <Link href={`/admin/users/${u.id}`} passHref>
-                                  <Button variant="outline" size="icon" asChild>
-                                    <a title="View/Edit User">
+                                  <Button variant="outline" size="icon" asChild title="View/Edit User">
                                       <Eye className="w-4 h-4" />
-                                    </a>
                                   </Button>
                                 </Link>
                                 <Button variant="outline" size="icon" onClick={() => handleResetPassword(u.email)} title="Send Password Reset">
@@ -200,10 +199,8 @@ export default function AdminPage() {
                             </>
                         ) : (
                            <Link href={`/admin/users/${u.id}`} passHref>
-                              <Button variant="outline" size="icon" asChild>
-                                <a title="View/Edit User">
+                              <Button variant="outline" size="icon" asChild title="View/Edit User">
                                   <Eye className="w-4 h-4" />
-                                </a>
                               </Button>
                             </Link>
                         )}
