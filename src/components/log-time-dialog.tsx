@@ -59,7 +59,7 @@ export function LogTimeDialog({ block, subjects, onSave, onClose }: LogTimeDialo
               id="duration"
               type="number"
               value={duration}
-              onChange={(e) => setDuration(parseInt(e.target.value, 10))}
+              onChange={(e) => setDuration(parseInt(e.target.value, 10) || 0)}
               className="col-span-3"
               max={60}
               min={0}
