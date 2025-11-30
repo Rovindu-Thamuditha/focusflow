@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
@@ -207,34 +208,33 @@ export default function Home() {
     );
   };
 
-  const handleSettingsSave = (newSleepHours: number[], newSubjects: Subject[], newLanguage: 'english' | 'sinhala') => {
-    setSleepHours(newSleepHours);
-    setSubjects(newSubjects);
-    setLanguage(newLanguage);
-  
-    // This is the critical part: update the timeBlocks state based on the new settings.
-    setTimeBlocks(currentBlocks => {
-      // Create a fresh state for the current date using the new sleep hours.
-      const newInitialState = createInitialState(newSleepHours, currentDate);
-  
-      // Merge the fresh state with any existing non-idle/non-sleep blocks.
-      // This preserves user's logged focus time while applying the new sleep schedule.
-      const updatedBlocks = newInitialState.map(initialBlock => {
-        if (initialBlock.subject === 'sleep') {
-          return initialBlock; // If it's a sleep block, use it as is.
-        }
-        // Otherwise, check if there's an existing, logged block for this hour.
-        const existingBlock = currentBlocks.find(b => b.hour === initialBlock.hour);
-        if (existingBlock && existingBlock.subject !== 'idle' && existingBlock.subject !== 'sleep') {
-          return existingBlock; // Preserve the user's focused block.
-        }
-        // Otherwise, use the initial state (which will be 'idle').
-        return initialBlock;
-      });
-  
-      return updatedBlocks.sort((a, b) => a.hour - b.hour);
-    });
-  };
+    const handleSettingsSave = (newSleepHours: number[], newSubjects: Subject[], newLanguage: 'english' | 'sinhala') => {
+        setSleepHours(newSleepHours);
+        setSubjects(newSubjects);
+        setLanguage(newLanguage);
+    
+        // This is the critical part: update the timeBlocks state based on the new settings.
+        setTimeBlocks(currentBlocks => {
+            const updatedBlocks = currentBlocks.map(block => {
+                const isNowSleep = newSleepHours.includes(block.hour);
+                const wasSleep = block.subject === 'sleep';
+
+                // Case 1: Hour is newly marked as sleep
+                if (isNowSleep) {
+                    return { ...block, subject: 'sleep', duration: 60 };
+                }
+                
+                // Case 2: Hour was sleep but is now not
+                if (wasSleep && !isNowSleep) {
+                    return { ...block, subject: 'idle', duration: 0 };
+                }
+
+                // Case 3: No change related to sleep status
+                return block;
+            });
+            return updatedBlocks.sort((a, b) => a.hour - b.hour);
+        });
+    };
 
   const handleResetDay = () => {
     setTimeBlocks(createInitialState(sleepHours, currentDate));
@@ -337,10 +337,8 @@ export default function Home() {
         </div>
       </main>
       <footer className="text-center py-4 text-muted-foreground text-sm">
-        <p>Made with &hearts; for focused minds.</p>
+        <p>Made with ♥ for focused minds by <a href="https://github.com/Rovindu-Thamuditha/" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Tipiz</a></p>
       </footer>
     </div>
   );
 }
-
-    
