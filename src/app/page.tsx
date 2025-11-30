@@ -212,12 +212,39 @@ export default function Home() {
       ).sort((a, b) => a.hour - b.hour)
     );
   };
+  
+  const handleMarkAsSleep = (hour: number) => {
+    setTimeBlocks(currentBlocks =>
+      currentBlocks.map(block =>
+        block.hour === hour ? { ...block, subject: 'sleep', duration: 60, date: format(currentDate, 'yyyy-MM-dd') } : block
+      ).sort((a, b) => a.hour - b.hour)
+    );
+  };
 
   const handleSettingsSave = (newSleepHours: number[], newSubjects: Subject[], newLanguage: 'english' | 'sinhala') => {
+    const oldSleepHours = sleepHours;
     setSleepHours(newSleepHours);
     setSubjects(newSubjects);
     setLanguage(newLanguage);
-    setTimeBlocks(createInitialState(newSleepHours, currentDate));
+    
+    // Optimistically update the UI by recalculating the grid with new sleep hours
+    setTimeBlocks(currentBlocks => {
+      return currentBlocks.map(block => {
+        const isNewSleep = newSleepHours.includes(block.hour);
+        const wasOldSleep = oldSleepHours.includes(block.hour);
+
+        // If it's becoming a sleep block, set it to sleep.
+        if (isNewSleep) {
+          return { ...block, subject: 'sleep', duration: 60 };
+        }
+        // If it was a sleep block but isn't anymore, reset it to idle.
+        if (wasOldSleep && !isNewSleep) {
+           return { ...block, subject: 'idle', duration: 0 };
+        }
+        // Otherwise, keep the block as is.
+        return block;
+      }).sort((a, b) => a.hour - b.hour);
+    });
   };
 
   const handleResetDay = () => {
@@ -305,6 +332,7 @@ export default function Home() {
                 blocks={timeBlocks}
                 subjects={subjects}
                 onBlockUpdate={handleBlockUpdate}
+                onMarkAsSleep={handleMarkAsSleep}
                 viewingDate={currentDate}
               />
             </CardContent>
@@ -326,5 +354,3 @@ export default function Home() {
     </div>
   );
 }
-
-    

@@ -12,6 +12,7 @@ interface TimeBlockProps {
   duration: number;
   subjects: Subject[];
   onClick: (hour: number) => void;
+  onContextMenu: (event: React.MouseEvent) => void;
   isEditable: boolean;
 }
 
@@ -27,7 +28,7 @@ const ICONS: { [key: string]: React.FC<React.SVGProps<SVGSVGElement>> } = {
   Bed,
 };
 
-export function TimeBlock({ hour, subjectId, duration, subjects, onClick, isEditable }: TimeBlockProps) {
+export function TimeBlock({ hour, subjectId, duration, subjects, onClick, onContextMenu, isEditable }: TimeBlockProps) {
   const subject = subjects.find(s => s.id === subjectId) || { id: 'idle', name: 'Idle', icon: 'Sparkles', color: 'hsl(var(--muted))' };
 
   const handleClick = () => {
@@ -48,6 +49,7 @@ export function TimeBlock({ hour, subjectId, duration, subjects, onClick, isEdit
   return (
     <button
       onClick={handleClick}
+      onContextMenu={onContextMenu}
       className={cn(
         "relative aspect-square rounded-lg flex flex-col items-center justify-center p-1 transition-all duration-300 ease-in-out transform",
         isEditable && "focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-background",
