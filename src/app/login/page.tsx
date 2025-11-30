@@ -4,7 +4,9 @@ import { useState } from 'react';
 import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
+  updateProfile,
 } from 'firebase/auth';
+import { doc, setDoc } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -14,11 +16,12 @@ import { Icons } from '@/components/icons';
 import { initializeFirebase } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 
-const { auth } = initializeFirebase();
+const { auth, firestore } = initializeFirebase();
 
 export default function LoginPage() {
   const router = useRouter();
   const { toast } = useToast();
+  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isSignUp, setIsSignUp] = useState(false);
@@ -28,12 +31,32 @@ export default function LoginPage() {
     setLoading(true);
     try {
       if (isSignUp) {
-        await createUserWithEmailAndPassword(auth, email, password);
+        if (!name) {
+            toast({
+                variant: "destructive",
+                title: "Name is required",
+                description: "Please enter your name to sign up.",
+            });
+            setLoading(false);
+            return;
+        }
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        const user = userCredential.user;
+        
+        await updateProfile(user, { displayName: name });
+        const userDocRef = doc(firestore, 'users', user.uid);
+        await setDoc(userDocRef, {
+            uid: user.uid,
+            displayName: name,
+            email: user.email,
+        }, { merge: true });
+
         toast({
           title: "Account Created",
           description: "You have successfully signed up. Please sign in.",
         });
-        setIsSignUp(false); // Switch to sign-in view after successful sign-up
+        setIsSignUp(false);
+        setName('');
       } else {
         await signInWithEmailAndPassword(auth, email, password);
         router.push('/');
@@ -63,6 +86,19 @@ export default function LoginPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+            {isSignUp && (
+                <div className="space-y-2">
+                    <Label htmlFor="name">Name</Label>
+                    <Input 
+                        id="name" 
+                        type="text" 
+                        placeholder="Your Name"
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
+                        disabled={loading}
+                    />
+                </div>
+            )}
             <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
                 <Input 

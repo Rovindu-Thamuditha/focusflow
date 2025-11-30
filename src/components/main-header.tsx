@@ -1,5 +1,6 @@
 import { getAuth, signOut } from "firebase/auth";
-import { LogOut } from "lucide-react";
+import { BarChart, LogOut } from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Icons } from "@/components/icons";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -33,6 +34,11 @@ export function MainHeader({ totalFocusedTime, children }: MainHeaderProps) {
         <div className="flex flex-1 items-center justify-end space-x-4">
           <TotalFocusTime totalHours={totalFocusedTime} />
           {children}
+          <Link href="/stats" passHref>
+             <Button variant="ghost" size="icon" title="Statistics">
+                <BarChart className="h-5 w-5" />
+             </Button>
+          </Link>
           <ThemeToggle />
           {user && (
             <Button variant="ghost" size="icon" onClick={handleSignOut} title="Sign Out">

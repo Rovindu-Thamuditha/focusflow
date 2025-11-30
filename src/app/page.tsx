@@ -6,13 +6,13 @@ import { AccountabilityGrid } from '@/components/accountability-grid';
 import { DailyChallenge } from '@/components/daily-challenge';
 import { MainHeader } from '@/components/main-header';
 import { dailyQuestions } from '@/lib/questions';
-import { getDayOfYear } from 'date-fns';
+import { getDayOfYear, subDays } from 'date-fns';
 import { Card, CardContent } from '@/components/ui/card';
 import { SettingsDialog } from '@/components/settings-dialog';
 import { defaultSubjects } from '@/lib/subjects';
 import { useUser } from '@/firebase/auth/use-user';
 import { useRouter } from 'next/navigation';
-import { doc, setDoc, getDoc } from 'firebase/firestore';
+import { doc, setDoc, getDoc, getDocs, collection, query, where, Timestamp } from 'firebase/firestore';
 import { initializeFirebase } from '@/firebase';
 
 const { firestore } = initializeFirebase();
@@ -25,6 +25,7 @@ const createInitialState = (sleepHours: number[]): TimeBlockState[] => {
       hour: hour,
       subject: isSleep ? 'sleep' : 'idle',
       duration: isSleep ? 60 : 0,
+      date: new Date().toISOString(),
     };
   });
 };
@@ -39,6 +40,7 @@ export default function Home() {
   const [subjects, setSubjects] = useState<Subject[]>(defaultSubjects);
   const [language, setLanguage] = useState<'english' | 'sinhala'>('english');
   const [userDataLoaded, setUserDataLoaded] = useState(false);
+  const [userName, setUserName] = useState('');
 
   useEffect(() => {
     setIsClient(true);
@@ -58,80 +60,81 @@ export default function Home() {
           const todayString = new Date().toDateString();
           const lastVisitDate = data.lastVisit;
 
+          setUserName(data.displayName || user.displayName || '');
           setSleepHours(data.settings?.sleepHours || [22, 23, 0, 1, 2, 3, 4, 5, 6, 7]);
           setSubjects(data.settings?.subjects || defaultSubjects);
           setLanguage(data.settings?.language || 'english');
 
-          if (lastVisitDate !== todayString) {
+          const timeBlockQuery = query(collection(firestore, 'users', user.uid, 'time_blocks'), where('date', '>=', new Date(todayString).toISOString()));
+          const querySnapshot = await getDocs(timeBlockQuery);
+
+          if (lastVisitDate !== todayString || querySnapshot.empty) {
              setChallengeSolved(false);
-             setTimeBlocks(createInitialState(data.settings?.sleepHours || sleepHours));
+             const newBlocks = createInitialState(data.settings?.sleepHours || sleepHours);
+             setTimeBlocks(newBlocks);
           } else {
-            setTimeBlocks(data.timeBlocks || createInitialState(data.settings?.sleepHours || sleepHours));
-            setChallengeSolved(data.isChallengeSolved || false);
+             setTimeBlocks(querySnapshot.docs.map(d => d.data() as TimeBlockState));
+             setChallengeSolved(data.isChallengeSolved || false);
           }
         } else {
           // New user, set initial state
-          setTimeBlocks(createInitialState(sleepHours));
+          setUserName(user.displayName || '');
+          const newBlocks = createInitialState(sleepHours);
+          setTimeBlocks(newBlocks);
         }
         setUserDataLoaded(true);
       };
       loadUserData();
     } else if (!user && isClient) {
-        // Handle no user case (localStorage for guests)
-        const savedBlocks = localStorage.getItem('focusflow_time_blocks');
-        const savedSolved = localStorage.getItem('focusflow_challenge_solved');
-        const savedSleepHours = localStorage.getItem('focusflow_sleep_hours');
-        const savedSubjects = localStorage.getItem('focusflow_subjects');
-        const savedLanguage = localStorage.getItem('focusflow_language');
-        const todayString = new Date().toDateString();
-        const lastVisitDate = localStorage.getItem('focusflow_last_visit');
-
-        if (savedSleepHours) setSleepHours(JSON.parse(savedSleepHours));
-        if (savedSubjects) setSubjects(JSON.parse(savedSubjects));
-        if (savedLanguage) setLanguage(savedLanguage as 'english' | 'sinhala');
-
-        if (lastVisitDate !== todayString) {
-             localStorage.setItem('focusflow_last_visit', todayString);
-             localStorage.setItem('focusflow_challenge_solved', 'false');
-             setChallengeSolved(false);
-             setTimeBlocks(createInitialState(savedSleepHours ? JSON.parse(savedSleepHours) : sleepHours));
-        } else {
-             setTimeBlocks(savedBlocks ? JSON.parse(savedBlocks) : createInitialState(savedSleepHours ? JSON.parse(savedSleepHours) : sleepHours));
-             setChallengeSolved(savedSolved === 'true');
-        }
+        // Fallback for guest mode - though we are redirecting to login
+        router.push('/login');
     }
   }, [user, isClient, userDataLoaded, router]);
 
 
   useEffect(() => {
     const saveData = async () => {
-      if (!isClient || !userDataLoaded) return;
+        if (!isClient || !userDataLoaded || !user || !timeBlocks.length) return;
 
-      if (user) {
         const userDocRef = doc(firestore, 'users', user.uid);
+        const todayString = new Date().toDateString();
+        
         const dataToSave = {
-          lastVisit: new Date().toDateString(),
-          timeBlocks,
-          isChallengeSolved,
-          settings: { sleepHours, subjects, language }
+            lastVisit: todayString,
+            isChallengeSolved,
+            settings: { sleepHours, subjects, language },
+            displayName: userName
         };
         await setDoc(userDocRef, dataToSave, { merge: true });
-      } else {
-        localStorage.setItem('focusflow_time_blocks', JSON.stringify(timeBlocks));
-        localStorage.setItem('focusflow_challenge_solved', String(isChallengeSolved));
-        localStorage.setItem('focusflow_sleep_hours', JSON.stringify(sleepHours));
-        localStorage.setItem('focusflow_subjects', JSON.stringify(subjects));
-        localStorage.setItem('focusflow_language', language);
-      }
+
+        const batch = (await import('firebase/firestore')).writeBatch(firestore);
+        const todayBlocksQuery = query(collection(firestore, 'users', user.uid, 'time_blocks'), where('date', '>=', new Date(todayString).toISOString()));
+        const oldBlocksSnapshot = await getDocs(todayBlocksQuery);
+        oldBlocksSnapshot.forEach(doc => {
+            batch.delete(doc.ref);
+        });
+
+        timeBlocks.forEach(block => {
+            const blockDate = new Date(block.date);
+            if (blockDate.toDateString() === todayString) {
+                const blockRef = doc(collection(firestore, 'users', user.uid, 'time_blocks'));
+                batch.set(blockRef, block);
+            }
+        });
+        await batch.commit();
     };
-    saveData();
-  }, [timeBlocks, isChallengeSolved, sleepHours, subjects, language, user, isClient, userDataLoaded]);
+
+    const debounceSave = setTimeout(saveData, 1000); 
+    return () => clearTimeout(debounceSave);
+
+  }, [timeBlocks, isChallengeSolved, sleepHours, subjects, language, user, isClient, userDataLoaded, userName]);
 
   
   const handleBlockUpdate = (hour: number, subject: string, duration: number) => {
+    const todayString = new Date().toISOString();
     setTimeBlocks(currentBlocks =>
       currentBlocks.map(block =>
-        block.hour === hour ? { ...block, subject, duration } : block
+        block.hour === hour ? { ...block, subject, duration, date: todayString } : block
       )
     );
   };
@@ -150,8 +153,10 @@ export default function Home() {
 
   const totalFocusedTime = useMemo(() => {
     if (!timeBlocks) return 0;
+    const todayString = new Date().toDateString();
     return timeBlocks.reduce((total, block) => {
-      if (block.subject !== 'idle' && block.subject !== 'sleep') {
+      const blockDate = new Date(block.date);
+      if (blockDate.toDateString() === todayString && block.subject !== 'idle' && block.subject !== 'sleep') {
         return total + (block.duration / 60);
       }
       return total;
@@ -164,7 +169,7 @@ export default function Home() {
     return dailyQuestions[dayIndex % dailyQuestions.length];
   }, [isClient]);
 
-  if (loading || (isClient && !userDataLoaded && user)) {
+  if (loading || !isClient || !userDataLoaded) {
     return (
         <div className="flex items-center justify-center min-h-screen">
           <div className="text-xl">Loading FocusFlow...</div>
@@ -183,6 +188,7 @@ export default function Home() {
           />
       </MainHeader>
       <main className="flex-grow container mx-auto p-4 sm:p-6 md:p-8">
+        {userName && <h2 className="text-3xl font-bold text-foreground mb-6">Welcome back, {userName}!</h2>}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8 items-start">
           <Card className="lg:col-span-2">
             <CardContent className="p-4 sm:p-6">
