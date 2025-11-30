@@ -81,10 +81,8 @@ export default function Home() {
         const blocks = querySnapshot.docs.map(d => d.data() as TimeBlockState);
         setTimeBlocks(blocks.sort((a, b) => a.hour - b.hour));
       } else {
-        const userDoc = await getDoc(userDocRef!);
-        const userSettings = userDoc.exists() ? userDoc.data().settings : {};
-        const currentSleepHours = userSettings?.sleepHours || [];
-        setTimeBlocks(createInitialState(currentSleepHours, dateToLoad));
+        // Use the currently loaded user settings for sleep hours
+        setTimeBlocks(createInitialState(sleepHours, dateToLoad));
       }
   
       if (isToday(dateToLoad)) {
@@ -100,7 +98,7 @@ export default function Home() {
     } catch (e) {
       console.error("Error loading day data: ", e);
     }
-  }, [user, firestore, userDocRef]);
+  }, [user, firestore, userDocRef, sleepHours]);
 
 
   useEffect(() => {
@@ -213,24 +211,28 @@ export default function Home() {
     setSleepHours(newSleepHours);
     setSubjects(newSubjects);
     setLanguage(newLanguage);
-    
+  
+    // This is the critical part: update the timeBlocks state based on the new settings.
     setTimeBlocks(currentBlocks => {
-      const dateString = format(currentDate, 'yyyy-MM-dd');
-      return Array.from({ length: 24 }, (_, i) => {
-          const hour = i;
-          const isNewSleep = newSleepHours.includes(hour);
-          const existingBlock = currentBlocks.find(b => b.hour === hour);
-          const wasSleep = existingBlock ? existingBlock.subject === 'sleep' : false;
-
-          if (isNewSleep) {
-              return { hour, subject: 'sleep', duration: 60, date: dateString };
-          }
-          if (wasSleep) { // It's not a new sleep hour, but it was sleep before
-              return { hour, subject: 'idle', duration: 0, date: dateString };
-          }
-          // Preserve existing block if it wasn't a sleep block
-          return existingBlock || { hour, subject: 'idle', duration: 0, date: dateString };
-      }).sort((a, b) => a.hour - b.hour);
+      // Create a fresh state for the current date using the new sleep hours.
+      const newInitialState = createInitialState(newSleepHours, currentDate);
+  
+      // Merge the fresh state with any existing non-idle/non-sleep blocks.
+      // This preserves user's logged focus time while applying the new sleep schedule.
+      const updatedBlocks = newInitialState.map(initialBlock => {
+        if (initialBlock.subject === 'sleep') {
+          return initialBlock; // If it's a sleep block, use it as is.
+        }
+        // Otherwise, check if there's an existing, logged block for this hour.
+        const existingBlock = currentBlocks.find(b => b.hour === initialBlock.hour);
+        if (existingBlock && existingBlock.subject !== 'idle' && existingBlock.subject !== 'sleep') {
+          return existingBlock; // Preserve the user's focused block.
+        }
+        // Otherwise, use the initial state (which will be 'idle').
+        return initialBlock;
+      });
+  
+      return updatedBlocks.sort((a, b) => a.hour - b.hour);
     });
   };
 
@@ -340,3 +342,5 @@ export default function Home() {
     </div>
   );
 }
+
+    
