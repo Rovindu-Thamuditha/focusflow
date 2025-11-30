@@ -15,7 +15,18 @@ import { useUser, useFirestore, useMemoFirebase, FirestorePermissionError, error
 import { useRouter } from 'next/navigation';
 import { doc, setDoc, getDoc, getDocs, collection, query, where, writeBatch } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, RotateCcw } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 
 const createInitialState = (sleepHours: number[], date: Date): TimeBlockState[] => {
   const dateString = format(date, 'yyyy-MM-dd');
@@ -54,7 +65,7 @@ export default function Home() {
     }
   }, [user, isUserLoading, router]);
 
-  const loadDayData = useCallback(async (dateToLoad: Date, sleepHoursConfig: number[]) => {
+  const loadDayData = useCallback(async (dateToLoad: Date) => {
     if (!user || !firestore) return;
   
     const dateString = format(dateToLoad, 'yyyy-MM-dd');
@@ -70,10 +81,12 @@ export default function Home() {
         const blocks = querySnapshot.docs.map(d => d.data() as TimeBlockState);
         setTimeBlocks(blocks.sort((a, b) => a.hour - b.hour));
       } else {
-        setTimeBlocks(createInitialState(sleepHoursConfig, dateToLoad));
+        const userDoc = await getDoc(userDocRef!);
+        const userSettings = userDoc.exists() ? userDoc.data().settings : {};
+        const currentSleepHours = userSettings?.sleepHours || [22, 23, 0, 1, 2, 3, 4, 5, 6, 7];
+        setTimeBlocks(createInitialState(currentSleepHours, dateToLoad));
       }
   
-      // Challenge solved state is only relevant for the current day
       if (isToday(dateToLoad)) {
         const userDoc = await getDoc(userDocRef!);
         if (userDoc.exists()) {
@@ -81,7 +94,7 @@ export default function Home() {
           setChallengeSolved(data.isChallengeSolved || false);
         }
       } else {
-        setChallengeSolved(false); // Can't solve challenges for other days
+        setChallengeSolved(false);
       }
   
     } catch (e) {
@@ -90,28 +103,24 @@ export default function Home() {
   }, [user, firestore, userDocRef]);
 
 
-  // Effect for loading initial user settings ONCE
+  // Load initial user data once
   useEffect(() => {
     if (user && userDocRef && !userDataLoaded) {
       const loadInitialUserData = async () => {
         try {
           const userDoc = await getDoc(userDocRef);
-          let userSleepHours = [22, 23, 0, 1, 2, 3, 4, 5, 6, 7];
         
           if (userDoc.exists()) {
             const data = userDoc.data();
             setUserName(data.username || user.displayName || '');
-            userSleepHours = data.settings?.sleepHours || [22, 23, 0, 1, 2, 3, 4, 5, 6, 7];
-            setSleepHours(userSleepHours);
+            setSleepHours(data.settings?.sleepHours || [22, 23, 0, 1, 2, 3, 4, 5, 6, 7]);
             setSubjects(data.settings?.subjects || defaultSubjects);
             setLanguage(data.settings?.language || 'english');
           } else {
-             // New user, set initial state
-            setUserName(user.displayName || '');
+             setUserName(user.displayName || '');
           }
-          // After loading settings, load the data for the current day with the correct settings
-          await loadDayData(currentDate, userSleepHours);
-          setUserDataLoaded(true); // Mark as loaded
+          await loadDayData(currentDate);
+          setUserDataLoaded(true); 
         } catch (e) {
           const permissionError = new FirestorePermissionError({
             path: userDocRef.path,
@@ -122,15 +131,15 @@ export default function Home() {
       };
       loadInitialUserData();
     }
-  }, [user, userDocRef, userDataLoaded, loadDayData, currentDate]); // Removed dependencies that cause re-runs
+  }, [user, userDocRef, userDataLoaded, loadDayData, currentDate]);
   
-  // Effect for loading data when the date changes
+  // Refetch data only when date changes
   useEffect(() => {
-    if (userDataLoaded) { // Only run if initial data is loaded
-      loadDayData(currentDate, sleepHours);
+    if (userDataLoaded) {
+      loadDayData(currentDate);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentDate, userDataLoaded]); // Removed loadDayData and sleepHours to prevent loops
+  }, [currentDate, userDataLoaded]);
   
 
   useEffect(() => {
@@ -143,7 +152,7 @@ export default function Home() {
             lastVisit: new Date().toDateString(),
             settings: { sleepHours, subjects, language },
             username: userName,
-            ...(isToday(currentDate) && {isChallengeSolved}) // only save challenge state for today
+            ...(isToday(currentDate) && {isChallengeSolved})
         };
 
         setDoc(userDocRef, dataToSave, { merge: true }).catch(error => {
@@ -157,13 +166,11 @@ export default function Home() {
           )
         });
 
-        // Save time blocks if the currently viewed day is editable (within the last 36 hours)
         const isEditable = differenceInHours(new Date(), currentDate) <= 36;
         if(!isEditable) return;
 
         const batch = writeBatch(firestore);
         
-        // Query for existing blocks for the specific date to delete them
         const todayBlocksQuery = query(collection(firestore, 'users', user.uid, 'time_blocks'), where('date', '==', dateString));
             
         getDocs(todayBlocksQuery).then(oldBlocksSnapshot => {
@@ -171,7 +178,6 @@ export default function Home() {
               batch.delete(doc.ref);
           });
 
-          // Add the updated blocks for the current date
           timeBlocks.forEach(block => {
               const blockWithDateString = { ...block, date: dateString };
               const blockRef = doc(collection(firestore, 'users', user.uid, 'time_blocks'));
@@ -212,10 +218,13 @@ export default function Home() {
     setSubjects(newSubjects);
     setLanguage(newLanguage);
     
-    // If sleep hours changed, regenerate the state for the *currently viewed* day
     if(sleepChanged) {
        setTimeBlocks(createInitialState(newSleepHours, currentDate));
     }
+  };
+
+  const handleResetDay = () => {
+    setTimeBlocks(createInitialState(sleepHours, currentDate));
   };
 
   const changeDay = (offset: number) => {
@@ -272,6 +281,25 @@ export default function Home() {
                 </Button>
               </div>
             </div>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="destructive">
+                  <RotateCcw className="w-4 h-4 mr-2" /> Reset Day
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This will reset all progress for {format(currentDate, 'PPP')}. This action cannot be undone.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleResetDay}>Continue</AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
         </div>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8 items-start">
           <Card className="lg:col-span-2">
@@ -301,5 +329,3 @@ export default function Home() {
     </div>
   );
 }
-
-    
