@@ -10,6 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
+import { UserStats } from '@/components/user-stats';
 
 const ADMIN_EMAIL = 'rovinduthamu@gmail.com';
 
@@ -80,27 +81,32 @@ export default function UserDetailPage() {
                 <Button variant="outline"><ArrowLeft className="mr-2 h-4 w-4" />Back to Admin Panel</Button>
             </Link>
         </div>
-        <Card>
-          <CardHeader>
-            <CardTitle>User Details</CardTitle>
-            <CardDescription>Viewing data for {viewedUser?.email}.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-             <div>
-                <h3 className="font-semibold text-muted-foreground">Username</h3>
-                <p>{viewedUser?.username}</p>
-             </div>
-             <div>
-                <h3 className="font-semibold text-muted-foreground">Email</h3>
-                <p>{viewedUser?.email}</p>
-             </div>
-             <div>
-                <h3 className="font-semibold text-muted-foreground">User ID</h3>
-                <p className="font-mono text-sm">{viewedUser?.id}</p>
-             </div>
-             {/* Data editing UI will go here */}
-          </CardContent>
-        </Card>
+        <div className="space-y-6">
+            <Card>
+            <CardHeader>
+                <CardTitle>User Details</CardTitle>
+                <CardDescription>Viewing data for {viewedUser?.email}.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+                <div>
+                    <h3 className="font-semibold text-muted-foreground">Username</h3>
+                    <p>{viewedUser?.username}</p>
+                </div>
+                <div>
+                    <h3 className="font-semibold text-muted-foreground">Email</h3>
+                    <p>{viewedUser?.email}</p>
+                </div>
+                <div>
+                    <h3 className="font-semibold text-muted-foreground">User ID</h3>
+                    <p className="font-mono text-sm">{viewedUser?.id}</p>
+                </div>
+                {/* Data editing UI will go here */}
+            </CardContent>
+            </Card>
+
+            <UserStats userId={userId} />
+
+        </div>
       </main>
     </div>
   );
