@@ -34,7 +34,7 @@ export function AccountabilityGrid({ blocks, subjects, onBlockUpdate, onMarkAsSl
       setSelectedBlock(null);
     }
   };
-
+  
   const handleContextMenu = (e: React.MouseEvent, hour: number) => {
     if (!isEditable) return;
     e.preventDefault();
@@ -56,7 +56,7 @@ export function AccountabilityGrid({ blocks, subjects, onBlockUpdate, onMarkAsSl
             subjectId={block.subject}
             duration={block.duration}
             subjects={subjects}
-            onClick={handleBlockClick}
+            onClick={() => handleBlockClick(block.hour)}
             onContextMenu={(e) => handleContextMenu(e, block.hour)}
             isEditable={isEditable}
           />

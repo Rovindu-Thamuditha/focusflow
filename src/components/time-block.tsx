@@ -11,7 +11,7 @@ interface TimeBlockProps {
   subjectId: string;
   duration: number;
   subjects: Subject[];
-  onClick: (hour: number) => void;
+  onClick: () => void;
   onContextMenu: (event: React.MouseEvent) => void;
   isEditable: boolean;
 }
@@ -33,7 +33,7 @@ export function TimeBlock({ hour, subjectId, duration, subjects, onClick, onCont
 
   const handleClick = () => {
     if (subject.id === 'sleep' || !isEditable) return;
-    onClick(hour);
+    onClick();
   };
   
   const formattedHour = (hour % 12 === 0 ? 12 : hour % 12) + (hour < 12 || hour === 24 ? ' AM' : ' PM');
@@ -63,7 +63,7 @@ export function TimeBlock({ hour, subjectId, duration, subjects, onClick, onCont
       } as React.CSSProperties}
       aria-label={`Hour ${hour}:00, current state: ${subject.name}. Click to change.`}
       title={`${subject.name} - ${duration} mins`}
-      disabled={!isEditable}
+      disabled={!isEditable && subject.id !== 'sleep'}
     >
       <Icon className="w-5 h-5 sm:w-6 sm:h-6" />
       <span className="text-[10px] sm:text-xs font-mono mt-1">{formattedHour}</span>
