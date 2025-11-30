@@ -2,32 +2,51 @@
 
 import { useState } from 'react';
 import {
-  getAuth,
-  GoogleAuthProvider,
-  signInWithPopup,
-  User,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
 } from 'firebase/auth';
-import { useRouter }s from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Icons } from '@/components/icons';
 import { initializeFirebase } from '@/firebase';
+import { useToast } from '@/hooks/use-toast';
 
-// Initialize firebase
 const { auth } = initializeFirebase();
 
 export default function LoginPage() {
   const router = useRouter();
-  const [user, setUser] = useState<User | null>(null);
+  const { toast } = useToast();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [isSignUp, setIsSignUp] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  const handleSignIn = async () => {
-    const provider = new GoogleAuthProvider();
+  const handleAuthAction = async () => {
+    setLoading(true);
     try {
-      const result = await signInWithPopup(auth, provider);
-      setUser(result.user);
-      router.push('/');
-    } catch (error) {
-      console.error('Error signing in with Google: ', error);
+      if (isSignUp) {
+        await createUserWithEmailAndPassword(auth, email, password);
+        toast({
+          title: "Account Created",
+          description: "You have successfully signed up. Please sign in.",
+        });
+        setIsSignUp(false); // Switch to sign-in view after successful sign-up
+      } else {
+        await signInWithEmailAndPassword(auth, email, password);
+        router.push('/');
+      }
+    } catch (error: any) {
+      console.error(`Error ${isSignUp ? 'signing up' : 'signing in'}:`, error);
+      toast({
+        variant: "destructive",
+        title: "Authentication Failed",
+        description: error.message || `Could not ${isSignUp ? 'sign up' : 'sign in'}. Please try again.`,
+      });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -38,23 +57,46 @@ export default function LoginPage() {
             <div className="flex justify-center items-center mb-4">
                 <Icons.logo className="h-12 w-12 text-primary"/>
             </div>
-          <CardTitle className="text-3xl font-bold">Welcome to FocusFlow</CardTitle>
+          <CardTitle className="text-3xl font-bold">{isSignUp ? 'Create an Account' : 'Welcome to FocusFlow'}</CardTitle>
           <CardDescription>
-            Sign in to track your focus and conquer your day.
+            {isSignUp ? 'Enter your details to get started.' : 'Sign in to track your focus and conquer your day.'}
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          <Button onClick={handleSignIn} className="w-full" variant="outline">
-            <svg className="mr-2 h-4 w-4" viewBox="0 0 48 48">
-              <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"></path>
-              <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6.02c4.51-4.18 7.09-10.36 7.09-17.65z"></path>
-              <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24s.92 7.54 2.56 10.78l7.97-6.19z"></path>
-              <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6.02c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"></path>
-              <path fill="none" d="M0 0h48v48H0z"></path>
-            </svg>
-            Sign in with Google
-          </Button>
+        <CardContent className="space-y-4">
+            <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <Input 
+                    id="email" 
+                    type="email" 
+                    placeholder="name@example.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    disabled={loading}
+                />
+            </div>
+            <div className="space-y-2">
+                <Label htmlFor="password">Password</Label>
+                <Input 
+                    id="password" 
+                    type="password"
+                    placeholder="••••••••"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    disabled={loading}
+                />
+            </div>
         </CardContent>
+        <CardFooter className="flex flex-col gap-4">
+            <Button onClick={handleAuthAction} className="w-full" disabled={loading}>
+                {loading ? (
+                    <Icons.logo className="mr-2 h-4 w-4 animate-spin"/>
+                ) : null}
+                {isSignUp ? 'Sign Up' : 'Sign In'}
+            </Button>
+            <Button variant="link" onClick={() => setIsSignUp(!isSignUp)} disabled={loading}>
+                {isSignUp ? 'Already have an account? Sign In' : "Don't have an account? Sign Up"}
+            </Button>
+        </CardFooter>
       </Card>
     </div>
   );
