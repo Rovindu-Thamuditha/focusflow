@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import './globals.css';
 import { ThemeProvider } from '@/components/providers';
 import { Toaster } from '@/components/ui/toaster';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { FirebaseClientProvider } from '@/firebase/client-provider';
 
 
 export const metadata: Metadata = {
@@ -24,15 +24,17 @@ export default function RootLayout({
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css" integrity="sha384-n8MVd4RsNIU0KOVEMmg9ikOAJZDb/smallest-MdvNIk5TVtpJrt/3gsZ7DArOvoMfk6FvUvepaJJPUucJKCJqoty" crossOrigin="anonymous" />
       </head>
       <body className="font-body antialiased min-h-screen bg-background font-sans">
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="system"
-          enableSystem
-          disableTransitionOnChange
-        >
-          {children}
-          <Toaster />
-        </ThemeProvider>
+        <FirebaseClientProvider>
+          <ThemeProvider
+            attribute="class"
+            defaultTheme="system"
+            enableSystem
+            disableTransitionOnChange
+          >
+            {children}
+            <Toaster />
+          </ThemeProvider>
+        </FirebaseClientProvider>
       </body>
     </html>
   );

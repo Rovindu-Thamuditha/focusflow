@@ -23,13 +23,8 @@ const subjectColors: Record<string, string> = {
 
 export function DailyChallenge({ question, isSolved, onSolveChange, language }: DailyChallengeProps) {
     
-  const questionToShow = language === 'sinhala' && question.question_sinhala
-    ? question.question_sinhala
-    : question.question;
-
-  const secondaryQuestion = language === 'sinhala' && question.question_sinhala
-    ? question.question
-    : question.question_sinhala;
+  const primaryQuestion = language === 'sinhala' ? question.question_sinhala : question.question;
+  const secondaryQuestion = language === 'sinhala' ? question.question : question.question_sinhala;
 
 
   return (
@@ -48,7 +43,7 @@ export function DailyChallenge({ question, isSolved, onSolveChange, language }: 
             <p className="text-sm text-muted-foreground">{question.topic}</p>
           </div>
           <div className="p-4 bg-background rounded-lg border text-sm prose prose-invert max-w-none overflow-x-auto">
-            <BlockMath math={questionToShow} />
+            {primaryQuestion && <BlockMath math={primaryQuestion} />}
             {secondaryQuestion && (
                 <>
                     <hr className="my-4 border-border"/>

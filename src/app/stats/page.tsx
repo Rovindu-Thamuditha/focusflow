@@ -5,15 +5,12 @@ import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContaine
 import { MainHeader } from '@/components/main-header';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { useUser } from '@/firebase/auth/use-user';
+import { useUser, useFirestore } from '@/firebase';
 import { useRouter } from 'next/navigation';
-import { collection, query, where, getDocs, Timestamp } from 'firebase/firestore';
-import { initializeFirebase } from '@/firebase';
+import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore';
 import { subDays, startOfDay, format, parseISO } from 'date-fns';
 import type { TimeBlockState, Subject } from '@/lib/types';
 import { defaultSubjects } from '@/lib/subjects';
-
-const { firestore } = initializeFirebase();
 
 const CustomTooltip = ({ active, payload, label, subjects }: any) => {
   if (active && payload && payload.length) {
@@ -41,7 +38,8 @@ const CustomTooltip = ({ active, payload, label, subjects }: any) => {
 };
 
 export default function StatsPage() {
-  const { user, loading } = useUser();
+  const { user, isUserLoading } = useUser();
+  const firestore = useFirestore();
   const router = useRouter();
   const [timeBlocks, setTimeBlocks] = useState<TimeBlockState[]>([]);
   const [timeRange, setTimeRange] = useState('7');
@@ -49,13 +47,13 @@ export default function StatsPage() {
   const [dataLoaded, setDataLoaded] = useState(false);
 
   useEffect(() => {
-    if (!loading && !user) {
+    if (!isUserLoading && !user) {
       router.push('/login');
     }
-  }, [user, loading, router]);
+  }, [user, isUserLoading, router]);
 
   useEffect(() => {
-    if (user) {
+    if (user && firestore) {
       const fetchTimeBlocks = async () => {
         setDataLoaded(false);
         const now = new Date();
@@ -69,7 +67,8 @@ export default function StatsPage() {
         const blocks = querySnapshot.docs.map(doc => doc.data() as TimeBlockState);
         setTimeBlocks(blocks);
 
-        const userDoc = await (await import('firebase/firestore')).doc(firestore, 'users', user.uid).get();
+        const userDocRef = doc(firestore, 'users', user.uid);
+        const userDoc = await getDoc(userDocRef);
         if (userDoc.exists()) {
             setSubjects(userDoc.data().settings?.subjects || defaultSubjects);
         }
@@ -78,7 +77,7 @@ export default function StatsPage() {
       };
       fetchTimeBlocks();
     }
-  }, [user, timeRange]);
+  }, [user, timeRange, firestore]);
   
   const chartData = useMemo(() => {
     const dataByDate: { [key: string]: any } = {};
@@ -99,7 +98,7 @@ export default function StatsPage() {
     return Object.values(dataByDate);
   }, [timeBlocks]);
 
-  if (loading || !dataLoaded) {
+  if (isUserLoading || !dataLoaded) {
     return (
         <div className="flex items-center justify-center min-h-screen">
           <div className="text-xl">Loading Statistics...</div>

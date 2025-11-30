@@ -6,16 +6,13 @@ import { AccountabilityGrid } from '@/components/accountability-grid';
 import { DailyChallenge } from '@/components/daily-challenge';
 import { MainHeader } from '@/components/main-header';
 import { dailyQuestions } from '@/lib/questions';
-import { getDayOfYear, subDays } from 'date-fns';
+import { getDayOfYear } from 'date-fns';
 import { Card, CardContent } from '@/components/ui/card';
 import { SettingsDialog } from '@/components/settings-dialog';
 import { defaultSubjects } from '@/lib/subjects';
-import { useUser } from '@/firebase/auth/use-user';
+import { useUser, useFirestore, useMemoFirebase } from '@/firebase';
 import { useRouter } from 'next/navigation';
-import { doc, setDoc, getDoc, getDocs, collection, query, where, Timestamp } from 'firebase/firestore';
-import { initializeFirebase } from '@/firebase';
-
-const { firestore } = initializeFirebase();
+import { doc, setDoc, getDoc, getDocs, collection, query, where, writeBatch } from 'firebase/firestore';
 
 const createInitialState = (sleepHours: number[]): TimeBlockState[] => {
   return Array.from({ length: 12 }, (_, i) => {
@@ -31,7 +28,8 @@ const createInitialState = (sleepHours: number[]): TimeBlockState[] => {
 };
 
 export default function Home() {
-  const { user, loading } = useUser();
+  const { user, isUserLoading } = useUser();
+  const firestore = useFirestore();
   const router = useRouter();
   const [timeBlocks, setTimeBlocks] = useState<TimeBlockState[]>([]);
   const [isChallengeSolved, setChallengeSolved] = useState(false);
@@ -41,18 +39,19 @@ export default function Home() {
   const [language, setLanguage] = useState<'english' | 'sinhala'>('english');
   const [userDataLoaded, setUserDataLoaded] = useState(false);
   const [userName, setUserName] = useState('');
+  
+  const userDocRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
 
   useEffect(() => {
     setIsClient(true);
-    if (!loading && !user) {
+    if (!isUserLoading && !user) {
       router.push('/login');
     }
-  }, [user, loading, router]);
+  }, [user, isUserLoading, router]);
   
   useEffect(() => {
-    if (user && isClient && !userDataLoaded) {
+    if (user && userDocRef && isClient && !userDataLoaded) {
       const loadUserData = async () => {
-        const userDocRef = doc(firestore, 'users', user.uid);
         const userDoc = await getDoc(userDocRef);
         
         if (userDoc.exists()) {
@@ -60,7 +59,7 @@ export default function Home() {
           const todayString = new Date().toDateString();
           const lastVisitDate = data.lastVisit;
 
-          setUserName(data.displayName || user.displayName || '');
+          setUserName(data.username || user.displayName || '');
           setSleepHours(data.settings?.sleepHours || [22, 23, 0, 1, 2, 3, 4, 5, 6, 7]);
           setSubjects(data.settings?.subjects || defaultSubjects);
           setLanguage(data.settings?.language || 'english');
@@ -85,29 +84,27 @@ export default function Home() {
         setUserDataLoaded(true);
       };
       loadUserData();
-    } else if (!user && isClient) {
-        // Fallback for guest mode - though we are redirecting to login
+    } else if (!user && !isUserLoading && isClient) {
         router.push('/login');
     }
-  }, [user, isClient, userDataLoaded, router]);
+  }, [user, userDocRef, isClient, userDataLoaded, router, firestore, isUserLoading, sleepHours]);
 
 
   useEffect(() => {
     const saveData = async () => {
-        if (!isClient || !userDataLoaded || !user || !timeBlocks.length) return;
+        if (!isClient || !userDataLoaded || !user || !timeBlocks.length || !userDocRef) return;
 
-        const userDocRef = doc(firestore, 'users', user.uid);
         const todayString = new Date().toDateString();
         
         const dataToSave = {
             lastVisit: todayString,
             isChallengeSolved,
             settings: { sleepHours, subjects, language },
-            displayName: userName
+            username: userName
         };
         await setDoc(userDocRef, dataToSave, { merge: true });
 
-        const batch = (await import('firebase/firestore')).writeBatch(firestore);
+        const batch = writeBatch(firestore);
         const todayBlocksQuery = query(collection(firestore, 'users', user.uid, 'time_blocks'), where('date', '>=', new Date(todayString).toISOString()));
         const oldBlocksSnapshot = await getDocs(todayBlocksQuery);
         oldBlocksSnapshot.forEach(doc => {
@@ -127,7 +124,7 @@ export default function Home() {
     const debounceSave = setTimeout(saveData, 1000); 
     return () => clearTimeout(debounceSave);
 
-  }, [timeBlocks, isChallengeSolved, sleepHours, subjects, language, user, isClient, userDataLoaded, userName]);
+  }, [timeBlocks, isChallengeSolved, sleepHours, subjects, language, user, userDocRef, isClient, userDataLoaded, userName, firestore]);
 
   
   const handleBlockUpdate = (hour: number, subject: string, duration: number) => {
@@ -169,7 +166,7 @@ export default function Home() {
     return dailyQuestions[dayIndex % dailyQuestions.length];
   }, [isClient]);
 
-  if (loading || !isClient || !userDataLoaded) {
+  if (isUserLoading || !isClient || !userDataLoaded) {
     return (
         <div className="flex items-center justify-center min-h-screen">
           <div className="text-xl">Loading FocusFlow...</div>

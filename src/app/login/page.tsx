@@ -13,14 +13,14 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Icons } from '@/components/icons';
-import { initializeFirebase } from '@/firebase';
+import { useAuth, useFirestore } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
-
-const { auth, firestore } = initializeFirebase();
 
 export default function LoginPage() {
   const router = useRouter();
   const { toast } = useToast();
+  const auth = useAuth();
+  const firestore = useFirestore();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -46,8 +46,8 @@ export default function LoginPage() {
         await updateProfile(user, { displayName: name });
         const userDocRef = doc(firestore, 'users', user.uid);
         await setDoc(userDocRef, {
-            uid: user.uid,
-            displayName: name,
+            id: user.uid,
+            username: name,
             email: user.email,
         }, { merge: true });
 
