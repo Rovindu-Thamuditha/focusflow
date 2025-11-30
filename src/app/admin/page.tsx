@@ -28,7 +28,7 @@ import type { User as FirebaseUser } from 'firebase/auth';
 import { useToast } from '@/hooks/use-toast';
 
 
-const ADMIN_EMAIL = 'rovindu2007@gmail.com';
+const ADMIN_EMAIL = 'rovinduthamu@gmail.com';
 
 interface AppUser {
     id: string;
