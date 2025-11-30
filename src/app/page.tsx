@@ -1,20 +1,23 @@
+
 "use client";
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import type { TimeBlockState, Subject } from '@/lib/types';
 import { AccountabilityGrid } from '@/components/accountability-grid';
 import { DailyChallenge } from '@/components/daily-challenge';
 import { MainHeader } from '@/components/main-header';
 import { dailyQuestions } from '@/lib/questions';
-import { getDayOfYear } from 'date-fns';
+import { getDayOfYear, format, addDays, subDays, startOfDay, isToday, isFuture } from 'date-fns';
 import { Card, CardContent } from '@/components/ui/card';
 import { SettingsDialog } from '@/components/settings-dialog';
 import { defaultSubjects } from '@/lib/subjects';
 import { useUser, useFirestore, useMemoFirebase, FirestorePermissionError, errorEmitter } from '@/firebase';
 import { useRouter } from 'next/navigation';
-import { doc, setDoc, getDoc, getDocs, collection, query, where, writeBatch } from 'firebase/firestore';
+import { doc, setDoc, getDoc, getDocs, collection, query, where, writeBatch, orderBy } from 'firebase/firestore';
+import { Button } from '@/components/ui/button';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 
-const createInitialState = (sleepHours: number[]): TimeBlockState[] => {
+const createInitialState = (sleepHours: number[], date: Date): TimeBlockState[] => {
   return Array.from({ length: 12 }, (_, i) => {
     const hour = i + 8; // 8 AM to 7 PM
     const isSleep = sleepHours.includes(hour);
@@ -22,15 +25,16 @@ const createInitialState = (sleepHours: number[]): TimeBlockState[] => {
       hour: hour,
       subject: isSleep ? 'sleep' : 'idle',
       duration: isSleep ? 60 : 0,
-      date: new Date().toISOString(),
+      date: date.toISOString(),
     };
-  });
+  }).sort((a, b) => a.hour - b.hour);
 };
 
 export default function Home() {
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
   const router = useRouter();
+  const [currentDate, setCurrentDate] = useState(new Date());
   const [timeBlocks, setTimeBlocks] = useState<TimeBlockState[]>([]);
   const [isChallengeSolved, setChallengeSolved] = useState(false);
   const [isClient, setIsClient] = useState(false);
@@ -49,38 +53,67 @@ export default function Home() {
     }
   }, [user, isUserLoading, router]);
   
+  const loadDayData = useCallback(async (dateToLoad: Date) => {
+    if (!user || !firestore) return;
+    setUserDataLoaded(false);
+
+    const dateString = format(dateToLoad, 'yyyy-MM-dd');
+    const dayStart = startOfDay(dateToLoad);
+
+    try {
+      const timeBlockQuery = query(
+        collection(firestore, 'users', user.uid, 'time_blocks'), 
+        where('date', '==', dateString),
+        orderBy('hour')
+      );
+      const querySnapshot = await getDocs(timeBlockQuery);
+
+      if (!querySnapshot.empty) {
+        const blocks = querySnapshot.docs.map(d => d.data() as TimeBlockState);
+        setTimeBlocks(blocks.sort((a, b) => a.hour - b.hour));
+      } else {
+        setTimeBlocks(createInitialState(sleepHours, dayStart));
+      }
+
+      // Load challenge state only for today
+      if (isToday(dateToLoad)) {
+        const userDoc = await getDoc(userDocRef!);
+        if (userDoc.exists()) {
+          const data = userDoc.data();
+          setChallengeSolved(data.isChallengeSolved || false);
+        }
+      } else {
+        setChallengeSolved(false); // Can't solve challenges for other days
+      }
+
+      setUserDataLoaded(true);
+
+    } catch (e) {
+      console.error("Error loading day data: ", e);
+      // Handle error appropriately
+    }
+
+  }, [user, firestore, sleepHours, userDocRef]);
+
+
   useEffect(() => {
     if (user && userDocRef && isClient && !userDataLoaded) {
-      const loadUserData = async () => {
+      const loadInitialUserData = async () => {
         try {
           const userDoc = await getDoc(userDocRef);
         
           if (userDoc.exists()) {
             const data = userDoc.data();
-            const todayString = new Date().toDateString();
-            const lastVisitDate = data.lastVisit;
-  
             setUserName(data.username || user.displayName || '');
-            setSleepHours(data.settings?.sleepHours || [22, 23, 0, 1, 2, 3, 4, 5, 6, 7]);
+            const userSleepHours = data.settings?.sleepHours || [22, 23, 0, 1, 2, 3, 4, 5, 6, 7];
+            setSleepHours(userSleepHours);
             setSubjects(data.settings?.subjects || defaultSubjects);
             setLanguage(data.settings?.language || 'english');
-  
-            const timeBlockQuery = query(collection(firestore, 'users', user.uid, 'time_blocks'), where('date', '>=', new Date(todayString).toISOString()));
-            const querySnapshot = await getDocs(timeBlockQuery);
-  
-            if (lastVisitDate !== todayString || querySnapshot.empty) {
-               setChallengeSolved(false);
-               const newBlocks = createInitialState(data.settings?.sleepHours || sleepHours);
-               setTimeBlocks(newBlocks);
-            } else {
-               setTimeBlocks(querySnapshot.docs.map(d => d.data() as TimeBlockState));
-               setChallengeSolved(data.isChallengeSolved || false);
-            }
+            await loadDayData(currentDate);
           } else {
             // New user, set initial state
             setUserName(user.displayName || '');
-            const newBlocks = createInitialState(sleepHours);
-            setTimeBlocks(newBlocks);
+            setTimeBlocks(createInitialState(sleepHours, currentDate));
           }
           setUserDataLoaded(true);
         } catch (e) {
@@ -91,21 +124,21 @@ export default function Home() {
           errorEmitter.emit('permission-error', permissionError);
         }
       };
-      loadUserData();
+      loadInitialUserData();
     } else if (!user && !isUserLoading && isClient) {
         router.push('/login');
     }
-  }, [user, userDocRef, isClient, userDataLoaded, router, firestore, isUserLoading, sleepHours]);
+  }, [user, userDocRef, isClient, userDataLoaded, router, firestore, isUserLoading, currentDate, loadDayData, sleepHours]);
 
 
   useEffect(() => {
     const saveData = () => {
-        if (!isClient || !userDataLoaded || !user || !timeBlocks.length || !userDocRef) return;
+        if (!isClient || !userDataLoaded || !user || !timeBlocks.length || !userDocRef || !isToday(currentDate)) return;
 
-        const todayString = new Date().toDateString();
+        const dateString = format(currentDate, 'yyyy-MM-dd');
         
         const dataToSave = {
-            lastVisit: todayString,
+            lastVisit: new Date().toDateString(),
             isChallengeSolved,
             settings: { sleepHours, subjects, language },
             username: userName
@@ -122,44 +155,45 @@ export default function Home() {
         });
 
         const batch = writeBatch(firestore);
-        const todayBlocksQuery = query(collection(firestore, 'users', user.uid, 'time_blocks'), where('date', '>=', new Date(todayString).toISOString()));
-        
-        getDocs(todayBlocksQuery).then(oldBlocksSnapshot => {
-          oldBlocksSnapshot.forEach(doc => {
-              batch.delete(doc.ref);
-          });
+        const blocksForDate = timeBlocks.filter(b => format(new Date(b.date), 'yyyy-MM-dd') === dateString);
 
-          timeBlocks.forEach(block => {
-              const blockDate = new Date(block.date);
-              if (blockDate.toDateString() === todayString) {
+        if (blocksForDate.length > 0) {
+            const todayBlocksQuery = query(collection(firestore, 'users', user.uid, 'time_blocks'), where('date', '==', dateString));
+            
+            getDocs(todayBlocksQuery).then(oldBlocksSnapshot => {
+              oldBlocksSnapshot.forEach(doc => {
+                  batch.delete(doc.ref);
+              });
+
+              blocksForDate.forEach(block => {
+                  const blockWithDateString = { ...block, date: dateString };
                   const blockRef = doc(collection(firestore, 'users', user.uid, 'time_blocks'));
-                  batch.set(blockRef, block);
-              }
-          });
-          batch.commit().catch(error => {
-             errorEmitter.emit(
-              'permission-error',
-              new FirestorePermissionError({
-                path: `users/${user.uid}/time_blocks`,
-                operation: 'write',
-                requestResourceData: timeBlocks
-              })
-            )
-          });
-        });
+                  batch.set(blockRef, blockWithDateString);
+              });
+              batch.commit().catch(error => {
+                 errorEmitter.emit(
+                  'permission-error',
+                  new FirestorePermissionError({
+                    path: `users/${user.uid}/time_blocks`,
+                    operation: 'write',
+                    requestResourceData: blocksForDate
+                  })
+                )
+              });
+            });
+        }
     };
 
     const debounceSave = setTimeout(saveData, 1000); 
     return () => clearTimeout(debounceSave);
 
-  }, [timeBlocks, isChallengeSolved, sleepHours, subjects, language, user, userDocRef, isClient, userDataLoaded, userName, firestore]);
+  }, [timeBlocks, isChallengeSolved, sleepHours, subjects, language, user, userDocRef, isClient, userDataLoaded, userName, firestore, currentDate]);
 
   
   const handleBlockUpdate = (hour: number, subject: string, duration: number) => {
-    const todayString = new Date().toISOString();
     setTimeBlocks(currentBlocks =>
       currentBlocks.map(block =>
-        block.hour === hour ? { ...block, subject, duration, date: todayString } : block
+        block.hour === hour ? { ...block, subject, duration, date: currentDate.toISOString() } : block
       )
     );
   };
@@ -172,16 +206,21 @@ export default function Home() {
     setLanguage(newLanguage);
     
     if(sleepChanged) {
-       setTimeBlocks(createInitialState(newSleepHours));
+       setTimeBlocks(createInitialState(newSleepHours, currentDate));
     }
+  };
+
+  const changeDay = (offset: number) => {
+    const newDate = offset > 0 ? addDays(currentDate, offset) : subDays(currentDate, -offset);
+    if (isFuture(startOfDay(newDate))) return;
+    setCurrentDate(newDate);
+    loadDayData(newDate);
   };
 
   const totalFocusedTime = useMemo(() => {
     if (!timeBlocks) return 0;
-    const todayString = new Date().toDateString();
     return timeBlocks.reduce((total, block) => {
-      const blockDate = new Date(block.date);
-      if (blockDate.toDateString() === todayString && block.subject !== 'idle' && block.subject !== 'sleep') {
+      if (block.subject !== 'idle' && block.subject !== 'sleep') {
         return total + (block.duration / 60);
       }
       return total;
@@ -213,7 +252,20 @@ export default function Home() {
           />
       </MainHeader>
       <main className="flex-grow container mx-auto p-4 sm:p-6 md:p-8">
-        {userName && <h2 className="text-3xl font-bold text-foreground mb-6">Welcome back, {userName}!</h2>}
+        <div className="flex justify-between items-center mb-6">
+            <div>
+              {userName && <h2 className="text-3xl font-bold text-foreground">Welcome back, {userName}!</h2>}
+              <div className="flex items-center gap-2 mt-2">
+                <Button variant="outline" size="icon" onClick={() => changeDay(-1)}>
+                    <ChevronLeft className="w-4 h-4" />
+                </Button>
+                <h3 className="text-xl font-semibold text-center w-64">{format(currentDate, 'PPP')}</h3>
+                <Button variant="outline" size="icon" onClick={() => changeDay(1)} disabled={isToday(currentDate)}>
+                    <ChevronRight className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+        </div>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8 items-start">
           <Card className="lg:col-span-2">
             <CardContent className="p-4 sm:p-6">
@@ -221,6 +273,7 @@ export default function Home() {
                 blocks={timeBlocks}
                 subjects={subjects}
                 onBlockUpdate={handleBlockUpdate}
+                viewingDate={currentDate}
               />
             </CardContent>
           </Card>
@@ -228,8 +281,9 @@ export default function Home() {
              <DailyChallenge
                 question={currentQuestion}
                 isSolved={isChallengeSolved}
-                onSolveChange={setChallengeSolved}
+                onSolveChange={isToday(currentDate) ? setChallengeSolved : () => {}}
                 language={language}
+                isToday={isToday(currentDate)}
               />
           </div>
         </div>

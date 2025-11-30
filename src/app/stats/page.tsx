@@ -1,14 +1,15 @@
+
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { MainHeader } from '@/components/main-header';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { useUser, useFirestore } from '@/firebase';
+import { useUser, useFirestore, useMemoFirebase } from '@/firebase';
 import { useRouter } from 'next/navigation';
-import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore';
-import { subDays, startOfDay, format, parseISO } from 'date-fns';
+import { collection, query, where, getDocs, doc, getDoc, limit, orderBy, startAt } from 'firebase/firestore';
+import { subDays, startOfDay, format, parseISO, endOfDay } from 'date-fns';
 import type { TimeBlockState, Subject } from '@/lib/types';
 import { defaultSubjects } from '@/lib/subjects';
 
@@ -16,7 +17,7 @@ const CustomTooltip = ({ active, payload, label, subjects }: any) => {
   if (active && payload && payload.length) {
     const subjectData = payload.reduce((acc: any, entry: any) => {
       const subject = subjects.find((s: Subject) => s.id === entry.dataKey);
-      if (subject) {
+      if (subject && entry.value > 0) {
         acc[subject.name] = { value: entry.value, color: subject.color };
       }
       return acc;
@@ -52,32 +53,39 @@ export default function StatsPage() {
     }
   }, [user, isUserLoading, router]);
 
+  const fetchTimeBlocks = useCallback(async () => {
+      if (!user || !firestore) return;
+      
+      setDataLoaded(false);
+      const now = new Date();
+      // Using 'all' for an effectively infinite range back in time.
+      const range = timeRange === '365' ? 36500 : parseInt(timeRange);
+      const startDate = startOfDay(subDays(now, range));
+      const endDate = endOfDay(now);
+
+      const q = query(
+        collection(firestore, 'users', user.uid, 'time_blocks'),
+        where('date', '>=', format(startDate, 'yyyy-MM-dd')),
+        where('date', '<=', format(endDate, 'yyyy-MM-dd')),
+        orderBy('date', 'asc')
+      );
+
+      const querySnapshot = await getDocs(q);
+      const blocks = querySnapshot.docs.map(doc => doc.data() as TimeBlockState);
+      setTimeBlocks(blocks);
+
+      const userDocRef = doc(firestore, 'users', user.uid);
+      const userDoc = await getDoc(userDocRef);
+      if (userDoc.exists()) {
+          setSubjects(userDoc.data().settings?.subjects || defaultSubjects);
+      }
+
+      setDataLoaded(true);
+  }, [user, firestore, timeRange]);
+
   useEffect(() => {
-    if (user && firestore) {
-      const fetchTimeBlocks = async () => {
-        setDataLoaded(false);
-        const now = new Date();
-        const startDate = startOfDay(subDays(now, parseInt(timeRange)));
-        
-        const q = query(
-          collection(firestore, 'users', user.uid, 'time_blocks'),
-          where('date', '>=', startDate.toISOString())
-        );
-        const querySnapshot = await getDocs(q);
-        const blocks = querySnapshot.docs.map(doc => doc.data() as TimeBlockState);
-        setTimeBlocks(blocks);
-
-        const userDocRef = doc(firestore, 'users', user.uid);
-        const userDoc = await getDoc(userDocRef);
-        if (userDoc.exists()) {
-            setSubjects(userDoc.data().settings?.subjects || defaultSubjects);
-        }
-
-        setDataLoaded(true);
-      };
-      fetchTimeBlocks();
-    }
-  }, [user, timeRange, firestore]);
+    fetchTimeBlocks();
+  }, [fetchTimeBlocks]);
   
   const chartData = useMemo(() => {
     const dataByDate: { [key: string]: any } = {};
@@ -85,14 +93,15 @@ export default function StatsPage() {
     timeBlocks.forEach(block => {
         if (block.subject === 'idle' || block.subject === 'sleep') return;
         
-        const date = format(parseISO(block.date), 'MMM dd');
-        if (!dataByDate[date]) {
-            dataByDate[date] = { date };
+        const dateKey = block.date.split('T')[0];
+        const dateLabel = format(parseISO(dateKey), 'MMM dd');
+        if (!dataByDate[dateLabel]) {
+            dataByDate[dateLabel] = { date: dateLabel };
         }
-        if (!dataByDate[date][block.subject]) {
-            dataByDate[date][block.subject] = 0;
+        if (!dataByDate[dateLabel][block.subject]) {
+            dataByDate[dateLabel][block.subject] = 0;
         }
-        dataByDate[date][block.subject] += block.duration / 60; // convert to hours
+        dataByDate[dateLabel][block.subject] += block.duration / 60; // convert to hours
     });
 
     return Object.values(dataByDate);

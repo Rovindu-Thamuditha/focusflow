@@ -1,3 +1,4 @@
+
 "use client"
 
 import { cn } from "@/lib/utils";
@@ -11,6 +12,7 @@ interface TimeBlockProps {
   duration: number;
   subjects: Subject[];
   onClick: (hour: number) => void;
+  isEditable: boolean;
 }
 
 const ICONS: { [key: string]: React.FC<React.SVGProps<SVGSVGElement>> } = {
@@ -25,11 +27,11 @@ const ICONS: { [key: string]: React.FC<React.SVGProps<SVGSVGElement>> } = {
   Bed,
 };
 
-export function TimeBlock({ hour, subjectId, duration, subjects, onClick }: TimeBlockProps) {
+export function TimeBlock({ hour, subjectId, duration, subjects, onClick, isEditable }: TimeBlockProps) {
   const subject = subjects.find(s => s.id === subjectId) || { id: 'idle', name: 'Idle', icon: 'Sparkles', color: 'hsl(var(--muted))' };
 
   const handleClick = () => {
-    if (subject.id === 'sleep') return; // Don't do anything for sleep blocks
+    if (subject.id === 'sleep' || !isEditable) return;
     onClick(hour);
   };
   
@@ -47,10 +49,11 @@ export function TimeBlock({ hour, subjectId, duration, subjects, onClick }: Time
     <button
       onClick={handleClick}
       className={cn(
-        "relative aspect-square rounded-lg flex flex-col items-center justify-center p-1 transition-all duration-300 ease-in-out transform focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-background",
+        "relative aspect-square rounded-lg flex flex-col items-center justify-center p-1 transition-all duration-300 ease-in-out transform",
+        isEditable && "focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-background",
         "text-white",
         subject.id !== 'idle' && getBrightness(),
-        subject.id === 'sleep' && 'cursor-not-allowed'
+        (subject.id === 'sleep' || !isEditable) && 'cursor-not-allowed'
       )}
       style={{ 
         backgroundColor: subject.color,
@@ -58,6 +61,7 @@ export function TimeBlock({ hour, subjectId, duration, subjects, onClick }: Time
       } as React.CSSProperties}
       aria-label={`Hour ${hour}:00, current state: ${subject.name}. Click to change.`}
       title={`${subject.name} - ${duration} mins`}
+      disabled={!isEditable}
     >
       <Icon className="w-5 h-5 sm:w-6 sm:h-6" />
       <span className="text-[10px] sm:text-xs font-mono mt-1">{formattedHour}</span>

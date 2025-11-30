@@ -1,3 +1,4 @@
+
 "use client"
 
 import { Trophy } from 'lucide-react';
@@ -12,6 +13,7 @@ interface DailyChallengeProps {
   isSolved: boolean;
   onSolveChange: (solved: boolean) => void;
   language: 'english' | 'sinhala';
+  isToday: boolean;
 }
 
 const subjectColors: Record<string, string> = {
@@ -21,7 +23,7 @@ const subjectColors: Record<string, string> = {
   'Biology': 'text-green-400',
 };
 
-export function DailyChallenge({ question, isSolved, onSolveChange, language }: DailyChallengeProps) {
+export function DailyChallenge({ question, isSolved, onSolveChange, language, isToday }: DailyChallengeProps) {
     
   const questionText = language === 'sinhala' && question.question_sinhala ? question.question_sinhala : question.question;
 
@@ -51,6 +53,7 @@ export function DailyChallenge({ question, isSolved, onSolveChange, language }: 
             checked={isSolved}
             onCheckedChange={() => onSolveChange(!isSolved)}
             className="w-6 h-6 data-[state=checked]:bg-accent data-[state=checked]:text-accent-foreground border-primary"
+            disabled={!isToday}
           />
           <Label htmlFor="solve-challenge" className="text-base font-medium cursor-pointer">
             {isSolved ? "Challenge Conquered!" : "Mark as Solved"}
