@@ -13,7 +13,7 @@ import { SettingsDialog } from '@/components/settings-dialog';
 import { defaultSubjects } from '@/lib/subjects';
 import { useUser, useFirestore, useMemoFirebase, FirestorePermissionError, errorEmitter } from '@/firebase';
 import { useRouter } from 'next/navigation';
-import { doc, setDoc, getDoc, getDocs, collection, query, where, writeBatch, orderBy } from 'firebase/firestore';
+import { doc, setDoc, getDoc, getDocs, collection, query, where, writeBatch } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
@@ -63,8 +63,7 @@ export default function Home() {
     try {
       const timeBlockQuery = query(
         collection(firestore, 'users', user.uid, 'time_blocks'), 
-        where('date', '==', dateString),
-        orderBy('hour')
+        where('date', '==', dateString)
       );
       const querySnapshot = await getDocs(timeBlockQuery);
 
@@ -294,3 +293,5 @@ export default function Home() {
     </div>
   );
 }
+
+    
