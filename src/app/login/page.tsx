@@ -74,10 +74,16 @@ export default function LoginPage() {
       }
     } catch (error: any) {
       console.error(`Error ${isSignUp ? 'signing up' : 'signing in'}:`, error);
+      
+      let description = error.message || `Could not ${isSignUp ? 'sign up' : 'sign in'}. Please try again.`;
+      if (error.code === 'auth/invalid-credential') {
+        description = "Invalid email or password. Please check your credentials and try again.";
+      }
+
       toast({
         variant: "destructive",
         title: "Authentication Failed",
-        description: error.message || `Could not ${isSignUp ? 'sign up' : 'sign in'}. Please try again.`,
+        description: description,
       });
     } finally {
       setLoading(false);
