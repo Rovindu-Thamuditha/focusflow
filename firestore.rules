@@ -60,58 +60,13 @@ service cloud.firestore {
       allow get: if isOwner(userId);
       allow list: if false; // CRITICAL: Prevent listing and discovery of all users.
       allow create: if isOwner(userId) && request.resource.data.id == userId;
-      allow update: if isOwner(userId) && resource != null && request.resource.data.id == resource.data.id;
-      allow delete: if isOwner(userId) && resource != null;
-    }
+      allow update: if isOwner(userId) && request.resource.data.id == resource.data.id;
+      allow delete: if isOwner(userId);
 
-    /**
-     * @description
-     *   Stores user-specific settings. Only the owning user can read or write their own settings document.
-     * @path /users/{userId}/settings/{settingsId}
-     * @allow A signed-in user (update)s their own settings: `auth.uid === 'user_abc'`, path is `/users/user_abc/settings/default`.
-     * @deny A different user tries to (get) another's settings: `auth.uid === 'user_xyz'`, path is `/users/user_abc/settings/default`.
-     * @principle Restricts access to a user's own data tree using path-based ownership.
-     */
-    match /users/{userId}/settings/{settingsId} {
-      allow get: if isOwner(userId);
-      allow list: if isOwner(userId);
-      allow create: if isOwner(userId) && request.resource.data.id == settingsId;
-      allow update: if isOwner(userId) && resource != null && request.resource.data.id == resource.data.id;
-      allow delete: if isOwner(userId) && resource != null;
-    }
-
-    /**
-     * @description
-     *   Stores a user's accountability grid states. Access is strictly limited to the user who owns the data.
-     *   The denormalized `userId` field is validated to ensure data integrity.
-     * @path /users/{userId}/focusGridStates/{focusGridStateId}
-     * @allow A signed-in user (create)s a grid state in their own path: `auth.uid === 'user_abc'`, path is `/users/user_abc/focusGridStates/state_123`.
-     * @deny A user tries to (create) a grid state for another user: `auth.uid === 'user_xyz'`, path is `/users/user_abc/focusGridStates/state_123`.
-     * @principle Validates relational integrity by ensuring the `userId` in the document body matches the user ID in the path.
-     */
-    match /users/{userId}/focusGridStates/{focusGridStateId} {
-      allow get: if isOwner(userId);
-      allow list: if isOwner(userId);
-      allow create: if isOwner(userId) && request.resource.data.userId == userId;
-      allow update: if isOwner(userId) && resource != null && request.resource.data.userId == resource.data.userId;
-      allow delete: if isOwner(userId) && resource != null;
-    }
-
-    /**
-     * @description
-     *   Stores a user's solved/unsolved state for a daily question. Access is strictly limited to the data owner.
-     *   The denormalized `userId` is validated to ensure consistency with the path.
-     * @path /users/{userId}/dailyQuestionStates/{userDailyQuestionStateId}
-     * @allow A signed-in user (get)s their own question state: `auth.uid === 'user_abc'`, path is `/users/user_abc/dailyQuestionStates/state_456`.
-     * @deny A user tries to (list) another user's question states: `auth.uid === 'user_xyz'`, path is `/users/user_abc/dailyQuestionStates`.
-     * @principle Validates relational integrity by ensuring the `userId` in the document body matches the user ID in the path.
-     */
-    match /users/{userId}/dailyQuestionStates/{userDailyQuestionStateId} {
-      allow get: if isOwner(userId);
-      allow list: if isOwner(userId);
-      allow create: if isOwner(userId) && request.resource.data.userId == userId;
-      allow update: if isOwner(userId) && resource != null && request.resource.data.userId == resource.data.userId;
-      allow delete: if isOwner(userId) && resource != null;
+      // Allow reads and writes to subcollections only for the owner.
+      match /{allPaths=**} {
+        allow read, write: if isOwner(userId);
+      }
     }
 
     /**
@@ -126,11 +81,7 @@ service cloud.firestore {
     match /dailyQuestions/{dailyQuestionId} {
       allow get: if true;
       allow list: if true;
-      // CRITICAL: Cannot implement owner-only writes. The 'DailyQuestion' entity is missing an 'ownerId' or 'authorId' field.
-      // Assuming this data is managed by a backend admin process and disabling all client write access.
-      allow create: if false; // TODO: Add admin validation once an admin role system is implemented.
-      allow update: if false; // TODO: Add admin validation once an admin role system is implemented.
-      allow delete: if false; // TODO: Add admin validation once an admin role system is implemented.
+      allow create, update, delete: if false;
     }
   }
 }
