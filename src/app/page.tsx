@@ -52,14 +52,12 @@ export default function Home() {
       router.push('/login');
     }
   }, [user, isUserLoading, router]);
-  
+
   const loadDayData = useCallback(async (dateToLoad: Date) => {
     if (!user || !firestore) return;
-    setUserDataLoaded(false);
 
     const dateString = format(dateToLoad, 'yyyy-MM-dd');
-    const dayStart = startOfDay(dateToLoad);
-
+    
     try {
       const timeBlockQuery = query(
         collection(firestore, 'users', user.uid, 'time_blocks'), 
@@ -71,10 +69,10 @@ export default function Home() {
         const blocks = querySnapshot.docs.map(d => d.data() as TimeBlockState);
         setTimeBlocks(blocks.sort((a, b) => a.hour - b.hour));
       } else {
-        setTimeBlocks(createInitialState(sleepHours, dayStart));
+        // We pass sleepHours to createInitialState to ensure it has the current value
+        setTimeBlocks(createInitialState(sleepHours, startOfDay(dateToLoad)));
       }
 
-      // Load challenge state only for today
       if (isToday(dateToLoad)) {
         const userDoc = await getDoc(userDocRef!);
         if (userDoc.exists()) {
@@ -85,18 +83,15 @@ export default function Home() {
         setChallengeSolved(false); // Can't solve challenges for other days
       }
 
-      setUserDataLoaded(true);
-
     } catch (e) {
       console.error("Error loading day data: ", e);
-      // Handle error appropriately
     }
+  }, [user, firestore, userDocRef, sleepHours]);
 
-  }, [user, firestore, sleepHours, userDocRef]);
 
-
+  // Effect for loading initial user settings and today's data
   useEffect(() => {
-    if (user && userDocRef && isClient && !userDataLoaded) {
+    if (user && userDocRef && !userDataLoaded) {
       const loadInitialUserData = async () => {
         try {
           const userDoc = await getDoc(userDocRef);
@@ -108,13 +103,13 @@ export default function Home() {
             setSleepHours(userSleepHours);
             setSubjects(data.settings?.subjects || defaultSubjects);
             setLanguage(data.settings?.language || 'english');
-            await loadDayData(currentDate);
+            await loadDayData(currentDate); 
           } else {
-            // New user, set initial state
+             // New user, set initial state
             setUserName(user.displayName || '');
             setTimeBlocks(createInitialState(sleepHours, currentDate));
           }
-          setUserDataLoaded(true);
+          setUserDataLoaded(true); // Mark as loaded
         } catch (e) {
           const permissionError = new FirestorePermissionError({
             path: userDocRef.path,
@@ -124,24 +119,30 @@ export default function Home() {
         }
       };
       loadInitialUserData();
-    } else if (!user && !isUserLoading && isClient) {
-        router.push('/login');
     }
-  }, [user, userDocRef, isClient, userDataLoaded, router, firestore, isUserLoading, currentDate, loadDayData, sleepHours]);
-
+  }, [user, userDocRef, userDataLoaded, currentDate, loadDayData, sleepHours]);
+  
+  // Effect for loading data when the date changes
+  useEffect(() => {
+    if (userDataLoaded) { // Only run if initial data is loaded
+      loadDayData(currentDate);
+    }
+  }, [currentDate, userDataLoaded, loadDayData]);
+  
 
   useEffect(() => {
     const saveData = () => {
-        if (!isClient || !userDataLoaded || !user || !timeBlocks.length || !userDocRef || !isToday(currentDate)) return;
+        if (!isClient || !userDataLoaded || !user || !timeBlocks.length || !userDocRef ) return;
 
         const dateString = format(currentDate, 'yyyy-MM-dd');
         
         const dataToSave = {
             lastVisit: new Date().toDateString(),
-            isChallengeSolved,
             settings: { sleepHours, subjects, language },
-            username: userName
+            username: userName,
+            ...(isToday(currentDate) && {isChallengeSolved}) // only save challenge state for today
         };
+
         setDoc(userDocRef, dataToSave, { merge: true }).catch(error => {
           errorEmitter.emit(
             'permission-error',
@@ -152,6 +153,11 @@ export default function Home() {
             })
           )
         });
+
+        // Only save time blocks for the current day being viewed if it's editable
+        const isEditable = !isFuture(currentDate) && (isToday(currentDate) || subDays(new Date(), 1).getTime() < currentDate.getTime());
+        if(!isEditable) return;
+
 
         const batch = writeBatch(firestore);
         const blocksForDate = timeBlocks.filter(b => format(new Date(b.date), 'yyyy-MM-dd') === dateString);
@@ -183,7 +189,7 @@ export default function Home() {
         }
     };
 
-    const debounceSave = setTimeout(saveData, 1000); 
+    const debounceSave = setTimeout(saveData, 1500); 
     return () => clearTimeout(debounceSave);
 
   }, [timeBlocks, isChallengeSolved, sleepHours, subjects, language, user, userDocRef, isClient, userDataLoaded, userName, firestore, currentDate]);
@@ -193,7 +199,7 @@ export default function Home() {
     setTimeBlocks(currentBlocks =>
       currentBlocks.map(block =>
         block.hour === hour ? { ...block, subject, duration, date: currentDate.toISOString() } : block
-      )
+      ).sort((a, b) => a.hour - b.hour)
     );
   };
 
@@ -204,7 +210,7 @@ export default function Home() {
     setSubjects(newSubjects);
     setLanguage(newLanguage);
     
-    if(sleepChanged) {
+    if(sleepChanged && isToday(currentDate)) {
        setTimeBlocks(createInitialState(newSleepHours, currentDate));
     }
   };
@@ -213,7 +219,6 @@ export default function Home() {
     const newDate = offset > 0 ? addDays(currentDate, offset) : subDays(currentDate, -offset);
     if (isFuture(startOfDay(newDate))) return;
     setCurrentDate(newDate);
-    loadDayData(newDate);
   };
 
   const totalFocusedTime = useMemo(() => {
@@ -293,5 +298,3 @@ export default function Home() {
     </div>
   );
 }
-
-    
