@@ -36,6 +36,12 @@ export function TimeBlock({ hour, subjectId, duration, subjects, onClick, onCont
     onClick();
   };
   
+  const handleContextMenu = (e: React.MouseEvent) => {
+    if (!isEditable) return;
+    e.preventDefault();
+    onContextMenu(e);
+  }
+  
   const formattedHour = (hour % 12 === 0 ? 12 : hour % 12) + (hour < 12 || hour === 24 ? ' AM' : ' PM');
 
   const getBrightness = () => {
@@ -46,16 +52,18 @@ export function TimeBlock({ hour, subjectId, duration, subjects, onClick, onCont
 
   const Icon = ICONS[subject.icon] || Sparkles;
 
+  const isSleep = subject.id === 'sleep';
+
   return (
     <button
       onClick={handleClick}
-      onContextMenu={onContextMenu}
+      onContextMenu={handleContextMenu}
       className={cn(
         "relative aspect-square rounded-lg flex flex-col items-center justify-center p-1 transition-all duration-300 ease-in-out transform",
-        isEditable && "focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-background",
-        "text-white",
-        subject.id !== 'idle' && getBrightness(),
-        (subject.id === 'sleep' || !isEditable) && 'cursor-not-allowed'
+        isEditable && !isSleep && "focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-background",
+        isSleep ? "text-slate-400" : "text-white",
+        subject.id !== 'idle' && !isSleep && getBrightness(),
+        (!isEditable || isSleep) && 'cursor-not-allowed'
       )}
       style={{ 
         backgroundColor: subject.color,

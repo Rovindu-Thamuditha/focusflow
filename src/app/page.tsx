@@ -233,20 +233,22 @@ export default function Home() {
     setSubjects(newSubjects);
     setLanguage(newLanguage);
     
-    // Update the grid for the current day with new sleep hours
     setTimeBlocks(currentBlocks => {
-      return createInitialState(newSleepHours, currentDate).map((newBlock, index) => {
-        const oldBlock = currentBlocks[index];
-        // If the new block is a sleep block, use it.
-        // If the old block was not a sleep block, keep its state.
-        // If the old block was a sleep block but the new one isn't, use the new idle block.
-        if (newBlock.subject === 'sleep') {
-          return newBlock;
+      const dateString = format(currentDate, 'yyyy-MM-dd');
+      return currentBlocks.map(block => {
+        const isNewSleep = newSleepHours.includes(block.hour);
+        const wasSleep = block.subject === 'sleep';
+
+        if (isNewSleep) {
+          // This hour is now a sleep hour
+          return { ...block, subject: 'sleep', duration: 60, date: dateString };
+        } else if (wasSleep) {
+          // This hour is no longer a sleep hour, reset to idle
+          return { ...block, subject: 'idle', duration: 0, date: dateString };
+        } else {
+          // This hour is not affected, keep its state
+          return block;
         }
-        if (oldBlock.subject !== 'sleep') {
-          return oldBlock;
-        }
-        return newBlock;
       }).sort((a, b) => a.hour - b.hour);
     });
   };
