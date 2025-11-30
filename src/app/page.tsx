@@ -7,7 +7,7 @@ import { AccountabilityGrid } from '@/components/accountability-grid';
 import { DailyChallenge } from '@/components/daily-challenge';
 import { MainHeader } from '@/components/main-header';
 import { dailyQuestions } from '@/lib/questions';
-import { getDayOfYear, format, addDays, subDays, startOfDay, isToday, isFuture } from 'date-fns';
+import { getDayOfYear, format, addDays, subDays, startOfDay, isToday, isFuture, differenceInHours } from 'date-fns';
 import { Card, CardContent } from '@/components/ui/card';
 import { SettingsDialog } from '@/components/settings-dialog';
 import { defaultSubjects } from '@/lib/subjects';
@@ -18,6 +18,7 @@ import { Button } from '@/components/ui/button';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 const createInitialState = (sleepHours: number[], date: Date): TimeBlockState[] => {
+  const dateString = format(date, 'yyyy-MM-dd');
   return Array.from({ length: 12 }, (_, i) => {
     const hour = i + 8; // 8 AM to 7 PM
     const isSleep = sleepHours.includes(hour);
@@ -25,7 +26,7 @@ const createInitialState = (sleepHours: number[], date: Date): TimeBlockState[] 
       hour: hour,
       subject: isSleep ? 'sleep' : 'idle',
       duration: isSleep ? 60 : 0,
-      date: date.toISOString(),
+      date: dateString,
     };
   }).sort((a, b) => a.hour - b.hour);
 };
@@ -34,7 +35,7 @@ export default function Home() {
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
   const router = useRouter();
-  const [currentDate, setCurrentDate] = useState(new Date());
+  const [currentDate, setCurrentDate] = useState(startOfDay(new Date()));
   const [timeBlocks, setTimeBlocks] = useState<TimeBlockState[]>([]);
   const [isChallengeSolved, setChallengeSolved] = useState(false);
   const [isClient, setIsClient] = useState(false);
@@ -69,10 +70,10 @@ export default function Home() {
         const blocks = querySnapshot.docs.map(d => d.data() as TimeBlockState);
         setTimeBlocks(blocks.sort((a, b) => a.hour - b.hour));
       } else {
-        // We pass sleepHours to createInitialState to ensure it has the current value
-        setTimeBlocks(createInitialState(sleepHours, startOfDay(dateToLoad)));
+        setTimeBlocks(createInitialState(sleepHours, dateToLoad));
       }
 
+      // Challenge solved state is only relevant for the current day
       if (isToday(dateToLoad)) {
         const userDoc = await getDoc(userDocRef!);
         if (userDoc.exists()) {
@@ -89,7 +90,7 @@ export default function Home() {
   }, [user, firestore, userDocRef, sleepHours]);
 
 
-  // Effect for loading initial user settings and today's data
+  // Effect for loading initial user settings ONCE
   useEffect(() => {
     if (user && userDocRef && !userDataLoaded) {
       const loadInitialUserData = async () => {
@@ -103,7 +104,8 @@ export default function Home() {
             setSleepHours(userSleepHours);
             setSubjects(data.settings?.subjects || defaultSubjects);
             setLanguage(data.settings?.language || 'english');
-            await loadDayData(currentDate); 
+            // We pass userSleepHours to ensure the very first `createInitialState` call has the correct hours
+            setTimeBlocks(createInitialState(userSleepHours, currentDate));
           } else {
              // New user, set initial state
             setUserName(user.displayName || '');
@@ -120,7 +122,7 @@ export default function Home() {
       };
       loadInitialUserData();
     }
-  }, [user, userDocRef, userDataLoaded, currentDate, loadDayData, sleepHours]);
+  }, [user, userDocRef, userDataLoaded, currentDate, sleepHours]);
   
   // Effect for loading data when the date changes
   useEffect(() => {
@@ -154,39 +156,38 @@ export default function Home() {
           )
         });
 
-        // Only save time blocks for the current day being viewed if it's editable
-        const isEditable = !isFuture(currentDate) && (isToday(currentDate) || subDays(new Date(), 1).getTime() < currentDate.getTime());
+        // Save time blocks if the currently viewed day is editable (within the last 36 hours)
+        const isEditable = differenceInHours(new Date(), currentDate) <= 36;
         if(!isEditable) return;
 
-
         const batch = writeBatch(firestore);
-        const blocksForDate = timeBlocks.filter(b => format(new Date(b.date), 'yyyy-MM-dd') === dateString);
-
-        if (blocksForDate.length > 0) {
-            const todayBlocksQuery = query(collection(firestore, 'users', user.uid, 'time_blocks'), where('date', '==', dateString));
+        
+        // Query for existing blocks for the specific date to delete them
+        const todayBlocksQuery = query(collection(firestore, 'users', user.uid, 'time_blocks'), where('date', '==', dateString));
             
-            getDocs(todayBlocksQuery).then(oldBlocksSnapshot => {
-              oldBlocksSnapshot.forEach(doc => {
-                  batch.delete(doc.ref);
-              });
+        getDocs(todayBlocksQuery).then(oldBlocksSnapshot => {
+          oldBlocksSnapshot.forEach(doc => {
+              batch.delete(doc.ref);
+          });
 
-              blocksForDate.forEach(block => {
-                  const blockWithDateString = { ...block, date: dateString };
-                  const blockRef = doc(collection(firestore, 'users', user.uid, 'time_blocks'));
-                  batch.set(blockRef, blockWithDateString);
-              });
-              batch.commit().catch(error => {
-                 errorEmitter.emit(
-                  'permission-error',
-                  new FirestorePermissionError({
-                    path: `users/${user.uid}/time_blocks`,
-                    operation: 'write',
-                    requestResourceData: blocksForDate
-                  })
-                )
-              });
-            });
-        }
+          // Add the updated blocks for the current date
+          timeBlocks.forEach(block => {
+              const blockWithDateString = { ...block, date: dateString };
+              const blockRef = doc(collection(firestore, 'users', user.uid, 'time_blocks'));
+              batch.set(blockRef, blockWithDateString);
+          });
+
+          batch.commit().catch(error => {
+             errorEmitter.emit(
+              'permission-error',
+              new FirestorePermissionError({
+                path: `users/${user.uid}/time_blocks`,
+                operation: 'write',
+                requestResourceData: timeBlocks
+              })
+            )
+          });
+        });
     };
 
     const debounceSave = setTimeout(saveData, 1500); 
@@ -198,7 +199,7 @@ export default function Home() {
   const handleBlockUpdate = (hour: number, subject: string, duration: number) => {
     setTimeBlocks(currentBlocks =>
       currentBlocks.map(block =>
-        block.hour === hour ? { ...block, subject, duration, date: currentDate.toISOString() } : block
+        block.hour === hour ? { ...block, subject, duration, date: format(currentDate, 'yyyy-MM-dd') } : block
       ).sort((a, b) => a.hour - b.hour)
     );
   };
@@ -210,14 +211,15 @@ export default function Home() {
     setSubjects(newSubjects);
     setLanguage(newLanguage);
     
-    if(sleepChanged && isToday(currentDate)) {
+    // If sleep hours changed, regenerate the state for the *currently viewed* day
+    if(sleepChanged) {
        setTimeBlocks(createInitialState(newSleepHours, currentDate));
     }
   };
 
   const changeDay = (offset: number) => {
-    const newDate = offset > 0 ? addDays(currentDate, offset) : subDays(currentDate, -offset);
-    if (isFuture(startOfDay(newDate))) return;
+    const newDate = startOfDay(offset > 0 ? addDays(currentDate, offset) : subDays(currentDate, -offset));
+    if (isFuture(newDate)) return;
     setCurrentDate(newDate);
   };
 
