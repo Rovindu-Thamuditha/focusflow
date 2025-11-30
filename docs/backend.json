@@ -1,0 +1,247 @@
+{
+  "entities": {
+    "User": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "User",
+      "type": "object",
+      "description": "Represents a user account within the FocusFlow application.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the user."
+        },
+        "email": {
+          "type": "string",
+          "description": "User's email address.",
+          "format": "email"
+        },
+        "username": {
+          "type": "string",
+          "description": "User's username."
+        },
+        "settingsId": {
+          "type": "string",
+          "description": "Reference to UserSettings. (Relationship: User 1:1 UserSettings)"
+        }
+      },
+      "required": [
+        "id",
+        "email",
+        "username"
+      ]
+    },
+    "UserSettings": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "UserSettings",
+      "type": "object",
+      "description": "Stores user-specific settings, such as dark/light mode preference.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the user settings."
+        },
+        "darkMode": {
+          "type": "boolean",
+          "description": "Indicates whether dark mode is enabled."
+        }
+      },
+      "required": [
+        "id"
+      ]
+    },
+    "FocusGridState": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "FocusGridState",
+      "type": "object",
+      "description": "Stores the state of the accountability grid.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the grid state."
+        },
+        "gridData": {
+          "type": "string",
+          "description": "JSON string representing the serialized state of the grid (focus, partial, rest states)."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to User. (Relationship: User 1:N FocusGridState)"
+        },
+        "date": {
+          "type": "string",
+          "description": "The date this focus grid state was recorded for.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "gridData",
+        "userId",
+        "date"
+      ]
+    },
+    "DailyQuestion": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "DailyQuestion",
+      "type": "object",
+      "description": "Stores the daily question details.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the daily question."
+        },
+        "questionText": {
+          "type": "string",
+          "description": "The text of the daily question, potentially with LaTeX markup."
+        },
+        "subject": {
+          "type": "string",
+          "description": "The subject of the daily question (e.g., Combined Maths, Chemistry, Physics)."
+        },
+        "date": {
+          "type": "string",
+          "description": "The date this question was active.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "questionText",
+        "subject",
+        "date"
+      ]
+    },
+    "UserDailyQuestionState": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "UserDailyQuestionState",
+      "type": "object",
+      "description": "Stores the user-specific state for a daily question (e.g., whether it's solved).",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the user's daily question state."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to User. (Relationship: User 1:N UserDailyQuestionState)"
+        },
+        "dailyQuestionId": {
+          "type": "string",
+          "description": "Reference to DailyQuestion. (Relationship: DailyQuestion 1:N UserDailyQuestionState)"
+        },
+        "solvedToday": {
+          "type": "boolean",
+          "description": "Indicates whether the user has solved the question today."
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "dailyQuestionId"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/users/{userId}",
+        "definition": {
+          "entityName": "User",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "Stores user account information. Path-based ownership is enforced via the {userId} parameter.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the user."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/settings/{settingsId}",
+        "definition": {
+          "entityName": "UserSettings",
+          "schema": {
+            "$ref": "#/backend/entities/UserSettings"
+          },
+          "description": "Stores user-specific settings. Path-based ownership is enforced via the /users/{userId} path.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the user."
+            },
+            {
+              "name": "settingsId",
+              "description": "The unique identifier of the settings document."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/focusGridStates/{focusGridStateId}",
+        "definition": {
+          "entityName": "FocusGridState",
+          "schema": {
+            "$ref": "#/backend/entities/FocusGridState"
+          },
+          "description": "Stores the state of the accountability grid for a specific user. Includes denormalized 'userId' for authorization independence.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the user."
+            },
+            {
+              "name": "focusGridStateId",
+              "description": "The unique identifier of the focus grid state."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/dailyQuestions/{dailyQuestionId}",
+        "definition": {
+          "entityName": "DailyQuestion",
+          "schema": {
+            "$ref": "#/backend/entities/DailyQuestion"
+          },
+          "description": "Stores daily question details.  No user-specific authorization required at this level.",
+          "params": [
+            {
+              "name": "dailyQuestionId",
+              "description": "The unique identifier of the daily question."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/dailyQuestionStates/{userDailyQuestionStateId}",
+        "definition": {
+          "entityName": "UserDailyQuestionState",
+          "schema": {
+            "$ref": "#/backend/entities/UserDailyQuestionState"
+          },
+          "description": "Stores the user-specific state for a daily question. Includes denormalized 'userId' for authorization independence.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the user."
+            },
+            {
+              "name": "userDailyQuestionStateId",
+              "description": "The unique identifier of the user's daily question state."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The Firestore structure is designed to address the 'auth/configuration-not-found' error and support the FocusFlow application's features while adhering to the principles of Authorization Independence, Structural Segregation, Access Modeling, and Data Clarity.  The error indicates a misconfiguration of the Firebase Authentication setup in the Next.js application. The structure is organized to facilitate straightforward and secure data access rules.  User-specific data is stored under `/users/{userId}` paths to ensure clear ownership and simplified security rules. Denormalization is employed for authorization, specifically within the `FocusGridState` and `UserDailyQuestionState` collections, where the `userId` is included to allow for direct querying and secure `list` operations without relying on parent document reads. This also supports atomic operations. The structure also supports secure `list` operations by segregating data based on ownership.  The use of path-based ownership for user data (`/users/{userId}/...`) simplifies security rules and ensures that users can only access their own data. Collaborative data is not a requirement for this application, thus no membership maps are needed."
+  }
+}

@@ -1,0 +1,136 @@
+/**
+ * This ruleset enforces a strict user-ownership security model for the FocusFlow application.
+ * It is designed for rapid prototyping, prioritizing strong authorization controls while maintaining
+ * flexibility in data schemas.
+ *
+ * Core Philosophy:
+ * Users have complete control over their own data. All user-specific information, including settings,
+ * focus grids, and question states, is stored within a private data tree accessible only to the
+ * authenticated owner. Publicly listing users is explicitly forbidden to protect privacy.
+ *
+ * Data Structure:
+ * All user-specific data is nested hierarchically under the `/users/{userId}` path. This path-based
+ * ownership model simplifies security logic. A top-level `/dailyQuestions` collection holds public
+ * data that is readable by all users but not writable by clients.
+ *
+ * Key Security Decisions:
+ * - Default Deny: All access is denied unless explicitly granted by a rule.
+ * - Strict Ownership: A user can only access documents within their own `/users/{userId}` path.
+ * - No User Enumeration: The top-level `/users` collection cannot be listed by any client.
+ * - Public Data is Read-Only: The `/dailyQuestions` collection is world-readable but client writes are
+ *   disabled, assuming this data is managed by a trusted backend process or admin.
+ * - Relational Integrity: On document creation, rules validate that internal ID fields (like `userId`)
+ *   match the document's path to ensure data consistency. These fields are immutable on update.
+ *
+ * Denormalization for Authorization:
+ * To ensure performant and simple security rules, entities like `FocusGridState` and `UserDailyQuestionState`
+ * contain a denormalized `userId` field. This allows rules to authorize access without needing costly
+ * `get()` calls to parent documents, making security checks fast and efficient.
+ *
+ * Structural Segregation:
+ * The application separates private and public data into distinct collections. Private, user-owned
+ * data resides in subcollections under `/users/{userId}`, while public, read-only data is stored in
+ * the top-level `/dailyQuestions` collection. This segregation simplifies rules for list operations
+ * and enhances security and performance.
+ */
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions to improve readability and reuse of logic.
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    /**
+     * @description
+     *   The User document contains public profile information and acts as the root for a user's private data.
+     *   A user can create their own document and manage it, but cannot see or list other users.
+     * @path /users/{userId}
+     * @allow A signed-in user (create)s their own user document: `auth.uid === 'user_abc'`, path is `/users/user_abc`.
+     * @deny An anonymous user tries to (create) a user document: `auth.uid === null`.
+     * @deny A user tries to (list) all users in the `/users` collection.
+     * @principle Enforces self-creation and ownership for a user's root document, while preventing user enumeration.
+     */
+    match /users/{userId} {
+      allow get: if isOwner(userId);
+      allow list: if false; // CRITICAL: Prevent listing and discovery of all users.
+      allow create: if isOwner(userId) && request.resource.data.id == userId;
+      allow update: if isOwner(userId) && resource != null && request.resource.data.id == resource.data.id;
+      allow delete: if isOwner(userId) && resource != null;
+    }
+
+    /**
+     * @description
+     *   Stores user-specific settings. Only the owning user can read or write their own settings document.
+     * @path /users/{userId}/settings/{settingsId}
+     * @allow A signed-in user (update)s their own settings: `auth.uid === 'user_abc'`, path is `/users/user_abc/settings/default`.
+     * @deny A different user tries to (get) another's settings: `auth.uid === 'user_xyz'`, path is `/users/user_abc/settings/default`.
+     * @principle Restricts access to a user's own data tree using path-based ownership.
+     */
+    match /users/{userId}/settings/{settingsId} {
+      allow get: if isOwner(userId);
+      allow list: if isOwner(userId);
+      allow create: if isOwner(userId) && request.resource.data.id == settingsId;
+      allow update: if isOwner(userId) && resource != null && request.resource.data.id == resource.data.id;
+      allow delete: if isOwner(userId) && resource != null;
+    }
+
+    /**
+     * @description
+     *   Stores a user's accountability grid states. Access is strictly limited to the user who owns the data.
+     *   The denormalized `userId` field is validated to ensure data integrity.
+     * @path /users/{userId}/focusGridStates/{focusGridStateId}
+     * @allow A signed-in user (create)s a grid state in their own path: `auth.uid === 'user_abc'`, path is `/users/user_abc/focusGridStates/state_123`.
+     * @deny A user tries to (create) a grid state for another user: `auth.uid === 'user_xyz'`, path is `/users/user_abc/focusGridStates/state_123`.
+     * @principle Validates relational integrity by ensuring the `userId` in the document body matches the user ID in the path.
+     */
+    match /users/{userId}/focusGridStates/{focusGridStateId} {
+      allow get: if isOwner(userId);
+      allow list: if isOwner(userId);
+      allow create: if isOwner(userId) && request.resource.data.userId == userId;
+      allow update: if isOwner(userId) && resource != null && request.resource.data.userId == resource.data.userId;
+      allow delete: if isOwner(userId) && resource != null;
+    }
+
+    /**
+     * @description
+     *   Stores a user's solved/unsolved state for a daily question. Access is strictly limited to the data owner.
+     *   The denormalized `userId` is validated to ensure consistency with the path.
+     * @path /users/{userId}/dailyQuestionStates/{userDailyQuestionStateId}
+     * @allow A signed-in user (get)s their own question state: `auth.uid === 'user_abc'`, path is `/users/user_abc/dailyQuestionStates/state_456`.
+     * @deny A user tries to (list) another user's question states: `auth.uid === 'user_xyz'`, path is `/users/user_abc/dailyQuestionStates`.
+     * @principle Validates relational integrity by ensuring the `userId` in the document body matches the user ID in the path.
+     */
+    match /users/{userId}/dailyQuestionStates/{userDailyQuestionStateId} {
+      allow get: if isOwner(userId);
+      allow list: if isOwner(userId);
+      allow create: if isOwner(userId) && request.resource.data.userId == userId;
+      allow update: if isOwner(userId) && resource != null && request.resource.data.userId == resource.data.userId;
+      allow delete: if isOwner(userId) && resource != null;
+    }
+
+    /**
+     * @description
+     *   Stores daily questions that are available for all users to see. This data is considered public and is readable
+     *   by anyone, including unauthenticated users. Writes are disabled for all clients.
+     * @path /dailyQuestions/{dailyQuestionId}
+     * @allow Any user, signed-in or not, (get)s a daily question.
+     * @deny Any client, authenticated or not, tries to (create), (update), or (delete) a daily question.
+     * @principle Secures public data by making it read-only for clients, assuming writes are handled by a trusted server environment.
+     */
+    match /dailyQuestions/{dailyQuestionId} {
+      allow get: if true;
+      allow list: if true;
+      // CRITICAL: Cannot implement owner-only writes. The 'DailyQuestion' entity is missing an 'ownerId' or 'authorId' field.
+      // Assuming this data is managed by a backend admin process and disabling all client write access.
+      allow create: if false; // TODO: Add admin validation once an admin role system is implemented.
+      allow update: if false; // TODO: Add admin validation once an admin role system is implemented.
+      allow delete: if false; // TODO: Add admin validation once an admin role system is implemented.
+    }
+  }
+}
