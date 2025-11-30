@@ -100,7 +100,7 @@ export default function UserDetailPage() {
                     <h3 className="font-semibold text-muted-foreground">User ID</h3>
                     <p className="font-mono text-sm">{viewedUser?.id}</p>
                 </div>
-                {/* Data editing UI will go here */}
+                {/* Future: Data editing UI could go here */}
             </CardContent>
             </Card>
 

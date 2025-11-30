@@ -87,14 +87,19 @@ export default function AdminPage() {
     }
     
     try {
+        // Note: This only deletes the user document. The actual Firebase Auth user
+        // would need to be deleted via a Cloud Function for a complete deletion.
         const userDocRef = doc(firestore, 'users', userIdToDelete);
         await deleteDoc(userDocRef);
 
+        // This is a placeholder for actual user deletion from Firebase Auth
+        // which should be handled by a backend function for security reasons.
+        // For this client-side prototype, we'll just remove them from the list.
         setUsers(currentUsers => currentUsers.filter(u => u.id !== userIdToDelete));
 
         toast({
             title: "User Deleted",
-            description: `User with ID ${userIdToDelete} has been successfully deleted.`,
+            description: `User with ID ${userIdToDelete} has been successfully deleted from Firestore.`,
         });
     } catch (error) {
         console.error("Error deleting user: ", error);
@@ -170,7 +175,7 @@ export default function AdminPage() {
                             <>
                                 <Link href={`/admin/users/${u.id}`} passHref>
                                   <Button variant="outline" size="icon" asChild title="View/Edit User">
-                                      <Eye className="w-4 h-4" />
+                                    <Eye className="w-4 h-4" />
                                   </Button>
                                 </Link>
                                 <Button variant="outline" size="icon" onClick={() => handleResetPassword(u.email)} title="Send Password Reset">
@@ -200,7 +205,7 @@ export default function AdminPage() {
                         ) : (
                            <Link href={`/admin/users/${u.id}`} passHref>
                               <Button variant="outline" size="icon" asChild title="View/Edit User">
-                                  <Eye className="w-4 h-4" />
+                                <Eye className="w-4 h-4" />
                               </Button>
                             </Link>
                         )}

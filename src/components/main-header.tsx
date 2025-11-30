@@ -1,3 +1,4 @@
+
 import { LogOut, Shield } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -33,7 +34,7 @@ export function MainHeader({ totalFocusedTime, children }: MainHeaderProps) {
       <div className="container flex h-16 items-center space-x-4 sm:justify-between sm:space-x-0">
         <div className="flex gap-6 items-center">
           <Link href="/" className="flex items-center gap-2">
-            <Icons.logo className="h-6 w-6 text-primary" />
+            <Icons.logo className="h-6 w-6 text-primary ml-2" />
             <h1 className="text-2xl font-bold text-primary">GridFocus</h1>
           </Link>
         </div>
