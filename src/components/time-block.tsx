@@ -29,7 +29,11 @@ const ICONS: { [key: string]: React.FC<React.SVGProps<SVGSVGElement>> } = {
 };
 
 export function TimeBlock({ hour, subjectId, duration, subjects, onClick, isEditable }: TimeBlockProps) {
-  const subject = subjects.find(s => s.id === subjectId) || { id: 'idle', name: 'Idle', icon: 'Sparkles', color: 'hsl(var(--muted))' };
+  const isSleep = subjectId === 'sleep';
+
+  const subject = isSleep 
+    ? { id: 'sleep', name: 'Sleep', icon: 'Moon', color: 'hsl(240 5.9% 10%)' }
+    : subjects.find(s => s.id === subjectId) || { id: 'idle', name: 'Idle', icon: 'Sparkles', color: 'hsl(var(--muted))' };
   
   const formattedHour = (hour % 12 === 0 ? 12 : hour % 12) + (hour < 12 || hour === 24 ? ' AM' : ' PM');
 
@@ -40,8 +44,6 @@ export function TimeBlock({ hour, subjectId, duration, subjects, onClick, isEdit
   }
 
   const Icon = ICONS[subject.icon] || Sparkles;
-
-  const isSleep = subject.id === 'sleep';
 
   return (
     <button

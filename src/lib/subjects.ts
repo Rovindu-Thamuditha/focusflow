@@ -9,5 +9,5 @@ export const defaultSubjects: Subject[] = [
   { id: 'reading', name: 'Reading', icon: 'Book', color: '#ef4444' },
   { id: 'work', name: 'Work', icon: 'Briefcase', color: '#6366f1' },
   { id: 'idle', name: 'Idle', icon: 'Sparkles', color: 'hsl(var(--muted))' },
-  { id: 'sleep', name: 'Sleep', icon: 'Moon', color: 'hsl(240 5.9% 10%)' },
+  // sleep is handled separately in TimeBlock component
 ];
