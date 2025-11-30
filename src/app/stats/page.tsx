@@ -6,10 +6,10 @@ import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContaine
 import { MainHeader } from '@/components/main-header';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { useUser, useFirestore, useMemoFirebase } from '@/firebase';
+import { useUser, useFirestore } from '@/firebase';
 import { useRouter } from 'next/navigation';
 import { collection, query, where, getDocs, doc, getDoc, orderBy } from 'firebase/firestore';
-import { subDays, startOfDay, format, parseISO, endOfDay } from 'date-fns';
+import { subDays, startOfDay, format, parseISO, endOfDay, eachDayOfInterval } from 'date-fns';
 import type { TimeBlockState, Subject } from '@/lib/types';
 import { defaultSubjects } from '@/lib/subjects';
 
@@ -35,11 +35,15 @@ const CustomTooltip = ({ active, payload, label, subjects }: any) => {
             );
           })}
         </div>
-        <div className="border-t my-2"></div>
-        <div className="flex items-center justify-between font-bold">
-            <span>Total:</span>
-            <span>{totalHours.toFixed(2)} hrs</span>
-        </div>
+        {totalHours > 0 && (
+          <>
+            <div className="border-t my-2"></div>
+            <div className="flex items-center justify-between font-bold">
+                <span>Total:</span>
+                <span>{totalHours.toFixed(2)} hrs</span>
+            </div>
+          </>
+        )}
       </div>
     );
   }
@@ -67,8 +71,8 @@ export default function StatsPage() {
       
       setDataLoaded(false);
       const now = new Date();
-      const range = timeRange === 'all' ? 36500 : parseInt(timeRange); // Effectively all time
-      const startDate = startOfDay(subDays(now, range));
+      const range = parseInt(timeRange);
+      const startDate = startOfDay(subDays(now, range - 1)); // -1 because we want to include today
       const endDate = endOfDay(now);
 
       const q = query(
@@ -102,25 +106,49 @@ export default function StatsPage() {
   
   const chartData = useMemo(() => {
     const dataByDate: { [key: string]: any } = {};
+    const now = new Date();
+    const range = parseInt(timeRange);
+    const startDate = startOfDay(subDays(now, range - 1));
+    const allDates = eachDayOfInterval({ start: startDate, end: now });
 
+    // Initialize all dates in the range
+    allDates.forEach(date => {
+      const dateLabel = format(date, 'MMM dd');
+      dataByDate[dateLabel] = { date: dateLabel };
+      subjects.forEach(s => {
+        if (s.id !== 'idle' && s.id !== 'sleep') {
+          dataByDate[dateLabel][s.id] = 0;
+        }
+      });
+    });
+
+    // Populate with actual data
     timeBlocks.forEach(block => {
         if (block.subject === 'idle' || block.subject === 'sleep') return;
         
         const dateKey = block.date.split('T')[0];
         const dateLabel = format(parseISO(dateKey), 'MMM dd');
-        if (!dataByDate[dateLabel]) {
-            dataByDate[dateLabel] = { date: dateLabel };
-             subjects.forEach(s => {
-              if (s.id !== 'idle' && s.id !== 'sleep') {
-                dataByDate[dateLabel][s.id] = 0;
-              }
-            });
+
+        // This check is important in case of time zone differences
+        if (dataByDate[dateLabel]) {
+            if (!dataByDate[dateLabel][block.subject]) {
+                dataByDate[dateLabel][block.subject] = 0;
+            }
+            dataByDate[dateLabel][block.subject] += block.duration / 60; // convert to hours
         }
-        dataByDate[dateLabel][block.subject] += block.duration / 60; // convert to hours
     });
 
     return Object.values(dataByDate);
-  }, [timeBlocks, subjects]);
+  }, [timeBlocks, subjects, timeRange]);
+
+  const totalFocusTimeInRange = useMemo(() => {
+    return timeBlocks.reduce((total, block) => {
+        if (block.subject !== 'idle' && block.subject !== 'sleep') {
+            return total + block.duration;
+        }
+        return total;
+    }, 0) / 60; // convert to hours
+  }, [timeBlocks]);
 
   if (isUserLoading || !dataLoaded) {
     return (
@@ -132,7 +160,7 @@ export default function StatsPage() {
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
-      <MainHeader totalFocusedTime={0} />
+      <MainHeader totalFocusedTime={totalFocusTimeInRange} />
       <main className="flex-grow container mx-auto p-4 sm:p-6 md:p-8">
         <Card className="border-primary/20">
             <CardHeader>
@@ -146,7 +174,6 @@ export default function StatsPage() {
                        <SelectItem value="7">Last 7 Days</SelectItem>
                        <SelectItem value="30">Last 30 Days</SelectItem>
                        <SelectItem value="90">Last 90 Days</SelectItem>
-                       <SelectItem value="all">All Time</SelectItem>
                      </SelectContent>
                    </Select>
                 </CardTitle>
