@@ -3,7 +3,7 @@
 
 import { cn } from "@/lib/utils";
 import * as React from 'react';
-import { Book, Zap, Coffee, Bed, Sparkles, BrainCircuit, FlaskConical, Dna, Code, PenTool, Briefcase } from "lucide-react";
+import { Book, Zap, Coffee, Bed, Sparkles, BrainCircuit, FlaskConical, Dna, Code, PenTool, Briefcase, Moon } from "lucide-react";
 import type { Subject } from "@/lib/types";
 
 interface TimeBlockProps {
@@ -25,6 +25,7 @@ const ICONS: { [key: string]: React.FC<React.SVGProps<SVGSVGElement>> } = {
   Briefcase,
   Sparkles,
   Bed,
+  Moon,
 };
 
 export function TimeBlock({ hour, subjectId, duration, subjects, onClick, isEditable }: TimeBlockProps) {
