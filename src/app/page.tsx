@@ -47,7 +47,7 @@ export default function Home() {
   const firestore = useFirestore();
   const router = useRouter();
   const [currentDate, setCurrentDate] = useState(startOfDay(new Date()));
-  const [timeBlocks, setTimeBlocks] = useState<TimeBlockState[]>(createInitialState([22, 23, 0, 1, 2, 3, 4, 5, 6, 7], new Date()));
+  const [timeBlocks, setTimeBlocks] = useState<TimeBlockState[]>([]);
   const [isChallengeSolved, setChallengeSolved] = useState(false);
   const [isClient, setIsClient] = useState(false);
   const [sleepHours, setSleepHours] = useState<number[]>([22, 23, 0, 1, 2, 3, 4, 5, 6, 7]);
@@ -64,6 +64,14 @@ export default function Home() {
       router.push('/login');
     }
   }, [user, isUserLoading, router]);
+
+  useEffect(() => {
+    // Set initial state on first load for today
+    if (isClient && !timeBlocks.length) {
+      setTimeBlocks(createInitialState(sleepHours, currentDate));
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isClient]);
 
   const loadDayData = useCallback(async (dateToLoad: Date) => {
     if (!user || !firestore) return;
@@ -147,8 +155,6 @@ export default function Home() {
   useEffect(() => {
     const saveData = () => {
         if (!isClient || !userDataLoaded || !user || !timeBlocks.length || !userDocRef ) return;
-
-        const dateString = format(currentDate, 'yyyy-MM-dd');
         
         const dataToSave = {
             lastVisit: new Date().toDateString(),
@@ -173,6 +179,7 @@ export default function Home() {
 
         const batch = writeBatch(firestore);
         
+        const dateString = format(currentDate, 'yyyy-MM-dd');
         const todayBlocksQuery = query(collection(firestore, 'users', user.uid, 'time_blocks'), where('date', '==', dateString));
             
         getDocs(todayBlocksQuery).then(oldBlocksSnapshot => {
@@ -222,23 +229,20 @@ export default function Home() {
   };
 
   const handleSettingsSave = (newSleepHours: number[], newSubjects: Subject[], newLanguage: 'english' | 'sinhala') => {
-    const oldSleepHours = sleepHours;
     setSleepHours(newSleepHours);
     setSubjects(newSubjects);
     setLanguage(newLanguage);
     
-    // Optimistically update the UI by recalculating the grid with new sleep hours
+    // Update the grid for the current day with new sleep hours
     setTimeBlocks(currentBlocks => {
       return currentBlocks.map(block => {
         const isNewSleep = newSleepHours.includes(block.hour);
-        const wasOldSleep = oldSleepHours.includes(block.hour);
 
-        // If it's becoming a sleep block, set it to sleep.
         if (isNewSleep) {
           return { ...block, subject: 'sleep', duration: 60 };
         }
         // If it was a sleep block but isn't anymore, reset it to idle.
-        if (wasOldSleep && !isNewSleep) {
+        if (block.subject === 'sleep' && !isNewSleep) {
            return { ...block, subject: 'idle', duration: 0 };
         }
         // Otherwise, keep the block as is.
