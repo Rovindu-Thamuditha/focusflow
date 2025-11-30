@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { useUser, useFirestore, useAuth } from '@/firebase';
 import { useRouter } from 'next/navigation';
 import { collection, getDocs, doc, deleteDoc } from 'firebase/firestore';
@@ -10,7 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Trash2, KeyRound } from 'lucide-react';
+import { Trash2, KeyRound, Eye } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -164,17 +165,22 @@ export default function AdminPage() {
                     <TableCell>{u.email}</TableCell>
                     <TableCell className="font-mono">{u.id}</TableCell>
                     <TableCell className="text-right flex items-center justify-end gap-2">
-                        {u.id !== user.uid && (
+                        {u.id !== user.uid ? (
                             <>
-                                <Button variant="outline" size="icon" onClick={() => handleResetPassword(u.email)}>
+                                <Link href={`/admin/users/${u.id}`} passHref>
+                                  <Button variant="outline" size="icon" asChild>
+                                    <a title="View/Edit User">
+                                      <Eye className="w-4 h-4" />
+                                    </a>
+                                  </Button>
+                                </Link>
+                                <Button variant="outline" size="icon" onClick={() => handleResetPassword(u.email)} title="Send Password Reset">
                                     <KeyRound className="w-4 h-4" />
-                                    <span className="sr-only">Send Password Reset</span>
                                 </Button>
                                 <AlertDialog>
                                     <AlertDialogTrigger asChild>
-                                        <Button variant="destructive" size="icon">
+                                        <Button variant="destructive" size="icon" title="Delete User">
                                             <Trash2 className="w-4 h-4" />
-                                            <span className="sr-only">Delete User</span>
                                         </Button>
                                     </AlertDialogTrigger>
                                     <AlertDialogContent>
@@ -192,6 +198,14 @@ export default function AdminPage() {
                                     </AlertDialogContent>
                                 </AlertDialog>
                             </>
+                        ) : (
+                           <Link href={`/admin/users/${u.id}`} passHref>
+                              <Button variant="outline" size="icon" asChild>
+                                <a title="View/Edit User">
+                                  <Eye className="w-4 h-4" />
+                                </a>
+                              </Button>
+                            </Link>
                         )}
                     </TableCell>
                   </TableRow>
