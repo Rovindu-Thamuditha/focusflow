@@ -9,7 +9,7 @@ import { dailyQuestions } from '@/lib/questions';
 import { getDayOfYear } from 'date-fns';
 import { Card, CardContent } from '@/components/ui/card';
 import { SettingsDialog } from '@/components/settings-dialog';
-import { subjects as allSubjects } from '@/lib/subjects';
+import { defaultSubjects } from '@/lib/subjects';
 
 const createInitialState = (sleepHours: number[]): TimeBlockState[] => {
   return Array.from({ length: 12 }, (_, i) => {
@@ -28,7 +28,9 @@ export default function Home() {
   const [isChallengeSolved, setChallengeSolved] = useState(false);
   const [isClient, setIsClient] = useState(false);
   const [sleepHours, setSleepHours] = useState<number[]>([22, 23, 0, 1, 2, 3, 4, 5, 6, 7]);
-  const [subjects, setSubjects] = useState<Subject[]>(allSubjects);
+  const [subjects, setSubjects] = useState<Subject[]>(defaultSubjects);
+  const [language, setLanguage] = useState<'english' | 'sinhala'>('english');
+
 
   useEffect(() => {
     setIsClient(true);
@@ -40,9 +42,19 @@ export default function Home() {
     const savedBlocks = localStorage.getItem('focusflow_time_blocks');
     const savedSolved = localStorage.getItem('focusflow_challenge_solved');
     const savedSleepHours = localStorage.getItem('focusflow_sleep_hours');
+    const savedSubjects = localStorage.getItem('focusflow_subjects');
+    const savedLanguage = localStorage.getItem('focusflow_language');
 
     if (savedSleepHours) {
       setSleepHours(JSON.parse(savedSleepHours));
+    }
+    
+    if (savedSubjects) {
+      setSubjects(JSON.parse(savedSubjects));
+    }
+
+    if (savedLanguage) {
+      setLanguage(savedLanguage as 'english' | 'sinhala');
     }
 
     if (lastVisitDate !== todayString) {
@@ -73,6 +85,18 @@ export default function Home() {
       localStorage.setItem('focusflow_sleep_hours', JSON.stringify(sleepHours));
     }
   }, [sleepHours, isClient]);
+
+  useEffect(() => {
+    if (isClient) {
+      localStorage.setItem('focusflow_subjects', JSON.stringify(subjects));
+    }
+  }, [subjects, isClient]);
+
+  useEffect(() => {
+    if (isClient) {
+      localStorage.setItem('focusflow_language', language);
+    }
+  }, [language, isClient]);
   
   const handleBlockUpdate = (hour: number, subject: string, duration: number) => {
     setTimeBlocks(currentBlocks =>
@@ -82,10 +106,17 @@ export default function Home() {
     );
   };
 
-  const handleSettingsSave = (newSleepHours: number[]) => {
+  const handleSettingsSave = (newSleepHours: number[], newSubjects: Subject[], newLanguage: 'english' | 'sinhala') => {
     setSleepHours(newSleepHours);
-    // Reset blocks according to new sleep hours for the day
-    setTimeBlocks(createInitialState(newSleepHours));
+    setSubjects(newSubjects);
+    setLanguage(newLanguage);
+    
+    const todayString = new Date().toDateString();
+    const lastVisitDate = localStorage.getItem('focusflow_last_visit');
+    // Only reset blocks if it's a new day or sleep hours changed
+    if(lastVisitDate !== todayString || JSON.stringify(newSleepHours) !== JSON.stringify(sleepHours)) {
+       setTimeBlocks(createInitialState(newSleepHours));
+    }
   };
 
   const totalFocusedTime = useMemo(() => {
@@ -117,6 +148,7 @@ export default function Home() {
          <SettingsDialog
             subjects={subjects}
             sleepHours={sleepHours}
+            language={language}
             onSave={handleSettingsSave}
           />
       </MainHeader>
@@ -136,6 +168,7 @@ export default function Home() {
                 question={currentQuestion}
                 isSolved={isChallengeSolved}
                 onSolveChange={setChallengeSolved}
+                language={language}
               />
           </div>
         </div>

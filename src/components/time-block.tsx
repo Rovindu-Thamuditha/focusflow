@@ -2,7 +2,7 @@
 
 import { cn } from "@/lib/utils";
 import * as React from 'react';
-import { Book, Zap, Coffee, Bed, Sparkles } from "lucide-react";
+import { Book, Zap, Coffee, Bed, Sparkles, BrainCircuit, FlaskConical, Dna, Code, PenTool, Briefcase } from "lucide-react";
 import type { Subject } from "@/lib/types";
 
 interface TimeBlockProps {
@@ -13,22 +13,27 @@ interface TimeBlockProps {
   onClick: (hour: number) => void;
 }
 
-export function TimeBlock({ hour, subjectId, duration, subjects, onClick }: TimeBlockProps) {
-  const [isAnimating, setIsAnimating] = React.useState(false);
+const ICONS: { [key: string]: React.FC<React.SVGProps<SVGSVGElement>> } = {
+  BrainCircuit,
+  FlaskConical,
+  Dna,
+  Code,
+  PenTool,
+  Book,
+  Briefcase,
+  Sparkles,
+  Bed,
+};
 
-  const subject = subjects.find(s => s.id === subjectId) || { id: 'idle', name: 'Idle', icon: Sparkles, color: 'hsl(var(--muted))' };
+export function TimeBlock({ hour, subjectId, duration, subjects, onClick }: TimeBlockProps) {
+  const subject = subjects.find(s => s.id === subjectId) || { id: 'idle', name: 'Idle', icon: 'Sparkles', color: 'hsl(var(--muted))' };
 
   const handleClick = () => {
     if (subject.id === 'sleep') return; // Don't do anything for sleep blocks
     onClick(hour);
-    setIsAnimating(true);
   };
   
   const formattedHour = (hour % 12 === 0 ? 12 : hour % 12) + (hour < 12 || hour === 24 ? ' AM' : ' PM');
-
-  const handleAnimationEnd = () => {
-    setIsAnimating(false);
-  };
 
   const getBrightness = () => {
     if (duration === 0) return 'brightness-50';
@@ -36,17 +41,15 @@ export function TimeBlock({ hour, subjectId, duration, subjects, onClick }: Time
     return 'brightness-100';
   }
 
-  const Icon = subject.icon;
+  const Icon = ICONS[subject.icon] || Sparkles;
 
   return (
     <button
       onClick={handleClick}
-      onAnimationEnd={handleAnimationEnd}
       className={cn(
         "relative aspect-square rounded-lg flex flex-col items-center justify-center p-1 transition-all duration-300 ease-in-out transform focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-background",
         "text-white",
         subject.id !== 'idle' && getBrightness(),
-        isAnimating && 'animate-pulse',
         subject.id === 'sleep' && 'cursor-not-allowed'
       )}
       style={{ 

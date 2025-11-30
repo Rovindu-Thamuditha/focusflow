@@ -1,4 +1,3 @@
-import type { LucideIcon } from "lucide-react";
 
 export interface TimeBlockState {
   hour: number;
@@ -9,6 +8,6 @@ export interface TimeBlockState {
 export interface Subject {
   id: string;
   name: string;
-  icon: LucideIcon;
+  icon: string;
   color: string;
 }

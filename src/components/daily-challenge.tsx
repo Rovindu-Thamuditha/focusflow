@@ -11,15 +11,21 @@ interface DailyChallengeProps {
   question: Question;
   isSolved: boolean;
   onSolveChange: (solved: boolean) => void;
+  language: 'english' | 'sinhala';
 }
 
 const subjectColors: Record<string, string> = {
   'Combined Maths': 'text-primary',
   'Physics': 'text-accent',
   'Chemistry': 'text-yellow-400',
+  'Biology': 'text-green-400',
 };
 
-export function DailyChallenge({ question, isSolved, onSolveChange }: DailyChallengeProps) {
+export function DailyChallenge({ question, isSolved, onSolveChange, language }: DailyChallengeProps) {
+  const questionText = language === 'sinhala' && question.question_sinhala
+    ? question.question_sinhala
+    : question.question;
+
   return (
     <Card className="bg-card/70 border-2 border-primary/20 hover:border-primary/50 transition-colors duration-300">
       <CardHeader className="flex flex-row items-center gap-4 space-y-0 pb-4">
@@ -36,7 +42,7 @@ export function DailyChallenge({ question, isSolved, onSolveChange }: DailyChall
             <p className="text-sm text-muted-foreground">{question.topic}</p>
           </div>
           <div className="p-4 bg-background rounded-lg border text-sm prose prose-invert max-w-none overflow-x-auto">
-            <BlockMath math={question.question} />
+            <BlockMath math={questionText} />
           </div>
         </div>
 
