@@ -36,11 +36,11 @@ export function AccountabilityGrid({ blocks, subjects, onBlockUpdate, viewingDat
 
   return (
     <div>
-      <h2 className="text-2xl font-bold mb-4 text-primary">12-Hour Focus Grid (8 AM - 8 PM)</h2>
+      <h2 className="text-2xl font-bold mb-4 text-primary">24-Hour Focus Grid</h2>
       {!isEditable && (
          <p className="text-sm text-yellow-500 mb-4">You can only edit entries from the last 36 hours.</p>
       )}
-      <div className="grid grid-cols-6 gap-2">
+      <div className="grid grid-cols-6 md:grid-cols-8 lg:grid-cols-12 gap-2">
         {blocks.map(block => (
           <TimeBlock
             key={block.hour}

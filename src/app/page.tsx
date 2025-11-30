@@ -30,8 +30,8 @@ import {
 
 const createInitialState = (sleepHours: number[], date: Date): TimeBlockState[] => {
   const dateString = format(date, 'yyyy-MM-dd');
-  return Array.from({ length: 12 }, (_, i) => {
-    const hour = i + 8; // 8 AM to 7 PM
+  return Array.from({ length: 24 }, (_, i) => {
+    const hour = i; // 0 to 23
     const isSleep = sleepHours.includes(hour);
     return {
       hour: hour,
