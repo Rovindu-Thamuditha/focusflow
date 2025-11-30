@@ -212,7 +212,7 @@ export default function Home() {
   };
 
   const handleSettingsSave = (newSleepHours: number[], newSubjects: Subject[], newLanguage: 'english' | 'sinhala') => {
-    const sleepChanged = JSON.stringify(newSleepHours) !== JSON.stringify(sleepHours);
+    const sleepChanged = JSON.stringify(newSleepHours.sort()) !== JSON.stringify(sleepHours.sort());
     
     setSleepHours(newSleepHours);
     setSubjects(newSubjects);
@@ -329,3 +329,5 @@ export default function Home() {
     </div>
   );
 }
+
+    
