@@ -33,7 +33,7 @@ export function MainHeader({ totalFocusedTime, children }: MainHeaderProps) {
         <div className="flex gap-2 items-center">
           <Link href="/" className="flex items-center gap-2">
             <Icons.logo className="h-6 w-6 text-primary" />
-            <h1 className="text-2xl font-bold text-primary">FocusFlow</h1>
+            <h1 className="text-2xl font-bold text-primary">GridFocus</h1>
           </Link>
         </div>
         <div className="flex flex-1 items-center justify-end space-x-4">

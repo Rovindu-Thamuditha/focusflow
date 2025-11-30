@@ -6,7 +6,7 @@ import { FirebaseClientProvider } from '@/firebase/client-provider';
 
 
 export const metadata: Metadata = {
-  title: 'FocusFlow',
+  title: 'GridFocus',
   description: 'Track your focus, conquer your day.',
 };
 

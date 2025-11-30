@@ -1,5 +1,5 @@
 /**
- * This ruleset enforces a strict user-ownership security model for the FocusFlow application.
+ * This ruleset enforces a strict user-ownership security model for the GridFocus application.
  * It is designed for rapid prototyping, prioritizing strong authorization controls while maintaining
  * flexibility in data schemas.
  *

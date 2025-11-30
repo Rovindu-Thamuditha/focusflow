@@ -47,7 +47,7 @@ export default function Home() {
   const firestore = useFirestore();
   const router = useRouter();
   const [currentDate, setCurrentDate] = useState(startOfDay(new Date()));
-  const [timeBlocks, setTimeBlocks] = useState<TimeBlockState[]>([]);
+  const [timeBlocks, setTimeBlocks] = useState<TimeBlockState[]>(createInitialState([22, 23, 0, 1, 2, 3, 4, 5, 6, 7], new Date()));
   const [isChallengeSolved, setChallengeSolved] = useState(false);
   const [isClient, setIsClient] = useState(false);
   const [sleepHours, setSleepHours] = useState<number[]>([22, 23, 0, 1, 2, 3, 4, 5, 6, 7]);
@@ -83,7 +83,7 @@ export default function Home() {
       } else {
         const userDoc = await getDoc(userDocRef!);
         const userSettings = userDoc.exists() ? userDoc.data().settings : {};
-        const currentSleepHours = userSettings?.sleepHours || [22, 23, 0, 1, 2, 3, 4, 5, 6, 7];
+        const currentSleepHours = userSettings?.sleepHours || sleepHours;
         setTimeBlocks(createInitialState(currentSleepHours, dateToLoad));
       }
   
@@ -100,7 +100,7 @@ export default function Home() {
     } catch (e) {
       console.error("Error loading day data: ", e);
     }
-  }, [user, firestore, userDocRef]);
+  }, [user, firestore, userDocRef, sleepHours]);
 
 
   // Load initial user data once
@@ -113,13 +113,15 @@ export default function Home() {
           if (userDoc.exists()) {
             const data = userDoc.data();
             setUserName(data.username || user.displayName || '');
-            setSleepHours(data.settings?.sleepHours || [22, 23, 0, 1, 2, 3, 4, 5, 6, 7]);
+            const userSleepHours = data.settings?.sleepHours || [22, 23, 0, 1, 2, 3, 4, 5, 6, 7];
+            setSleepHours(userSleepHours);
             setSubjects(data.settings?.subjects || defaultSubjects);
             setLanguage(data.settings?.language || 'english');
+            setTimeBlocks(createInitialState(userSleepHours, currentDate));
           } else {
              setUserName(user.displayName || '');
+             setTimeBlocks(createInitialState(sleepHours, currentDate));
           }
-          await loadDayData(currentDate);
           setUserDataLoaded(true); 
         } catch (e) {
           const permissionError = new FirestorePermissionError({
@@ -131,7 +133,7 @@ export default function Home() {
       };
       loadInitialUserData();
     }
-  }, [user, userDocRef, userDataLoaded, loadDayData, currentDate]);
+  }, [user, userDocRef, userDataLoaded, currentDate, sleepHours]);
   
   // Refetch data only when date changes
   useEffect(() => {
@@ -212,15 +214,10 @@ export default function Home() {
   };
 
   const handleSettingsSave = (newSleepHours: number[], newSubjects: Subject[], newLanguage: 'english' | 'sinhala') => {
-    const sleepChanged = JSON.stringify(newSleepHours.sort()) !== JSON.stringify(sleepHours.sort());
-    
     setSleepHours(newSleepHours);
     setSubjects(newSubjects);
     setLanguage(newLanguage);
-    
-    if(sleepChanged) {
-       setTimeBlocks(createInitialState(newSleepHours, currentDate));
-    }
+    setTimeBlocks(createInitialState(newSleepHours, currentDate));
   };
 
   const handleResetDay = () => {
@@ -252,7 +249,7 @@ export default function Home() {
   if (isUserLoading || !isClient || !userDataLoaded) {
     return (
         <div className="flex items-center justify-center min-h-screen">
-          <div className="text-xl">Loading FocusFlow...</div>
+          <div className="text-xl">Loading GridFocus...</div>
         </div>
     );
   }

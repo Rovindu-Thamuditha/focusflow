@@ -97,7 +97,7 @@ export default function LoginPage() {
             <div className="flex justify-center items-center mb-4">
                 <Icons.logo className="h-12 w-12 text-primary"/>
             </div>
-          <CardTitle className="text-3xl font-bold">{isSignUp ? 'Create an Account' : 'Welcome to FocusFlow'}</CardTitle>
+          <CardTitle className="text-3xl font-bold">{isSignUp ? 'Create an Account' : 'Welcome to GridFocus'}</CardTitle>
           <CardDescription>
             {isSignUp ? 'Enter your details to get started.' : 'Sign in to track your focus and conquer your day.'}
           </CardDescription>

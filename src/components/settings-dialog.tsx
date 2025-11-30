@@ -76,7 +76,7 @@ export function SettingsDialog({ subjects, sleepHours, language, onSave }: Setti
         <DialogHeader>
           <DialogTitle>Settings</DialogTitle>
           <DialogDescription>
-            Customize your FocusFlow experience.
+            Customize your GridFocus experience.
           </DialogDescription>
         </DialogHeader>
         <Tabs defaultValue="general">
