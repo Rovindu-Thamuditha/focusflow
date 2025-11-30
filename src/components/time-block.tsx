@@ -30,17 +30,6 @@ const ICONS: { [key: string]: React.FC<React.SVGProps<SVGSVGElement>> } = {
 
 export function TimeBlock({ hour, subjectId, duration, subjects, onClick, onContextMenu, isEditable }: TimeBlockProps) {
   const subject = subjects.find(s => s.id === subjectId) || { id: 'idle', name: 'Idle', icon: 'Sparkles', color: 'hsl(var(--muted))' };
-
-  const handleClick = () => {
-    if (subject.id === 'sleep' || !isEditable) return;
-    onClick();
-  };
-  
-  const handleContextMenu = (e: React.MouseEvent) => {
-    if (!isEditable) return;
-    e.preventDefault();
-    onContextMenu(e);
-  }
   
   const formattedHour = (hour % 12 === 0 ? 12 : hour % 12) + (hour < 12 || hour === 24 ? ' AM' : ' PM');
 
@@ -56,17 +45,19 @@ export function TimeBlock({ hour, subjectId, duration, subjects, onClick, onCont
 
   return (
     <button
-      onClick={handleClick}
-      onContextMenu={handleContextMenu}
+      onClick={onClick}
+      onContextMenu={onContextMenu}
       className={cn(
         "relative aspect-square rounded-lg flex flex-col items-center justify-center p-1 transition-all duration-300 ease-in-out transform",
-        isEditable && !isSleep && "focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-background",
-        isSleep ? "text-slate-400" : "text-white",
+        isEditable && "hover:scale-105",
+        isEditable && !isSleep && "focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-background focus:ring-primary",
+        isSleep ? "bg-gray-800 text-gray-500" : "text-white",
         subject.id !== 'idle' && !isSleep && getBrightness(),
-        (!isEditable || isSleep) && 'cursor-not-allowed'
+        (!isEditable || isSleep) && 'cursor-not-allowed',
+        isSleep && 'opacity-70'
       )}
       style={{ 
-        backgroundColor: subject.color,
+        backgroundColor: isSleep ? undefined : subject.color,
         '--glow-color': subject.color 
       } as React.CSSProperties}
       aria-label={`Hour ${hour}:00, current state: ${subject.name}. Click to change.`}

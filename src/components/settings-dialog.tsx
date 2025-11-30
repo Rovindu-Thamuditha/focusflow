@@ -1,7 +1,8 @@
+
 "use client";
 
-import { useState } from 'react';
-import { Settings, Trash2, PlusCircle, Palette, Languages } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Settings, Trash2, PlusCircle, Languages } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -27,12 +28,14 @@ export function SettingsDialog({ subjects, sleepHours, language, onSave }: Setti
   const [localSubjects, setLocalSubjects] = useState<Subject[]>(subjects);
   const [localLanguage, setLocalLanguage] = useState<'english' | 'sinhala'>(language);
 
-  // Sync state when props change (dialog is reopened)
-  useState(() => {
-    setLocalSleepHours(sleepHours);
-    setLocalSubjects(subjects);
-    setLocalLanguage(language);
-  });
+  // Effect to sync state from props when the dialog opens
+  useEffect(() => {
+    if (isOpen) {
+      setLocalSleepHours(sleepHours);
+      setLocalSubjects(subjects);
+      setLocalLanguage(language);
+    }
+  }, [isOpen, sleepHours, subjects, language]);
 
   const handleSave = () => {
     onSave(localSleepHours, localSubjects.filter(s => s.id !== 'idle' && s.id !== 'sleep'), localLanguage);

@@ -23,7 +23,7 @@ export function AccountabilityGrid({ blocks, subjects, onBlockUpdate, onMarkAsSl
   const handleBlockClick = (hour: number) => {
     if (!isEditable) return;
     const block = blocks.find(b => b.hour === hour);
-    if (block) {
+    if (block && block.subject !== 'sleep') {
       setSelectedBlock(block);
     }
   };

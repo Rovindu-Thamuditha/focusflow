@@ -31,7 +31,7 @@ import {
 const createInitialState = (sleepHours: number[], date: Date): TimeBlockState[] => {
   const dateString = format(date, 'yyyy-MM-dd');
   return Array.from({ length: 24 }, (_, i) => {
-    const hour = i; // 0 to 23
+    const hour = i;
     const isSleep = sleepHours.includes(hour);
     return {
       hour: hour,
@@ -65,14 +65,6 @@ export default function Home() {
     }
   }, [user, isUserLoading, router]);
 
-  useEffect(() => {
-    // Set initial state on first load for today
-    if (isClient && !timeBlocks.length) {
-      setTimeBlocks(createInitialState(sleepHours, currentDate));
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isClient]);
-
   const loadDayData = useCallback(async (dateToLoad: Date) => {
     if (!user || !firestore) return;
   
@@ -89,12 +81,15 @@ export default function Home() {
         const blocks = querySnapshot.docs.map(d => d.data() as TimeBlockState);
         setTimeBlocks(blocks.sort((a, b) => a.hour - b.hour));
       } else {
+        // This part runs if no data is found for the day.
+        // It should get the LATEST sleep settings, not the default.
         const userDoc = await getDoc(userDocRef!);
         const userSettings = userDoc.exists() ? userDoc.data().settings : {};
         const currentSleepHours = userSettings?.sleepHours || sleepHours;
         setTimeBlocks(createInitialState(currentSleepHours, dateToLoad));
       }
   
+      // Challenge solved state is only relevant for today
       if (isToday(dateToLoad)) {
         const userDoc = await getDoc(userDocRef!);
         if (userDoc.exists()) {
@@ -102,6 +97,7 @@ export default function Home() {
           setChallengeSolved(data.isChallengeSolved || false);
         }
       } else {
+        // For past or future days, the challenge is considered not solved in the UI
         setChallengeSolved(false);
       }
   
@@ -127,6 +123,7 @@ export default function Home() {
             setLanguage(data.settings?.language || 'english');
             setTimeBlocks(createInitialState(userSleepHours, currentDate));
           } else {
+             // First-time user, set defaults
              setUserName(user.displayName || '');
              setTimeBlocks(createInitialState(sleepHours, currentDate));
           }
@@ -143,7 +140,7 @@ export default function Home() {
     }
   }, [user, userDocRef, userDataLoaded, currentDate, sleepHours]);
   
-  // Refetch data only when date changes
+  // This effect will run when the date changes
   useEffect(() => {
     if (userDataLoaded) {
       loadDayData(currentDate);
@@ -153,9 +150,11 @@ export default function Home() {
   
 
   useEffect(() => {
+    // This is the debounced save function
     const saveData = () => {
         if (!isClient || !userDataLoaded || !user || !timeBlocks.length || !userDocRef ) return;
         
+        // Save user settings (sleep, subjects, language) and other user-level data
         const dataToSave = {
             lastVisit: new Date().toDateString(),
             settings: { sleepHours, subjects, language },
@@ -174,12 +173,15 @@ export default function Home() {
           )
         });
 
+        // Only allow editing for recent days to prevent accidental overwrites
         const isEditable = differenceInHours(new Date(), currentDate) <= 36;
         if(!isEditable) return;
 
+        // Batch write the time blocks for the current day
         const batch = writeBatch(firestore);
         
         const dateString = format(currentDate, 'yyyy-MM-dd');
+        // This query is now just for finding old blocks to delete
         const todayBlocksQuery = query(collection(firestore, 'users', user.uid, 'time_blocks'), where('date', '==', dateString));
             
         getDocs(todayBlocksQuery).then(oldBlocksSnapshot => {
@@ -187,6 +189,7 @@ export default function Home() {
               batch.delete(doc.ref);
           });
 
+          // Now add the current state of timeBlocks to the batch
           timeBlocks.forEach(block => {
               const blockWithDateString = { ...block, date: dateString };
               const blockRef = doc(collection(firestore, 'users', user.uid, 'time_blocks'));
@@ -233,20 +236,21 @@ export default function Home() {
     setSubjects(newSubjects);
     setLanguage(newLanguage);
     
+    // This is the crucial part. Re-evaluate the current day's blocks based on the new settings.
     setTimeBlocks(currentBlocks => {
       const dateString = format(currentDate, 'yyyy-MM-dd');
       return currentBlocks.map(block => {
         const isNewSleep = newSleepHours.includes(block.hour);
         const wasSleep = block.subject === 'sleep';
 
-        if (isNewSleep) {
-          // This hour is now a sleep hour
+        if (isNewSleep && !wasSleep) {
+          // This hour is now a sleep hour, change it
           return { ...block, subject: 'sleep', duration: 60, date: dateString };
-        } else if (wasSleep) {
+        } else if (!isNewSleep && wasSleep) {
           // This hour is no longer a sleep hour, reset to idle
           return { ...block, subject: 'idle', duration: 0, date: dateString };
         } else {
-          // This hour is not affected, keep its state
+          // This hour's sleep status hasn't changed, keep its state
           return block;
         }
       }).sort((a, b) => a.hour - b.hour);
@@ -259,6 +263,7 @@ export default function Home() {
 
   const changeDay = (offset: number) => {
     const newDate = startOfDay(offset > 0 ? addDays(currentDate, offset) : subDays(currentDate, -offset));
+    // Prevent navigating to future dates
     if (isFuture(newDate)) return;
     setCurrentDate(newDate);
   };
@@ -267,7 +272,7 @@ export default function Home() {
     if (!timeBlocks) return 0;
     return timeBlocks.reduce((total, block) => {
       if (block.subject !== 'idle' && block.subject !== 'sleep') {
-        return total + (block.duration / 60);
+        return total + (block.duration / 60); // Convert minutes to hours
       }
       return total;
     }, 0);
@@ -275,6 +280,7 @@ export default function Home() {
 
   const currentQuestion = useMemo(() => {
     if (!isClient) return dailyQuestions[0];
+    // Use a consistent day of the year so the question is the same for everyone
     const dayIndex = getDayOfYear(new Date());
     return dailyQuestions[dayIndex % dailyQuestions.length];
   }, [isClient]);
