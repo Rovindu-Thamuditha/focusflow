@@ -6,7 +6,8 @@
  * Core Philosophy:
  * Users have complete control over their own data. All user-specific information, including settings,
  * focus grids, and question states, is stored within a private data tree accessible only to the
- * authenticated owner. Publicly listing users is explicitly forbidden to protect privacy.
+ * authenticated owner. Publicly listing users is explicitly forbidden to protect privacy, with the
+ * exception of a designated admin user.
  *
  * Data Structure:
  * All user-specific data is nested hierarchically under the `/users/{userId}` path. This path-based
@@ -16,7 +17,7 @@
  * Key Security Decisions:
  * - Default Deny: All access is denied unless explicitly granted by a rule.
  * - Strict Ownership: A user can only access documents within their own `/users/{userId}` path.
- * - No User Enumeration: The top-level `/users` collection cannot be listed by any client.
+ * - Admin Override: A specific admin user (identified by email) is allowed to list all users for monitoring.
  * - Public Data is Read-Only: The `/dailyQuestions` collection is world-readable but client writes are
  *   disabled, assuming this data is managed by a trusted backend process or admin.
  * - Relational Integrity: On document creation, rules validate that internal ID fields (like `userId`)
@@ -45,27 +46,32 @@ service cloud.firestore {
     function isOwner(userId) {
       return isSignedIn() && request.auth.uid == userId;
     }
+    
+    function isAdmin() {
+      return isSignedIn() && request.auth.token.email == 'rovinduthamu@gmail.com';
+    }
 
     /**
      * @description
      *   The User document contains public profile information and acts as the root for a user's private data.
-     *   A user can create their own document and manage it, but cannot see or list other users.
+     *   A user can create their own document and manage it, but cannot see other users unless they are an admin.
      * @path /users/{userId}
      * @allow A signed-in user (create)s their own user document: `auth.uid === 'user_abc'`, path is `/users/user_abc`.
      * @deny An anonymous user tries to (create) a user document: `auth.uid === null`.
-     * @deny A user tries to (list) all users in the `/users` collection.
-     * @principle Enforces self-creation and ownership for a user's root document, while preventing user enumeration.
+     * @allow The admin user can (list) all users.
+     * @deny A non-admin user tries to (list) all users in the `/users` collection.
+     * @principle Enforces self-creation and ownership, while allowing admin oversight and preventing general user enumeration.
      */
     match /users/{userId} {
-      allow get: if isOwner(userId);
-      allow list: if false; // CRITICAL: Prevent listing and discovery of all users.
+      allow get: if isOwner(userId) || isAdmin();
+      allow list: if isAdmin(); // CRITICAL: Prevent listing and discovery of all users, except for admin.
       allow create: if isOwner(userId) && request.resource.data.id == userId;
-      allow update: if isOwner(userId) && request.resource.data.id == resource.data.id;
-      allow delete: if isOwner(userId);
+      allow update: if isOwner(userId) || isAdmin();
+      allow delete: if isOwner(userId) || isAdmin();
 
-      // Allow reads and writes to subcollections only for the owner.
+      // Allow reads and writes to subcollections for the owner or an admin.
       match /{allPaths=**} {
-        allow read, write: if isOwner(userId);
+        allow read, write: if isOwner(userId) || isAdmin();
       }
     }
 
