@@ -11,11 +11,10 @@ interface AccountabilityGridProps {
   blocks: TimeBlockState[];
   subjects: Subject[];
   onBlockUpdate: (hour: number, subject: string, duration: number) => void;
-  onMarkAsSleep: (hour: number) => void;
   viewingDate: Date;
 }
 
-export function AccountabilityGrid({ blocks, subjects, onBlockUpdate, onMarkAsSleep, viewingDate }: AccountabilityGridProps) {
+export function AccountabilityGrid({ blocks, subjects, onBlockUpdate, viewingDate }: AccountabilityGridProps) {
   const [selectedBlock, setSelectedBlock] = useState<TimeBlockState | null>(null);
 
   const isEditable = differenceInHours(new Date(), viewingDate) <= 36;
@@ -34,13 +33,6 @@ export function AccountabilityGrid({ blocks, subjects, onBlockUpdate, onMarkAsSl
       setSelectedBlock(null);
     }
   };
-  
-  const handleContextMenu = (e: React.MouseEvent, hour: number) => {
-    if (!isEditable) return;
-    e.preventDefault();
-    onMarkAsSleep(hour);
-  };
-
 
   return (
     <div>
@@ -57,7 +49,6 @@ export function AccountabilityGrid({ blocks, subjects, onBlockUpdate, onMarkAsSl
             duration={block.duration}
             subjects={subjects}
             onClick={() => handleBlockClick(block.hour)}
-            onContextMenu={(e) => handleContextMenu(e, block.hour)}
             isEditable={isEditable}
           />
         ))}

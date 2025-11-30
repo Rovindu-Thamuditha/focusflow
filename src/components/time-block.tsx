@@ -12,7 +12,6 @@ interface TimeBlockProps {
   duration: number;
   subjects: Subject[];
   onClick: () => void;
-  onContextMenu: (event: React.MouseEvent) => void;
   isEditable: boolean;
 }
 
@@ -28,7 +27,7 @@ const ICONS: { [key: string]: React.FC<React.SVGProps<SVGSVGElement>> } = {
   Bed,
 };
 
-export function TimeBlock({ hour, subjectId, duration, subjects, onClick, onContextMenu, isEditable }: TimeBlockProps) {
+export function TimeBlock({ hour, subjectId, duration, subjects, onClick, isEditable }: TimeBlockProps) {
   const subject = subjects.find(s => s.id === subjectId) || { id: 'idle', name: 'Idle', icon: 'Sparkles', color: 'hsl(var(--muted))' };
   
   const formattedHour = (hour % 12 === 0 ? 12 : hour % 12) + (hour < 12 || hour === 24 ? ' AM' : ' PM');
@@ -46,10 +45,9 @@ export function TimeBlock({ hour, subjectId, duration, subjects, onClick, onCont
   return (
     <button
       onClick={onClick}
-      onContextMenu={onContextMenu}
       className={cn(
         "relative aspect-square rounded-lg flex flex-col items-center justify-center p-1 transition-all duration-300 ease-in-out transform",
-        isEditable && "hover:scale-105",
+        isEditable && !isSleep && "hover:scale-105",
         isEditable && !isSleep && "focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-background focus:ring-primary",
         isSleep ? "bg-gray-800 text-gray-500" : "text-white",
         subject.id !== 'idle' && !isSleep && getBrightness(),
@@ -62,7 +60,7 @@ export function TimeBlock({ hour, subjectId, duration, subjects, onClick, onCont
       } as React.CSSProperties}
       aria-label={`Hour ${hour}:00, current state: ${subject.name}. Click to change.`}
       title={`${subject.name} - ${duration} mins`}
-      disabled={!isEditable && subject.id !== 'sleep'}
+      disabled={!isEditable || isSleep}
     >
       <Icon className="w-5 h-5 sm:w-6 sm:h-6" />
       <span className="text-[10px] sm:text-xs font-mono mt-1">{formattedHour}</span>
