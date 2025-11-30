@@ -1,5 +1,4 @@
 {
-  "builds": [{ "src": "next.config.ts", "use": "@vercel/next" }],
   "github": {
     "silent": true
   }
