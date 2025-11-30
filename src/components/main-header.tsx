@@ -1,4 +1,4 @@
-import { LogOut } from "lucide-react";
+import { LogOut, Shield } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Icons } from "@/components/icons";
@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { useUser, useAuth } from "@/firebase";
 import { BarChart2 } from 'lucide-react';
 
+const ADMIN_EMAIL = 'rovinduthamu@gmail.com';
 
 interface MainHeaderProps {
   totalFocusedTime: number;
@@ -38,6 +39,13 @@ export function MainHeader({ totalFocusedTime, children }: MainHeaderProps) {
         <div className="flex flex-1 items-center justify-end space-x-4">
           <TotalFocusTime totalHours={totalFocusedTime} />
           {children}
+          {user && user.email === ADMIN_EMAIL && (
+             <Link href="/admin" passHref>
+               <Button variant="ghost" size="icon" title="Admin Panel">
+                  <Shield className="h-5 w-5" />
+               </Button>
+            </Link>
+          )}
           <Link href="/stats" passHref>
              <Button variant="ghost" size="icon" title="Statistics">
                 <BarChart2 className="h-5 w-5" />
