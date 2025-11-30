@@ -1,11 +1,11 @@
 "use client"
 
-import { BrainCircuit, Check, Trophy } from 'lucide-react';
+import { Trophy } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import type { Question } from '@/lib/questions';
-import { InlineMath, BlockMath } from 'react-katex';
+import { BlockMath } from 'react-katex';
 
 interface DailyChallengeProps {
   question: Question;
@@ -35,9 +35,8 @@ export function DailyChallenge({ question, isSolved, onSolveChange }: DailyChall
             <h3 className={`font-semibold ${subjectColors[question.subject] || 'text-foreground'}`}>{question.subject}</h3>
             <p className="text-sm text-muted-foreground">{question.topic}</p>
           </div>
-          <div className="p-4 bg-background rounded-lg border text-sm prose prose-invert max-w-none">
+          <div className="p-4 bg-background rounded-lg border text-sm prose prose-invert max-w-none overflow-x-auto">
             <BlockMath math={question.question} />
-            {question.question_sinhala && <BlockMath math={question.question_sinhala} />}
           </div>
         </div>
 

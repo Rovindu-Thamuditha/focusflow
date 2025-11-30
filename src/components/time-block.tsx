@@ -1,47 +1,42 @@
 "use client"
 
 import { cn } from "@/lib/utils";
-import { Zap, Coffee, Bed } from "lucide-react";
 import * as React from 'react';
+import { Book, Zap, Coffee, Bed, Sparkles } from "lucide-react";
+import type { Subject } from "@/lib/types";
 
-export type TimeBlockStatus = 'rest' | 'partial' | 'focus';
-
-export interface TimeBlockState {
+interface TimeBlockProps {
   hour: number;
-  status: TimeBlockStatus;
+  subjectId: string;
+  duration: number;
+  subjects: Subject[];
+  onClick: (hour: number) => void;
 }
 
-interface TimeBlockProps extends TimeBlockState {
-  onStatusChange: (hour: number, newStatus: TimeBlockStatus) => void;
-}
-
-const statusConfig: Record<TimeBlockStatus, { icon: React.ElementType, label: string, colorClasses: string }> = {
-  rest: { icon: Bed, label: 'Rest', colorClasses: 'bg-slate-500/10 text-slate-400 hover:bg-slate-500/20' },
-  partial: { icon: Coffee, label: 'Partial Focus', colorClasses: 'bg-cyan-500/20 text-cyan-400 hover:bg-cyan-500/30 ring-cyan-500' },
-  focus: { icon: Zap, label: 'Full Focus', colorClasses: 'bg-primary/20 text-primary hover:bg-primary/30 ring-primary' },
-};
-
-const statusCycle: Record<TimeBlockStatus, TimeBlockStatus> = {
-  rest: 'partial',
-  partial: 'focus',
-  focus: 'rest',
-};
-
-export function TimeBlock({ hour, status, onStatusChange }: TimeBlockProps) {
+export function TimeBlock({ hour, subjectId, duration, subjects, onClick }: TimeBlockProps) {
   const [isAnimating, setIsAnimating] = React.useState(false);
 
+  const subject = subjects.find(s => s.id === subjectId) || { id: 'idle', name: 'Idle', icon: Sparkles, color: 'hsl(var(--muted))' };
+
   const handleClick = () => {
-    const nextStatus = statusCycle[status];
-    onStatusChange(hour, nextStatus);
+    if (subject.id === 'sleep') return; // Don't do anything for sleep blocks
+    onClick(hour);
     setIsAnimating(true);
   };
   
-  const { icon: Icon, label, colorClasses } = statusConfig[status];
-  const formattedHour = hour.toString().padStart(2, '0');
+  const formattedHour = (hour % 12 === 0 ? 12 : hour % 12) + (hour < 12 || hour === 24 ? ' AM' : ' PM');
 
   const handleAnimationEnd = () => {
     setIsAnimating(false);
   };
+
+  const getBrightness = () => {
+    if (duration === 0) return 'brightness-50';
+    if (duration < 60) return `brightness-${50 + Math.round((duration/60)*50)}`;
+    return 'brightness-100';
+  }
+
+  const Icon = subject.icon;
 
   return (
     <button
@@ -49,19 +44,27 @@ export function TimeBlock({ hour, status, onStatusChange }: TimeBlockProps) {
       onAnimationEnd={handleAnimationEnd}
       className={cn(
         "relative aspect-square rounded-lg flex flex-col items-center justify-center p-1 transition-all duration-300 ease-in-out transform focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-background",
-        colorClasses,
-        status !== 'rest' && 'ring-1',
-        isAnimating && 'animate-pulse'
+        "text-white",
+        subject.id !== 'idle' && getBrightness(),
+        isAnimating && 'animate-pulse',
+        subject.id === 'sleep' && 'cursor-not-allowed'
       )}
-      aria-label={`Hour ${hour}:00, current state: ${label}. Click to change.`}
+      style={{ 
+        backgroundColor: subject.color,
+        '--glow-color': subject.color 
+      } as React.CSSProperties}
+      aria-label={`Hour ${hour}:00, current state: ${subject.name}. Click to change.`}
+      title={`${subject.name} - ${duration} mins`}
     >
       <Icon className="w-5 h-5 sm:w-6 sm:h-6" />
-      <span className="text-[10px] sm:text-xs font-mono mt-1">{formattedHour}:00</span>
-      {status === 'focus' && (
-        <div className="absolute inset-0 rounded-lg glow-primary opacity-50 pointer-events-none"></div>
-      )}
-      {status === 'partial' && (
-        <div className="absolute inset-0 rounded-lg glow-accent opacity-40 pointer-events-none"></div>
+      <span className="text-[10px] sm:text-xs font-mono mt-1">{formattedHour}</span>
+       {duration > 0 && subject.id !== 'idle' && subject.id !== 'sleep' && (
+        <div 
+            className={cn(
+                "absolute inset-0 rounded-lg pointer-events-none",
+            )}
+            style={{boxShadow: `0 0 8px ${subject.color}, 0 0 16px ${subject.color}`}}
+        />
       )}
     </button>
   );

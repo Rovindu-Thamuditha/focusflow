@@ -4,9 +4,10 @@ import { TotalFocusTime } from "@/components/total-focus-time";
 
 interface MainHeaderProps {
   totalFocusedTime: number;
+  children?: React.ReactNode;
 }
 
-export function MainHeader({ totalFocusedTime }: MainHeaderProps) {
+export function MainHeader({ totalFocusedTime, children }: MainHeaderProps) {
   return (
     <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur-sm">
       <div className="container flex h-16 items-center space-x-4 sm:justify-between sm:space-x-0">
@@ -16,6 +17,7 @@ export function MainHeader({ totalFocusedTime }: MainHeaderProps) {
         </div>
         <div className="flex flex-1 items-center justify-end space-x-4">
           <TotalFocusTime totalHours={totalFocusedTime} />
+          {children}
           <ThemeToggle />
         </div>
       </div>
