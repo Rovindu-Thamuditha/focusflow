@@ -13,7 +13,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Icons } from '@/components/icons';
-import { useAuth, useFirestore } from '@/firebase';
+import { useAuth, useFirestore, errorEmitter, FirestorePermissionError } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 
 export default function LoginPage() {
@@ -45,11 +45,22 @@ export default function LoginPage() {
         
         await updateProfile(user, { displayName: name });
         const userDocRef = doc(firestore, 'users', user.uid);
-        await setDoc(userDocRef, {
+        const userData = {
             id: user.uid,
             username: name,
             email: user.email,
-        }, { merge: true });
+        };
+        
+        setDoc(userDocRef, userData, { merge: true }).catch(error => {
+            errorEmitter.emit(
+              'permission-error',
+              new FirestorePermissionError({
+                path: userDocRef.path,
+                operation: 'create',
+                requestResourceData: userData,
+              })
+            );
+        });
 
         toast({
           title: "Account Created",

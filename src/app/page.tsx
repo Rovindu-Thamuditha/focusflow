@@ -10,7 +10,7 @@ import { getDayOfYear } from 'date-fns';
 import { Card, CardContent } from '@/components/ui/card';
 import { SettingsDialog } from '@/components/settings-dialog';
 import { defaultSubjects } from '@/lib/subjects';
-import { useUser, useFirestore, useMemoFirebase } from '@/firebase';
+import { useUser, useFirestore, useMemoFirebase, FirestorePermissionError, errorEmitter } from '@/firebase';
 import { useRouter } from 'next/navigation';
 import { doc, setDoc, getDoc, getDocs, collection, query, where, writeBatch } from 'firebase/firestore';
 
@@ -52,36 +52,44 @@ export default function Home() {
   useEffect(() => {
     if (user && userDocRef && isClient && !userDataLoaded) {
       const loadUserData = async () => {
-        const userDoc = await getDoc(userDocRef);
+        try {
+          const userDoc = await getDoc(userDocRef);
         
-        if (userDoc.exists()) {
-          const data = userDoc.data();
-          const todayString = new Date().toDateString();
-          const lastVisitDate = data.lastVisit;
-
-          setUserName(data.username || user.displayName || '');
-          setSleepHours(data.settings?.sleepHours || [22, 23, 0, 1, 2, 3, 4, 5, 6, 7]);
-          setSubjects(data.settings?.subjects || defaultSubjects);
-          setLanguage(data.settings?.language || 'english');
-
-          const timeBlockQuery = query(collection(firestore, 'users', user.uid, 'time_blocks'), where('date', '>=', new Date(todayString).toISOString()));
-          const querySnapshot = await getDocs(timeBlockQuery);
-
-          if (lastVisitDate !== todayString || querySnapshot.empty) {
-             setChallengeSolved(false);
-             const newBlocks = createInitialState(data.settings?.sleepHours || sleepHours);
-             setTimeBlocks(newBlocks);
+          if (userDoc.exists()) {
+            const data = userDoc.data();
+            const todayString = new Date().toDateString();
+            const lastVisitDate = data.lastVisit;
+  
+            setUserName(data.username || user.displayName || '');
+            setSleepHours(data.settings?.sleepHours || [22, 23, 0, 1, 2, 3, 4, 5, 6, 7]);
+            setSubjects(data.settings?.subjects || defaultSubjects);
+            setLanguage(data.settings?.language || 'english');
+  
+            const timeBlockQuery = query(collection(firestore, 'users', user.uid, 'time_blocks'), where('date', '>=', new Date(todayString).toISOString()));
+            const querySnapshot = await getDocs(timeBlockQuery);
+  
+            if (lastVisitDate !== todayString || querySnapshot.empty) {
+               setChallengeSolved(false);
+               const newBlocks = createInitialState(data.settings?.sleepHours || sleepHours);
+               setTimeBlocks(newBlocks);
+            } else {
+               setTimeBlocks(querySnapshot.docs.map(d => d.data() as TimeBlockState));
+               setChallengeSolved(data.isChallengeSolved || false);
+            }
           } else {
-             setTimeBlocks(querySnapshot.docs.map(d => d.data() as TimeBlockState));
-             setChallengeSolved(data.isChallengeSolved || false);
+            // New user, set initial state
+            setUserName(user.displayName || '');
+            const newBlocks = createInitialState(sleepHours);
+            setTimeBlocks(newBlocks);
           }
-        } else {
-          // New user, set initial state
-          setUserName(user.displayName || '');
-          const newBlocks = createInitialState(sleepHours);
-          setTimeBlocks(newBlocks);
+          setUserDataLoaded(true);
+        } catch (e) {
+          const permissionError = new FirestorePermissionError({
+            path: userDocRef.path,
+            operation: 'get',
+          });
+          errorEmitter.emit('permission-error', permissionError);
         }
-        setUserDataLoaded(true);
       };
       loadUserData();
     } else if (!user && !isUserLoading && isClient) {
@@ -91,7 +99,7 @@ export default function Home() {
 
 
   useEffect(() => {
-    const saveData = async () => {
+    const saveData = () => {
         if (!isClient || !userDataLoaded || !user || !timeBlocks.length || !userDocRef) return;
 
         const todayString = new Date().toDateString();
@@ -102,23 +110,43 @@ export default function Home() {
             settings: { sleepHours, subjects, language },
             username: userName
         };
-        await setDoc(userDocRef, dataToSave, { merge: true });
+        setDoc(userDocRef, dataToSave, { merge: true }).catch(error => {
+          errorEmitter.emit(
+            'permission-error',
+            new FirestorePermissionError({
+              path: userDocRef.path,
+              operation: 'update',
+              requestResourceData: dataToSave,
+            })
+          )
+        });
 
         const batch = writeBatch(firestore);
         const todayBlocksQuery = query(collection(firestore, 'users', user.uid, 'time_blocks'), where('date', '>=', new Date(todayString).toISOString()));
-        const oldBlocksSnapshot = await getDocs(todayBlocksQuery);
-        oldBlocksSnapshot.forEach(doc => {
-            batch.delete(doc.ref);
-        });
+        
+        getDocs(todayBlocksQuery).then(oldBlocksSnapshot => {
+          oldBlocksSnapshot.forEach(doc => {
+              batch.delete(doc.ref);
+          });
 
-        timeBlocks.forEach(block => {
-            const blockDate = new Date(block.date);
-            if (blockDate.toDateString() === todayString) {
-                const blockRef = doc(collection(firestore, 'users', user.uid, 'time_blocks'));
-                batch.set(blockRef, block);
-            }
+          timeBlocks.forEach(block => {
+              const blockDate = new Date(block.date);
+              if (blockDate.toDateString() === todayString) {
+                  const blockRef = doc(collection(firestore, 'users', user.uid, 'time_blocks'));
+                  batch.set(blockRef, block);
+              }
+          });
+          batch.commit().catch(error => {
+             errorEmitter.emit(
+              'permission-error',
+              new FirestorePermissionError({
+                path: `users/${user.uid}/time_blocks`,
+                operation: 'write',
+                requestResourceData: timeBlocks
+              })
+            )
+          });
         });
-        await batch.commit();
     };
 
     const debounceSave = setTimeout(saveData, 1000); 
