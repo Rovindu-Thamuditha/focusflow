@@ -54,9 +54,9 @@ export default function Home() {
     }
   }, [user, isUserLoading, router]);
 
-  const loadDayData = useCallback(async (dateToLoad: Date) => {
+  const loadDayData = useCallback(async (dateToLoad: Date, sleepHoursConfig: number[]) => {
     if (!user || !firestore) return;
-
+  
     const dateString = format(dateToLoad, 'yyyy-MM-dd');
     
     try {
@@ -65,14 +65,14 @@ export default function Home() {
         where('date', '==', dateString)
       );
       const querySnapshot = await getDocs(timeBlockQuery);
-
+  
       if (!querySnapshot.empty) {
         const blocks = querySnapshot.docs.map(d => d.data() as TimeBlockState);
         setTimeBlocks(blocks.sort((a, b) => a.hour - b.hour));
       } else {
-        setTimeBlocks(createInitialState(sleepHours, dateToLoad));
+        setTimeBlocks(createInitialState(sleepHoursConfig, dateToLoad));
       }
-
+  
       // Challenge solved state is only relevant for the current day
       if (isToday(dateToLoad)) {
         const userDoc = await getDoc(userDocRef!);
@@ -83,11 +83,11 @@ export default function Home() {
       } else {
         setChallengeSolved(false); // Can't solve challenges for other days
       }
-
+  
     } catch (e) {
       console.error("Error loading day data: ", e);
     }
-  }, [user, firestore, userDocRef, sleepHours]);
+  }, [user, firestore, userDocRef]);
 
 
   // Effect for loading initial user settings ONCE
@@ -96,21 +96,21 @@ export default function Home() {
       const loadInitialUserData = async () => {
         try {
           const userDoc = await getDoc(userDocRef);
+          let userSleepHours = [22, 23, 0, 1, 2, 3, 4, 5, 6, 7];
         
           if (userDoc.exists()) {
             const data = userDoc.data();
             setUserName(data.username || user.displayName || '');
-            const userSleepHours = data.settings?.sleepHours || [22, 23, 0, 1, 2, 3, 4, 5, 6, 7];
+            userSleepHours = data.settings?.sleepHours || [22, 23, 0, 1, 2, 3, 4, 5, 6, 7];
             setSleepHours(userSleepHours);
             setSubjects(data.settings?.subjects || defaultSubjects);
             setLanguage(data.settings?.language || 'english');
-            // We pass userSleepHours to ensure the very first `createInitialState` call has the correct hours
-            setTimeBlocks(createInitialState(userSleepHours, currentDate));
           } else {
              // New user, set initial state
             setUserName(user.displayName || '');
-            setTimeBlocks(createInitialState(sleepHours, currentDate));
           }
+          // After loading settings, load the data for the current day with the correct settings
+          await loadDayData(currentDate, userSleepHours);
           setUserDataLoaded(true); // Mark as loaded
         } catch (e) {
           const permissionError = new FirestorePermissionError({
@@ -122,14 +122,15 @@ export default function Home() {
       };
       loadInitialUserData();
     }
-  }, [user, userDocRef, userDataLoaded, currentDate, sleepHours]);
+  }, [user, userDocRef, userDataLoaded, loadDayData, currentDate]); // Removed dependencies that cause re-runs
   
   // Effect for loading data when the date changes
   useEffect(() => {
     if (userDataLoaded) { // Only run if initial data is loaded
-      loadDayData(currentDate);
+      loadDayData(currentDate, sleepHours);
     }
-  }, [currentDate, userDataLoaded, loadDayData]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentDate, userDataLoaded]); // Removed loadDayData and sleepHours to prevent loops
   
 
   useEffect(() => {
@@ -300,3 +301,5 @@ export default function Home() {
     </div>
   );
 }
+
+    
