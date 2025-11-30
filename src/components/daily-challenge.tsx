@@ -47,7 +47,7 @@ export function DailyChallenge({ question, isSolved, onSolveChange, language }: 
             {secondaryQuestion && (
                 <>
                     <hr className="my-4 border-border"/>
-                    <div className="text-muted-foreground">
+                    <div className="text-muted-foreground text-xs">
                         <BlockMath math={secondaryQuestion} />
                     </div>
                 </>
