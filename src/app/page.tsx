@@ -68,7 +68,7 @@ export default function Home() {
   }, [user, isUserLoading, router]);
 
   const loadDayData = useCallback(async (dateToLoad: Date) => {
-    if (!user || !firestore) return;
+    if (!user || !firestore || !userDataLoaded) return;
   
     const dateString = format(dateToLoad, 'yyyy-MM-dd');
     
@@ -83,7 +83,8 @@ export default function Home() {
         const blocks = querySnapshot.docs.map(d => d.data() as TimeBlockState);
         setTimeBlocks(blocks.sort((a, b) => a.hour - b.hour));
       } else {
-        // When no data exists, create a fresh slate for that day
+        // When no data exists for the selected day, create a fresh slate.
+        // This uses the already-loaded sleepHours from user settings.
         setTimeBlocks(createInitialState(sleepHours, dateToLoad));
       }
   
@@ -93,17 +94,20 @@ export default function Home() {
         if (userDoc.exists()) {
           const data = userDoc.data();
           setChallengeSolved(data.isChallengeSolved || false);
+        } else {
+          setChallengeSolved(false);
         }
       } else {
+        // Not today, so challenge is not solved for this view
         setChallengeSolved(false);
       }
   
     } catch (e) {
       console.error("Error loading day data: ", e);
     }
-  }, [user, firestore, userDocRef, sleepHours]);
+  }, [user, firestore, userDocRef, sleepHours, userDataLoaded]);
 
-
+  // Effect for initial user data load
   useEffect(() => {
     if (user && userDocRef && !userDataLoaded) {
       const loadInitialUserData = async () => {
@@ -117,92 +121,84 @@ export default function Home() {
             setSleepHours(userSleepHours);
             setSubjects(data.settings?.subjects || defaultSubjects);
             setLanguage(data.settings?.language || 'english');
-            // Set initial blocks for the current day based on loaded settings
-            setTimeBlocks(createInitialState(userSleepHours, currentDate));
           } else {
-             // First-time user defaults
              setUserName(user.displayName || '');
-             setTimeBlocks(createInitialState([], currentDate));
+             // Leave other settings as default for a new user
           }
-          setUserDataLoaded(true); 
         } catch (e) {
-          const permissionError = new FirestorePermissionError({
-            path: userDocRef.path,
-            operation: 'get',
-          });
-          errorEmitter.emit('permission-error', permissionError);
+            console.error("Error loading user data", e);
+            const permissionError = new FirestorePermissionError({
+              path: userDocRef.path,
+              operation: 'get',
+            });
+            errorEmitter.emit('permission-error', permissionError);
+        } finally {
+            setUserDataLoaded(true); 
         }
       };
       loadInitialUserData();
     }
-  }, [user, userDocRef, userDataLoaded, currentDate]);
+  }, [user, userDocRef, userDataLoaded]);
   
+  // Effect to load data for the current date once user data is loaded
   useEffect(() => {
     if (userDataLoaded) {
       loadDayData(currentDate);
     }
+    // This should run when the date changes or when user data is first loaded.
   }, [currentDate, userDataLoaded, loadDayData]);
   
-
+  // Consolidated effect for saving all data to Firestore
   useEffect(() => {
-    const saveData = () => {
-        if (!isClient || !userDataLoaded || !user || timeBlocks.length !== 24 || !userDocRef ) return;
-        
-        const dataToSave = {
-            lastVisit: new Date().toDateString(),
-            settings: { sleepHours, subjects, language },
-            username: userName,
-            ...(isToday(currentDate) && {isChallengeSolved})
-        };
+    // Don't save anything until the initial data load is complete.
+    if (!isClient || !userDataLoaded || !user || !userDocRef ) return;
 
-        setDoc(userDocRef, dataToSave, { merge: true }).catch(error => {
+    const handler = setTimeout(() => {
+        const batch = writeBatch(firestore);
+        
+        // 1. Save user settings (username, language, subjects, sleepHours)
+        const settingsData = {
+            username: userName,
+            settings: { sleepHours, subjects, language },
+             ...(isToday(currentDate) && {isChallengeSolved})
+        };
+        batch.set(userDocRef, settingsData, { merge: true });
+
+        // 2. Save time blocks for the current day
+        // Only allow edits for the last 36 hours for performance/security
+        const isEditable = differenceInHours(new Date(), currentDate) <= 36;
+        if (isEditable && timeBlocks.length === 24) {
+            const dateString = format(currentDate, 'yyyy-MM-dd');
+
+            // This is a "blind write" - it doesn't query first.
+            // It just creates/overwrites the blocks for the current date.
+            timeBlocks.forEach(block => {
+                const blockWithDate = { ...block, date: dateString };
+                // We create a predictable doc ID to ensure we are overwriting.
+                const blockDocRef = doc(firestore, 'users', user.uid, 'time_blocks', `${dateString}_${block.hour}`);
+                batch.set(blockDocRef, blockWithDate);
+            });
+        }
+        
+        // Commit all batched writes
+        batch.commit().catch(error => {
+          console.error("Error saving data batch:", error);
+          // Emitting a generic error as this could be settings or time_blocks write failing
           errorEmitter.emit(
             'permission-error',
             new FirestorePermissionError({
-              path: userDocRef.path,
-              operation: 'update',
-              requestResourceData: dataToSave,
+              path: `users/${user.uid}`,
+              operation: 'write', 
+              requestResourceData: { settings: settingsData, timeBlocks }
             })
           )
         });
 
-        const isEditable = differenceInHours(new Date(), currentDate) <= 36;
-        if(!isEditable) return;
+    }, 2000); // Debounce saves by 2 seconds
 
-        const batch = writeBatch(firestore);
-        
-        const dateString = format(currentDate, 'yyyy-MM-dd');
-        const todayBlocksQuery = query(collection(firestore, 'users', user.uid, 'time_blocks'), where('date', '==', dateString));
-            
-        getDocs(todayBlocksQuery).then(oldBlocksSnapshot => {
-          oldBlocksSnapshot.forEach(doc => {
-              batch.delete(doc.ref);
-          });
+    return () => clearTimeout(handler);
 
-          timeBlocks.forEach(block => {
-              const blockWithDateString = { ...block, date: dateString };
-              const blockRef = doc(collection(firestore, 'users', user.uid, 'time_blocks'));
-              batch.set(blockRef, blockWithDateString);
-          });
-
-          batch.commit().catch(error => {
-             errorEmitter.emit(
-              'permission-error',
-              new FirestorePermissionError({
-                path: `users/${user.uid}/time_blocks`,
-                operation: 'write', 
-                requestResourceData: timeBlocks
-              })
-            )
-          });
-        });
-    };
-
-    const debounceSave = setTimeout(saveData, 1500); 
-    return () => clearTimeout(debounceSave);
-
-  }, [timeBlocks, isChallengeSolved, sleepHours, subjects, language, user, userDocRef, isClient, userDataLoaded, userName, firestore, currentDate]);
-
+  }, [timeBlocks, isChallengeSolved, sleepHours, subjects, language, userName, currentDate, user, userDocRef, firestore, isClient, userDataLoaded]);
   
   const handleBlockUpdate = (hour: number, subject: string, duration: number) => {
     setTimeBlocks(currentBlocks =>
@@ -212,30 +208,32 @@ export default function Home() {
     );
   };
 
-    const handleSettingsSave = (newSleepHours: number[], newSubjects: Subject[], newLanguage: 'english' | 'sinhala') => {
-        setSleepHours(newSleepHours);
-        setSubjects(newSubjects);
-        setLanguage(newLanguage);
-    
-        const oldBlocks = [...timeBlocks];
-        const newBlocks = createInitialState(newSleepHours, currentDate);
-
-        // A simple loop to preserve work from the old blocks onto the new ones.
-        // This is much safer than complex map/filter chains.
-        const finalBlocks = newBlocks.map(newBlock => {
-            const oldBlock = oldBlocks.find(b => b.hour === newBlock.hour);
-            // If the block is now sleep, it should be sleep. Otherwise, preserve old work.
-            if (newBlock.subject === 'sleep') {
-                return newBlock;
-            }
-            if (oldBlock && oldBlock.subject !== 'idle' && oldBlock.subject !== 'sleep') {
-                return oldBlock;
-            }
-            return newBlock;
-        });
-
-        setTimeBlocks(finalBlocks.sort((a,b) => a.hour - b.hour));
-    };
+  const handleSettingsSave = (newSleepHours: number[], newSubjects: Subject[], newLanguage: 'english' | 'sinhala') => {
+      setSleepHours(newSleepHours);
+      setSubjects(newSubjects);
+      setLanguage(newLanguage);
+  
+      // After saving settings, rebuild the current day's grid state
+      // This is the key part to prevent duplication.
+      setTimeBlocks(currentBlocks => {
+          // Start with a fresh grid based on new sleep hours
+          const newGrid = createInitialState(newSleepHours, currentDate);
+          
+          // Re-apply any existing work from the *current* blocks onto the new grid
+          return newGrid.map(newBlock => {
+              if (newBlock.subject === 'sleep') {
+                  return newBlock; // New sleep hours take precedence
+              }
+              const oldBlock = currentBlocks.find(b => b.hour === newBlock.hour);
+              // If there was an old block that was not idle/sleep, preserve its state
+              if (oldBlock && oldBlock.subject !== 'idle' && oldBlock.subject !== 'sleep') {
+                  return oldBlock;
+              }
+              // Otherwise, use the new idle block
+              return newBlock;
+          }).sort((a, b) => a.hour - b.hour);
+      });
+  };
 
   const handleResetDay = () => {
     setTimeBlocks(createInitialState(sleepHours, currentDate));
