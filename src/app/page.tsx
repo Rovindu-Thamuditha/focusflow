@@ -30,6 +30,7 @@ import {
 import { GridFocusLoader } from '@/components/grid-focus-loader';
 import { FeedbackDialog } from '@/components/feedback-dialog';
 import { CurrentTime } from '@/components/current-time';
+import { TodoList } from '@/components/todo-list';
 
 const createInitialState = (sleepHours: number[], date: Date): TimeBlockState[] => {
   const dateString = format(date, 'yyyy-MM-dd');
@@ -293,7 +294,7 @@ export default function Home() {
               />
             </CardContent>
           </Card>
-          <div className="lg:col-span-1">
+          <div className="space-y-6">
              <DailyChallenge
                 question={currentQuestion}
                 isSolved={isChallengeSolved}
@@ -301,6 +302,7 @@ export default function Home() {
                 language={language}
                 isToday={isToday(currentDate)}
               />
+              <TodoList />
           </div>
         </div>
          <div className="mt-8 flex justify-center">
