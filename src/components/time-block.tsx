@@ -14,6 +14,7 @@ interface TimeBlockProps {
   subjects: Subject[];
   onClick: () => void;
   isEditable: boolean;
+  isFuture: boolean;
 }
 
 const ICONS: { [key: string]: React.FC<React.SVGProps<SVGSVGElement>> } = {
@@ -28,7 +29,7 @@ const ICONS: { [key: string]: React.FC<React.SVGProps<SVGSVGElement>> } = {
   Moon,
 };
 
-export function TimeBlock({ hour, subjectId, duration, subjects, onClick, isEditable }: TimeBlockProps) {
+export function TimeBlock({ hour, subjectId, duration, subjects, onClick, isEditable, isFuture }: TimeBlockProps) {
   const isSleep = subjectId === 'sleep';
 
   const subject = isSleep 
@@ -49,6 +50,7 @@ export function TimeBlock({ hour, subjectId, duration, subjects, onClick, isEdit
 
   const sleepStyles = "dark:bg-gray-800 dark:text-gray-500 bg-slate-700 text-slate-300";
   const idleStyles = "dark:text-gray-500 text-slate-500";
+  const finalIsEditable = isEditable && !isFuture;
 
   return (
     <TooltipProvider delayDuration={100}>
@@ -58,18 +60,19 @@ export function TimeBlock({ hour, subjectId, duration, subjects, onClick, isEdit
                 onClick={onClick}
                 className={cn(
                     "relative aspect-square rounded-lg flex flex-col items-center justify-center p-2 transition-all duration-300 ease-in-out transform border",
-                    isEditable && !isSleep && "hover:scale-105",
-                    isEditable && !isSleep && "focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-background focus:ring-primary",
+                    finalIsEditable && !isSleep && "hover:scale-105",
+                    finalIsEditable && !isSleep && "focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-background focus:ring-primary",
                     isSleep ? sleepStyles : (subject.id === 'idle' ? idleStyles : getBrightness()),
-                    (!isEditable || isSleep) && 'cursor-not-allowed',
+                    (!finalIsEditable || isSleep) && 'cursor-not-allowed',
+                    isFuture && 'opacity-50',
                     isSleep && 'opacity-70',
-                    isEditable ? 'border-border' : 'border-dashed'
+                    finalIsEditable ? 'border-border' : 'border-dashed'
                 )}
                 style={{ 
                     backgroundColor: subject.id !== 'idle' ? subject.color : undefined,
                 } as React.CSSProperties}
                 aria-label={`Hour ${hour}:00, current state: ${subject.name}. Click to change.`}
-                disabled={!isEditable || isSleep}
+                disabled={!finalIsEditable || isSleep}
                 >
                 <Icon className="w-5 h-5 sm:w-7 sm:h-7" />
                 <span className="text-xs sm:text-sm font-mono mt-1">{formattedHour}</span>

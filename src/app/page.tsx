@@ -27,7 +27,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
-import { SandTimerLoader } from '@/components/sand-timer-loader';
+import { GridFocusLoader } from '@/components/grid-focus-loader';
 import { FeedbackDialog } from '@/components/feedback-dialog';
 
 const createInitialState = (sleepHours: number[], date: Date): TimeBlockState[] => {
@@ -243,7 +243,7 @@ export default function Home() {
   if (isUserLoading || !isClient || !userDataLoaded) {
     return (
         <div className="flex flex-col items-center justify-center min-h-screen">
-          <SandTimerLoader />
+          <GridFocusLoader />
           <p className="mt-4 text-lg">Loading GridFocus...</p>
         </div>
     );

@@ -22,9 +22,8 @@ export function AccountabilityGrid({ blocks, subjects, onBlockUpdate, viewingDat
   const currentHour = new Date().getHours();
 
   const handleBlockClick = (hour: number) => {
-    // A block is editable if the date is within the editable window, AND (it's not today OR it's a past/current hour)
-    const canEditBlock = isEditableDate && (!isViewingToday || hour <= currentHour);
-    if (!canEditBlock) return;
+    const isFutureBlock = isViewingToday && hour > currentHour;
+    if (!isEditableDate || isFutureBlock) return;
     
     const block = blocks.find(b => b.hour === hour);
     if (block && block.subject !== 'sleep') {
@@ -66,7 +65,8 @@ export function AccountabilityGrid({ blocks, subjects, onBlockUpdate, viewingDat
                 duration={block.duration}
                 subjects={subjects}
                 onClick={() => handleBlockClick(block.hour)}
-                isEditable={isEditableDate && !isFutureBlock}
+                isEditable={isEditableDate}
+                isFuture={isFutureBlock}
               />
             );
         })}
@@ -83,4 +83,3 @@ export function AccountabilityGrid({ blocks, subjects, onBlockUpdate, viewingDat
     </div>
   );
 }
-
