@@ -1,5 +1,5 @@
 
-import { LogOut, Shield, MoreVertical, BarChart2 } from "lucide-react";
+import { LogOut, Shield, MoreVertical, BarChart2, Info } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Icons } from "@/components/icons";
@@ -14,6 +14,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { useUser, useAuth } from "@/firebase";
+import { InfoDialog } from "./info-dialog";
 
 const ADMIN_EMAIL = 'rovinduthamu@gmail.com';
 
@@ -59,6 +60,7 @@ export function MainHeader({ totalFocusedTime, children }: MainHeaderProps) {
                     <BarChart2 className="h-5 w-5" />
                 </Button>
               </Link>
+              <InfoDialog />
               <ThemeToggle />
               {user && (
                 <Button variant="ghost" size="icon" onClick={handleSignOut} title="Sign Out">
@@ -91,6 +93,9 @@ export function MainHeader({ totalFocusedTime, children }: MainHeaderProps) {
                 {/* This is a bit of a hack to get the settings and time in here */}
                 <div className="flex flex-col items-start p-2 gap-2">
                     {children}
+                </div>
+                <div className="p-2">
+                  <InfoDialog />
                 </div>
                 <DropdownMenuSeparator />
                  {user && (
