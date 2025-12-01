@@ -215,24 +215,23 @@ export default function Home() {
         setSubjects(newSubjects);
         setLanguage(newLanguage);
     
-        // This is the critical part: update the timeBlocks state based on the new settings.
+        // Recreate the state from scratch based on new settings to avoid key issues.
         setTimeBlocks(currentBlocks => {
-            return currentBlocks.map(block => {
-                const isNowSleep = newSleepHours.includes(block.hour);
-                const wasSleep = sleepHours.includes(block.hour);
-
-                // Case 1: Hour is newly marked as sleep
-                if (isNowSleep) {
-                    return { ...block, subject: 'sleep', duration: 60 };
+            const newBlocks = createInitialState(newSleepHours, currentDate);
+            // We need to preserve the non-sleep/non-idle states from the old blocks
+            return newBlocks.map(newBlock => {
+                // If new block is a sleep block, it's final
+                if (newBlock.subject === 'sleep') {
+                    return newBlock;
                 }
-                
-                // Case 2: Hour was sleep but is now not
-                if (wasSleep && !isNowSleep) {
-                    return { ...block, subject: 'idle', duration: 0 };
+                // Find the corresponding old block
+                const oldBlock = currentBlocks.find(b => b.hour === newBlock.hour);
+                // If old block existed and was a focus block (not idle/sleep), preserve it
+                if (oldBlock && oldBlock.subject !== 'idle' && oldBlock.subject !== 'sleep') {
+                    return { ...oldBlock, date: format(currentDate, 'yyyy-MM-dd') };
                 }
-
-                // Case 3: No change related to sleep status
-                return block;
+                // Otherwise, it's an idle block
+                return newBlock;
             }).sort((a, b) => a.hour - b.hour);
         });
     };
