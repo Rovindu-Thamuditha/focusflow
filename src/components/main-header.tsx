@@ -89,11 +89,11 @@ export function MainHeader({ totalFocusedTime, children }: MainHeaderProps) {
                   </DropdownMenuItem>
                  </Link>
                 <DropdownMenuSeparator />
-                <div className="px-2 py-1.5">
+                <div className="flex items-center justify-between px-2 py-1.5">
+                  <div className="flex-grow">
                     {children}
-                </div>
-                <div className="px-2 py-1.5">
-                   <ThemeToggle />
+                  </div>
+                  <ThemeToggle />
                 </div>
                 <DropdownMenuSeparator />
                  {user && (
