@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -93,5 +94,88 @@ body {
   }
   .glow-accent {
     box-shadow: 0 0 8px hsl(var(--accent)), 0 0 16px hsl(var(--accent));
+  }
+}
+
+/* Sand Timer Animation */
+.sand-timer {
+  --sand-timer-size: 80px;
+  --sand-color: hsl(var(--primary));
+  --glass-color: hsl(var(--border));
+  
+  position: relative;
+  width: var(--sand-timer-size);
+  height: var(--sand-timer-size);
+  animation: sand-timer-rotation 4s infinite linear;
+}
+
+.sand-timer__top,
+.sand-timer__bottom {
+  position: absolute;
+  width: 100%;
+  height: 50%;
+  overflow: hidden;
+  border-style: solid;
+  border-color: var(--glass-color);
+  border-width: 2px;
+}
+
+.sand-timer__top {
+  top: 0;
+  border-bottom: none;
+  border-radius: 50% 50% 0 0 / 40% 40% 0 0;
+  transform-origin: bottom center;
+}
+
+.sand-timer__bottom {
+  bottom: 0;
+  border-top: none;
+  border-radius: 0 0 50% 50% / 0 0 40% 40%;
+  transform-origin: top center;
+}
+
+.sand-timer__sand {
+  position: absolute;
+  left: 2px;
+  right: 2px;
+  background-color: var(--sand-color);
+}
+
+.sand-timer__top .sand-timer__sand {
+  bottom: 0;
+  top: 0;
+  animation: sand-flow-top 4s infinite ease-in;
+}
+
+.sand-timer__bottom .sand-timer__sand {
+  top: 0;
+  bottom: 0;
+  animation: sand-flow-bottom 4s infinite ease-out;
+}
+
+@keyframes sand-timer-rotation {
+  0%, 90%, 100% {
+    transform: rotate(0deg);
+  }
+  45%, 55% {
+    transform: rotate(180deg);
+  }
+}
+
+@keyframes sand-flow-top {
+  0%, 100% {
+    height: 100%;
+  }
+  45%, 50%, 95% {
+    height: 0%;
+  }
+}
+
+@keyframes sand-flow-bottom {
+  0%, 100% {
+    height: 0%;
+  }
+  45%, 50%, 95% {
+    height: 100%;
   }
 }

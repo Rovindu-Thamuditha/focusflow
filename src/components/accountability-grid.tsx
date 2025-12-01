@@ -40,7 +40,7 @@ export function AccountabilityGrid({ blocks, subjects, onBlockUpdate, viewingDat
       {!isEditable && (
          <p className="text-sm text-yellow-500 mb-4">You can only edit entries from the last 36 hours.</p>
       )}
-      <div className="grid grid-cols-6 md:grid-cols-8 gap-1 sm:gap-2">
+      <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2">
         {blocks.map(block => (
           <TimeBlock
             key={`${format(viewingDate, 'yyyy-MM-dd')}-${block.hour}`}

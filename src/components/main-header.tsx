@@ -8,7 +8,7 @@ import { TotalFocusTime } from "@/components/total-focus-time";
 import { Button } from "@/components/ui/button";
 import { useUser, useAuth } from "@/firebase";
 import { BarChart2 } from 'lucide-react';
-import { FeedbackDialog } from "./feedback-dialog";
+
 
 const ADMIN_EMAIL = 'rovinduthamu@gmail.com';
 
@@ -53,7 +53,6 @@ export function MainHeader({ totalFocusedTime, children }: MainHeaderProps) {
                 <BarChart2 className="h-5 w-5" />
              </Button>
           </Link>
-          <FeedbackDialog />
           <ThemeToggle />
           {user && (
             <Button variant="ghost" size="icon" onClick={handleSignOut} title="Sign Out">

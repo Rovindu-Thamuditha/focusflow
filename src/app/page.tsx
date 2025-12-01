@@ -28,6 +28,8 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
+import { SandTimerLoader } from '@/components/sand-timer-loader';
+import { FeedbackDialog } from '@/components/feedback-dialog';
 
 const createInitialState = (sleepHours: number[], date: Date): TimeBlockState[] => {
   const dateString = format(date, 'yyyy-MM-dd');
@@ -215,9 +217,9 @@ export default function Home() {
     
         // This is the critical part: update the timeBlocks state based on the new settings.
         setTimeBlocks(currentBlocks => {
-            const updatedBlocks = currentBlocks.map(block => {
+            return currentBlocks.map(block => {
                 const isNowSleep = newSleepHours.includes(block.hour);
-                const wasSleep = block.subject === 'sleep';
+                const wasSleep = sleepHours.includes(block.hour);
 
                 // Case 1: Hour is newly marked as sleep
                 if (isNowSleep) {
@@ -231,8 +233,7 @@ export default function Home() {
 
                 // Case 3: No change related to sleep status
                 return block;
-            });
-            return updatedBlocks.sort((a, b) => a.hour - b.hour);
+            }).sort((a, b) => a.hour - b.hour);
         });
     };
 
@@ -264,8 +265,9 @@ export default function Home() {
 
   if (isUserLoading || !isClient || !userDataLoaded) {
     return (
-        <div className="flex items-center justify-center min-h-screen">
-          <div className="text-xl">Loading GridFocus...</div>
+        <div className="flex flex-col items-center justify-center min-h-screen">
+          <SandTimerLoader />
+          <p className="mt-4 text-lg">Loading GridFocus...</p>
         </div>
     );
   }
@@ -294,25 +296,6 @@ export default function Home() {
                 </Button>
               </div>
             </div>
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button variant="destructive" className="w-full sm:w-auto">
-                  <RotateCcw className="w-4 h-4 mr-2" /> Reset Day
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    This will reset all progress for {format(currentDate, 'PPP')}. This action cannot be undone.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction onClick={handleResetDay}>Continue</AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
         </div>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8 items-start">
           <Card className="lg:col-span-2">
@@ -335,7 +318,31 @@ export default function Home() {
               />
           </div>
         </div>
+         <div className="mt-8 flex justify-center">
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="destructive" className="w-full sm:w-auto">
+                  <RotateCcw className="w-4 h-4 mr-2" /> Reset Day
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This will reset all progress for {format(currentDate, 'PPP')}. This action cannot be undone.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleResetDay}>Continue</AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+        </div>
       </main>
+
+      <FeedbackDialog />
+
       <footer className="text-center py-4 text-muted-foreground text-sm">
         <p>Made with ♥ for focused minds by <a href="https://github.com/Rovindu-Thamuditha/" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Tipiz</a></p>
       </footer>
