@@ -39,7 +39,7 @@ const createInitialState = (sleepHours: number[], date: Date): TimeBlockState[] 
     return {
       hour: hour,
       subject: isSleep ? 'sleep' : 'idle',
-      duration: isSleep ? 60 : 0,
+      duration: 0,
       date: dateString,
     };
   }).sort((a, b) => a.hour - b.hour);
@@ -88,6 +88,7 @@ export default function Home() {
         setTimeBlocks(createInitialState(sleepHours, dateToLoad));
       }
   
+      // Challenge solved state only matters for today
       if (isToday(dateToLoad)) {
         const userDoc = await getDoc(userDocRef!);
         if (userDoc.exists()) {
@@ -95,7 +96,6 @@ export default function Home() {
           setChallengeSolved(data.isChallengeSolved || false);
         }
       } else {
-        // When viewing a past day, the challenge is always unsolved in the UI context
         setChallengeSolved(false);
       }
   
@@ -138,7 +138,6 @@ export default function Home() {
     }
   }, [user, userDocRef, userDataLoaded, currentDate]);
   
-  // This effect now correctly loads data for the selected day
   useEffect(() => {
     if (userDataLoaded) {
       loadDayData(currentDate);
@@ -148,7 +147,6 @@ export default function Home() {
 
   useEffect(() => {
     const saveData = () => {
-        // Prevent saving until everything is loaded and ready
         if (!isClient || !userDataLoaded || !user || timeBlocks.length !== 24 || !userDocRef ) return;
         
         const dataToSave = {
@@ -169,14 +167,12 @@ export default function Home() {
           )
         });
 
-        // Only save grid data for days within the last 36 hours
         const isEditable = differenceInHours(new Date(), currentDate) <= 36;
         if(!isEditable) return;
 
         const batch = writeBatch(firestore);
         
         const dateString = format(currentDate, 'yyyy-MM-dd');
-        // This query finds the documents to delete for the current day
         const todayBlocksQuery = query(collection(firestore, 'users', user.uid, 'time_blocks'), where('date', '==', dateString));
             
         getDocs(todayBlocksQuery).then(oldBlocksSnapshot => {
@@ -184,7 +180,6 @@ export default function Home() {
               batch.delete(doc.ref);
           });
 
-          // After deleting, add the current 24 blocks to the batch
           timeBlocks.forEach(block => {
               const blockWithDateString = { ...block, date: dateString };
               const blockRef = doc(collection(firestore, 'users', user.uid, 'time_blocks'));
@@ -196,7 +191,7 @@ export default function Home() {
               'permission-error',
               new FirestorePermissionError({
                 path: `users/${user.uid}/time_blocks`,
-                operation: 'write', // Simplified operation for batch
+                operation: 'write', 
                 requestResourceData: timeBlocks
               })
             )
@@ -223,24 +218,24 @@ export default function Home() {
         setSubjects(newSubjects);
         setLanguage(newLanguage);
     
-        // Correctly rebuild the state from scratch based on new settings.
-        // This was the source of the duplication bug.
-        setTimeBlocks(currentBlocks => {
-            const newInitialState = createInitialState(newSleepHours, currentDate);
-            
-            // Preserve the user's focused work from the old blocks
-            const finalBlocks = newInitialState.map(newBlock => {
-                const oldBlock = currentBlocks.find(b => b.hour === newBlock.hour);
-                // If the new block is idle (not a new sleep block), check if there was old work to preserve
-                if (newBlock.subject === 'idle' && oldBlock && oldBlock.subject !== 'idle' && oldBlock.subject !== 'sleep') {
-                    return { ...oldBlock, date: format(currentDate, 'yyyy-MM-dd') };
-                }
-                // Otherwise, use the new block (which is either a sleep block or a fresh idle block)
-                return newBlock;
-            });
+        const oldBlocks = [...timeBlocks];
+        const newBlocks = createInitialState(newSleepHours, currentDate);
 
-            return finalBlocks.sort((a, b) => a.hour - b.hour);
+        // A simple loop to preserve work from the old blocks onto the new ones.
+        // This is much safer than complex map/filter chains.
+        const finalBlocks = newBlocks.map(newBlock => {
+            const oldBlock = oldBlocks.find(b => b.hour === newBlock.hour);
+            // If the block is now sleep, it should be sleep. Otherwise, preserve old work.
+            if (newBlock.subject === 'sleep') {
+                return newBlock;
+            }
+            if (oldBlock && oldBlock.subject !== 'idle' && oldBlock.subject !== 'sleep') {
+                return oldBlock;
+            }
+            return newBlock;
         });
+
+        setTimeBlocks(finalBlocks.sort((a,b) => a.hour - b.hour));
     };
 
   const handleResetDay = () => {
@@ -334,9 +329,7 @@ export default function Home() {
               <AlertDialogContent>
                 <AlertDialogHeader>
                   <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    This will reset all progress for {format(currentDate, 'PPP')}. This action cannot be undone.
-                  </AlertDialogDescription>
+                  <AlertDialogDescription>This will reset all progress for {format(currentDate, 'PPP')}. This action cannot be undone.</AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
                   <AlertDialogCancel>Cancel</AlertDialogCancel>
