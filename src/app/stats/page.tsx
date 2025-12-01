@@ -12,6 +12,7 @@ import { collection, query, where, getDocs, doc, getDoc, orderBy } from 'firebas
 import { subDays, startOfDay, format, parseISO, endOfDay, eachDayOfInterval } from 'date-fns';
 import type { TimeBlockState, Subject } from '@/lib/types';
 import { defaultSubjects } from '@/lib/subjects';
+import { cn } from '@/lib/utils';
 
 const CustomTooltip = ({ active, payload, label, subjects }: any) => {
   if (active && payload && payload.length) {
@@ -183,7 +184,7 @@ export default function StatsPage() {
             </CardHeader>
             <CardContent>
                 {chartData.length > 0 ? (
-                    <ResponsiveContainer width="100%" height={400}>
+                    <ResponsiveContainer width="100%" height={400} className={cn(chartData.length > 0 && "glow-primary")}>
                         <BarChart data={chartData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
                             <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.2} />
                             <XAxis dataKey="date" tickLine={false} axisLine={false} />

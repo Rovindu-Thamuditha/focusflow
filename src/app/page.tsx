@@ -53,13 +53,14 @@ export default function Home() {
   const [currentDate, setCurrentDate] = useState(startOfDay(new Date()));
   const [liveTime, setLiveTime] = useState(new Date());
   const [timeBlocks, setTimeBlocks] = useState<TimeBlockState[]>(createInitialState([], new Date()));
-  const [isChallengeSolved, setChallengeSolved] = useState(false);
+  const [solvedChallenges, setSolvedChallenges] = useState<boolean[]>(Array(dailyQuestions.length).fill(false));
   const [isClient, setIsClient] = useState(false);
   const [sleepHours, setSleepHours] = useState<number[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>(defaultSubjects);
   const [language, setLanguage] = useState<'english' | 'sinhala'>('english');
   const [userDataLoaded, setUserDataLoaded] = useState(false);
   const [userName, setUserName] = useState('');
+  const [questionIndex, setQuestionIndex] = useState(0);
   
   const userDocRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
 
@@ -103,15 +104,23 @@ export default function Home() {
         setTimeBlocks(createInitialState(sleepHours, dateToLoad));
       }
   
+      // Load challenge state
       if (isToday(dateToLoad)) {
         const userDoc = await getDoc(userDocRef!);
         if (userDoc.exists()) {
-          setChallengeSolved(userDoc.data().isChallengeSolved || false);
+           const todayString = format(new Date(), 'yyyy-MM-dd');
+           const dailyData = userDoc.data().daily?.[todayString];
+           setSolvedChallenges(dailyData?.solvedChallenges || Array(dailyQuestions.length).fill(false));
+           setQuestionIndex(dailyData?.questionIndex || 0);
         } else {
-          setChallengeSolved(false);
+           setSolvedChallenges(Array(dailyQuestions.length).fill(false));
+           setQuestionIndex(0);
         }
       } else {
-        setChallengeSolved(false);
+        // For past or future days, we can decide what to show.
+        // For simplicity, let's reset or load historical state if we were to implement that.
+        setSolvedChallenges(Array(dailyQuestions.length).fill(false));
+        setQuestionIndex(0);
       }
   
     } catch (e) {
@@ -159,11 +168,20 @@ export default function Home() {
         if (!firestore) return;
         const batch = writeBatch(firestore);
         
-        const settingsData = {
+        const todayString = format(new Date(), 'yyyy-MM-dd');
+        const settingsData:any = {
             username: userName,
             settings: { sleepHours, subjects, language },
-             ...(isToday(currentDate) && {isChallengeSolved})
         };
+        if(isToday(currentDate)){
+            settingsData.daily = {
+                [todayString]: {
+                    solvedChallenges: solvedChallenges,
+                    questionIndex: questionIndex,
+                }
+            }
+        }
+
         batch.set(userDocRef, settingsData, { merge: true });
 
         const isEditable = differenceInHours(new Date(), currentDate) <= 36;
@@ -186,7 +204,7 @@ export default function Home() {
 
     return () => clearTimeout(handler);
 
-  }, [timeBlocks, isChallengeSolved, sleepHours, subjects, language, userName, currentDate, user, userDocRef, firestore, isClient, userDataLoaded]);
+  }, [timeBlocks, solvedChallenges, questionIndex, sleepHours, subjects, language, userName, currentDate, user, userDocRef, firestore, isClient, userDataLoaded]);
   
   const handleBlockUpdate = (hour: number, subject: string, duration: number) => {
     setTimeBlocks(currentBlocks =>
@@ -231,6 +249,12 @@ export default function Home() {
     setCurrentDate(newDate);
   };
 
+  const handleSolveChange = (solved: boolean) => {
+    const newSolvedChallenges = [...solvedChallenges];
+    newSolvedChallenges[questionIndex] = solved;
+    setSolvedChallenges(newSolvedChallenges);
+  };
+
   const totalFocusedTime = useMemo(() => {
     if (!timeBlocks) return 0;
     return timeBlocks.reduce((total, block) => {
@@ -244,8 +268,10 @@ export default function Home() {
   const currentQuestion = useMemo(() => {
     if (!isClient) return dailyQuestions[0];
     const dayIndex = getDayOfYear(new Date());
-    return dailyQuestions[dayIndex % dailyQuestions.length];
-  }, [isClient]);
+    // Use the stored questionIndex for today, otherwise start from 0 for past days
+    const qIndex = isToday(currentDate) ? questionIndex : 0;
+    return dailyQuestions[(dayIndex + qIndex) % dailyQuestions.length];
+  }, [isClient, currentDate, questionIndex]);
 
   if (isUserLoading || !isClient || !userDataLoaded) {
     return (
@@ -296,11 +322,14 @@ export default function Home() {
           </Card>
           <div className="space-y-6">
              <DailyChallenge
-                question={currentQuestion}
-                isSolved={isChallengeSolved}
-                onSolveChange={isToday(currentDate) ? setChallengeSolved : () => {}}
+                question={dailyQuestions[questionIndex]}
+                isSolved={solvedChallenges[questionIndex]}
+                onSolveChange={handleSolveChange}
                 language={language}
                 isToday={isToday(currentDate)}
+                questionIndex={questionIndex}
+                setQuestionIndex={setQuestionIndex}
+                totalQuestions={dailyQuestions.length}
               />
               <TodoList />
           </div>

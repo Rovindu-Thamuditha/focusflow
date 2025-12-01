@@ -36,16 +36,4 @@ export const dailyQuestions: Question[] = [
     question: String.raw`\text{What is the resistance of a wire if a voltage of } 12V \text{ produces a current of } 0.5A?`,
     question_sinhala: String.raw`\text{වෝල්ටීයතාව } 12V \text{ වන විට ධාරාව } 0.5A \text{ නම් කම්බියක ප්‍රතිරෝධය කුමක්ද?}`,
   },
-   {
-    subject: 'Chemistry',
-    topic: 'Gas Laws',
-    question: String.raw`\text{A gas occupies } 2L \text{ at } 1 \, \text{atm}. \text{ What is the volume at } 4 \, \text{atm}, \text{ assuming constant temperature?}`,
-    question_sinhala: String.raw`\text{වායුවක් } 1 \, \text{atm} \text{ පීඩනයේදී } 2L \text{ පරිමාවක් දරයි. උෂ්ණත්වය නියත නම්, } 4 \, \text{atm} \text{ පීඩනයේදී පරිමාව කුමක්ද?}`,
-  },
-  {
-    subject: 'Combined Maths',
-    topic: 'Trigonometry',
-    question: String.raw`\text{Solve for } \theta \text{ in } [0, 2\pi]: 2\cos(\theta) - 1 = 0.`,
-    question_sinhala: String.raw`[0, 2\pi] \text{ පරාසය තුළ } \theta \text{ සඳහා විසඳන්න: } 2\cos(\theta) - 1 = 0.`,
-  }
 ];
