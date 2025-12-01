@@ -189,26 +189,26 @@ export default function Home() {
     );
   };
 
-  const handleSettingsSave = (newSleepHours: number[], newSubjects: Subject[], newLanguage: 'english' | 'sinhala') => {
+  const handleSettingsSave = (
+    newSleepHours: number[], 
+    newSubjects: Subject[], 
+    newLanguage: 'english' | 'sinhala'
+    ) => {
       setSleepHours(newSleepHours);
       setSubjects(newSubjects);
       setLanguage(newLanguage);
   
-      // Re-create the current day's grid state with new sleep hours.
-      // This prevents the duplication bug by ensuring a fresh 24-block array.
       setTimeBlocks(currentBlocks => {
           const newGrid = createInitialState(newSleepHours, currentDate);
           
           return newGrid.map(newBlock => {
               if (newBlock.subject === 'sleep') {
-                  return newBlock; // New sleep hours take precedence.
+                  return newBlock; 
               }
-              // Preserve any work from the old blocks on the new grid.
               const oldBlock = currentBlocks.find(b => b.hour === newBlock.hour);
               if (oldBlock && oldBlock.subject !== 'idle' && oldBlock.subject !== 'sleep') {
                   return oldBlock;
               }
-              // Otherwise, use the new idle block.
               return newBlock;
           });
       });
@@ -326,5 +326,3 @@ export default function Home() {
     </div>
   );
 }
-
-    

@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { Settings, Trash2, PlusCircle, Languages } from 'lucide-react';
+import { Settings, Trash2, PlusCircle, Languages, Sparkles, Waves } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -12,17 +12,27 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { Subject } from '@/lib/types';
 import { ALL_ICONS } from '@/lib/icons';
+import { Switch } from '@/components/ui/switch';
 
 interface SettingsDialogProps {
   subjects: Subject[];
   sleepHours: number[];
   language: 'english' | 'sinhala';
-  onSave: (sleepHours: number[], subjects: Subject[], language: 'english' | 'sinhala') => void;
+  onSave: (
+    sleepHours: number[], 
+    subjects: Subject[], 
+    language: 'english' | 'sinhala'
+  ) => void;
 }
 
 const allHours = Array.from({ length: 24 }, (_, i) => i);
 
-export function SettingsDialog({ subjects, sleepHours, language, onSave }: SettingsDialogProps) {
+export function SettingsDialog({ 
+  subjects, 
+  sleepHours, 
+  language, 
+  onSave,
+}: SettingsDialogProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [localSleepHours, setLocalSleepHours] = useState<number[]>(sleepHours);
   const [localSubjects, setLocalSubjects] = useState<Subject[]>(subjects);
@@ -38,7 +48,11 @@ export function SettingsDialog({ subjects, sleepHours, language, onSave }: Setti
   }, [isOpen, sleepHours, subjects, language]);
 
   const handleSave = () => {
-    onSave(localSleepHours, localSubjects.filter(s => s.id !== 'idle' && s.id !== 'sleep'), localLanguage);
+    onSave(
+      localSleepHours, 
+      localSubjects.filter(s => s.id !== 'idle' && s.id !== 'sleep'), 
+      localLanguage,
+    );
     setIsOpen(false);
   };
   

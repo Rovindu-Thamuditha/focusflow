@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from 'react';
@@ -13,9 +14,10 @@ interface LogTimeDialogProps {
   subjects: Subject[];
   onSave: (subject: string, duration: number) => void;
   onClose: () => void;
+  onClear: () => void;
 }
 
-export function LogTimeDialog({ block, subjects, onSave, onClose }: LogTimeDialogProps) {
+export function LogTimeDialog({ block, subjects, onSave, onClose, onClear }: LogTimeDialogProps) {
   const [subject, setSubject] = useState(block.subject);
   const [duration, setDuration] = useState(block.duration);
 
@@ -68,6 +70,7 @@ export function LogTimeDialog({ block, subjects, onSave, onClose }: LogTimeDialo
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button variant="destructive" onClick={onClear}>Clear</Button>
           <Button onClick={handleSave}>Save</Button>
         </DialogFooter>
       </DialogContent>

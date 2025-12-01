@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { TimeBlock } from './time-block';
 import { LogTimeDialog } from './log-time-dialog';
 import type { TimeBlockState, Subject } from '@/lib/types';
-import { differenceInHours, format } from 'date-fns';
+import { differenceInHours, format, isToday } from 'date-fns';
 
 interface AccountabilityGridProps {
   blocks: TimeBlockState[];
@@ -17,10 +17,15 @@ interface AccountabilityGridProps {
 export function AccountabilityGrid({ blocks, subjects, onBlockUpdate, viewingDate }: AccountabilityGridProps) {
   const [selectedBlock, setSelectedBlock] = useState<TimeBlockState | null>(null);
 
-  const isEditable = differenceInHours(new Date(), viewingDate) <= 36;
+  const isEditableDate = differenceInHours(new Date(), viewingDate) <= 36;
+  const isViewingToday = isToday(viewingDate);
+  const currentHour = new Date().getHours();
 
   const handleBlockClick = (hour: number) => {
-    if (!isEditable) return;
+    // A block is editable if the date is within the editable window, AND (it's not today OR it's a past/current hour)
+    const canEditBlock = isEditableDate && (!isViewingToday || hour <= currentHour);
+    if (!canEditBlock) return;
+    
     const block = blocks.find(b => b.hour === hour);
     if (block && block.subject !== 'sleep') {
       setSelectedBlock(block);
@@ -33,6 +38,13 @@ export function AccountabilityGrid({ blocks, subjects, onBlockUpdate, viewingDat
       setSelectedBlock(null);
     }
   };
+  
+  const handleClear = () => {
+    if (selectedBlock) {
+      onBlockUpdate(selectedBlock.hour, 'idle', 0);
+      setSelectedBlock(null);
+    }
+  };
 
   // Ensure we only render 24 blocks max, as a safeguard.
   const blocksToRender = blocks.slice(0, 24);
@@ -40,21 +52,24 @@ export function AccountabilityGrid({ blocks, subjects, onBlockUpdate, viewingDat
   return (
     <div>
       <h2 className="text-2xl font-bold mb-4 text-primary">24-Hour Focus Grid</h2>
-      {!isEditable && (
+      {!isEditableDate && (
          <p className="text-sm text-yellow-500 mb-4">You can only edit entries from the last 36 hours.</p>
       )}
       <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2">
-        {blocksToRender.map(block => (
-          <TimeBlock
-            key={`${format(viewingDate, 'yyyy-MM-dd')}-${block.hour}`}
-            hour={block.hour}
-            subjectId={block.subject}
-            duration={block.duration}
-            subjects={subjects}
-            onClick={() => handleBlockClick(block.hour)}
-            isEditable={isEditable}
-          />
-        ))}
+        {blocksToRender.map(block => {
+            const isFutureBlock = isViewingToday && block.hour > currentHour;
+            return (
+              <TimeBlock
+                key={`${format(viewingDate, 'yyyy-MM-dd')}-${block.hour}`}
+                hour={block.hour}
+                subjectId={block.subject}
+                duration={block.duration}
+                subjects={subjects}
+                onClick={() => handleBlockClick(block.hour)}
+                isEditable={isEditableDate && !isFutureBlock}
+              />
+            );
+        })}
       </div>
       {selectedBlock && (
         <LogTimeDialog
@@ -62,10 +77,10 @@ export function AccountabilityGrid({ blocks, subjects, onBlockUpdate, viewingDat
           subjects={subjects}
           onSave={handleDialogSave}
           onClose={() => setSelectedBlock(null)}
+          onClear={handleClear}
         />
       )}
     </div>
   );
 }
 
-    
