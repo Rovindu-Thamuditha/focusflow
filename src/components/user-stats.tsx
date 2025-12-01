@@ -169,8 +169,8 @@ export function UserStats({ userId }: UserStatsProps) {
         </CardHeader>
         <CardContent>
             {chartData.length > 0 && timeBlocks.length > 0 ? (
-                <ResponsiveContainer width="100%" height={400} className={cn(chartData.length > 0 && "glow-primary")}>
-                    <BarChart data={chartData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
+                <ResponsiveContainer width="100%" height={400}>
+                    <BarChart data={chartData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }} className={cn(chartData.length > 0 && "glow-primary")}>
                         <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.2} />
                         <XAxis dataKey="date" tickLine={false} axisLine={false} />
                         <YAxis tickLine={false} axisLine={false} label={{ value: 'Hours', angle: -90, position: 'insideLeft', offset: 10 }} />
@@ -184,7 +184,7 @@ export function UserStats({ userId }: UserStatsProps) {
                                 fill={subject.color} 
                                 name={subject.name} 
                                 radius={index === subjectsToRender.length - 1 ? [4, 4, 0, 0] : 0}
-                                maxBarSize={60}
+                                maxBarSize={40}
                             />
                         ))}
                     </BarChart>
