@@ -24,7 +24,6 @@ const ICONS: { [key: string]: React.FC<React.SVGProps<SVGSVGElement>> } = {
   Book,
   Briefcase,
   Sparkles,
-  Bed,
   Moon,
 };
 
@@ -49,7 +48,7 @@ export function TimeBlock({ hour, subjectId, duration, subjects, onClick, isEdit
     <button
       onClick={onClick}
       className={cn(
-        "relative aspect-square rounded-lg flex flex-col items-center justify-center p-1 transition-all duration-300 ease-in-out transform",
+        "relative aspect-square rounded-lg flex flex-col items-center justify-center p-2 transition-all duration-300 ease-in-out transform",
         isEditable && !isSleep && "hover:scale-105",
         isEditable && !isSleep && "focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-background focus:ring-primary",
         isSleep ? "bg-gray-800 text-gray-500" : "text-white",
@@ -58,15 +57,14 @@ export function TimeBlock({ hour, subjectId, duration, subjects, onClick, isEdit
         isSleep && 'opacity-70'
       )}
       style={{ 
-        backgroundColor: isSleep ? undefined : subject.color,
-        '--glow-color': subject.color 
+        backgroundColor: subject.color,
       } as React.CSSProperties}
       aria-label={`Hour ${hour}:00, current state: ${subject.name}. Click to change.`}
       title={`${subject.name} - ${duration} mins`}
       disabled={!isEditable || isSleep}
     >
-      <Icon className="w-5 h-5 sm:w-6 sm:h-6" />
-      <span className="text-[10px] sm:text-xs font-mono mt-1">{formattedHour}</span>
+      <Icon className="w-6 h-6 sm:w-7 sm:h-7" />
+      <span className="text-xs sm:text-sm font-mono mt-1">{formattedHour}</span>
        {duration > 0 && subject.id !== 'idle' && subject.id !== 'sleep' && (
         <div 
             className={cn(
