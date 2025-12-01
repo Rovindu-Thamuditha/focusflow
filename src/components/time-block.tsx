@@ -31,7 +31,7 @@ export function TimeBlock({ hour, subjectId, duration, subjects, onClick, isEdit
   const isSleep = subjectId === 'sleep';
 
   const subject = isSleep 
-    ? { id: 'sleep', name: 'Sleep', icon: 'Moon', color: 'hsl(240 5.9% 10%)' }
+    ? { id: 'sleep', name: 'Sleep', icon: 'Moon', color: 'hsl(210 8% 25%)' }
     : subjects.find(s => s.id === subjectId) || { id: 'idle', name: 'Idle', icon: 'Sparkles', color: 'hsl(var(--muted))' };
   
   const formattedHour = (hour % 12 === 0 ? 12 : hour % 12) + (hour < 12 || hour === 24 ? ' AM' : ' PM');
@@ -44,26 +44,29 @@ export function TimeBlock({ hour, subjectId, duration, subjects, onClick, isEdit
 
   const Icon = ICONS[subject.icon] || Sparkles;
 
+  const sleepStyles = "dark:bg-gray-800 dark:text-gray-500 bg-slate-700 text-slate-300";
+  const idleStyles = "dark:text-gray-500 text-slate-500";
+
   return (
     <button
       onClick={onClick}
       className={cn(
         "relative aspect-square rounded-lg flex flex-col items-center justify-center p-2 transition-all duration-300 ease-in-out transform",
+        "text-white",
         isEditable && !isSleep && "hover:scale-105",
         isEditable && !isSleep && "focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-background focus:ring-primary",
-        isSleep ? "bg-gray-800 text-gray-500" : "text-white",
-        subject.id !== 'idle' && !isSleep && getBrightness(),
+        isSleep ? sleepStyles : (subject.id === 'idle' ? idleStyles : getBrightness()),
         (!isEditable || isSleep) && 'cursor-not-allowed',
         isSleep && 'opacity-70'
       )}
       style={{ 
-        backgroundColor: subject.color,
+        backgroundColor: subject.id !== 'idle' ? subject.color : undefined,
       } as React.CSSProperties}
       aria-label={`Hour ${hour}:00, current state: ${subject.name}. Click to change.`}
       title={`${subject.name} - ${duration} mins`}
       disabled={!isEditable || isSleep}
     >
-      <Icon className="w-6 h-6 sm:w-7 sm:h-7" />
+      <Icon className="w-5 h-5 sm:w-7 sm:h-7" />
       <span className="text-xs sm:text-sm font-mono mt-1">{formattedHour}</span>
        {duration > 0 && subject.id !== 'idle' && subject.id !== 'sleep' && (
         <div 

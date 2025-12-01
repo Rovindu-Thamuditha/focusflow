@@ -281,14 +281,14 @@ export default function Home() {
           />
       </MainHeader>
       <main className="flex-grow container mx-auto p-4 sm:p-6 md:p-8">
-        <div className="flex justify-between items-center mb-6">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
             <div>
-              {userName && <h2 className="text-3xl font-bold text-foreground">Welcome back, {userName}!</h2>}
+              {userName && <h2 className="text-2xl sm:text-3xl font-bold text-foreground">Welcome back, {userName}!</h2>}
               <div className="flex items-center gap-2 mt-2">
                 <Button variant="outline" size="icon" onClick={() => changeDay(-1)}>
                     <ChevronLeft className="w-4 h-4" />
                 </Button>
-                <h3 className="text-xl font-semibold text-center w-64">{format(currentDate, 'PPP')}</h3>
+                <h3 className="text-lg sm:text-xl font-semibold text-center w-48 sm:w-64">{format(currentDate, 'PPP')}</h3>
                 <Button variant="outline" size="icon" onClick={() => changeDay(1)} disabled={isToday(currentDate)}>
                     <ChevronRight className="w-4 h-4" />
                 </Button>
@@ -296,7 +296,7 @@ export default function Home() {
             </div>
             <AlertDialog>
               <AlertDialogTrigger asChild>
-                <Button variant="destructive">
+                <Button variant="destructive" className="w-full sm:w-auto">
                   <RotateCcw className="w-4 h-4 mr-2" /> Reset Day
                 </Button>
               </AlertDialogTrigger>
