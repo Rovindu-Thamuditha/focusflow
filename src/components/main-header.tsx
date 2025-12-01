@@ -1,14 +1,19 @@
 
-import { LogOut, Shield } from "lucide-react";
+import { LogOut, Shield, MoreVertical, BarChart2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Icons } from "@/components/icons";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { TotalFocusTime } from "@/components/total-focus-time";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { useUser, useAuth } from "@/firebase";
-import { BarChart2 } from 'lucide-react';
-
 
 const ADMIN_EMAIL = 'rovinduthamu@gmail.com';
 
@@ -34,31 +39,72 @@ export function MainHeader({ totalFocusedTime, children }: MainHeaderProps) {
       <div className="container flex h-16 items-center space-x-4 sm:justify-between sm:space-x-0">
         <div className="flex gap-6 items-center">
           <Link href="/" className="flex items-center gap-2">
-            <Icons.logo className="h-6 w-6 text-primary ml-2" />
-            <h1 className="text-2xl font-bold text-primary">GridFocus</h1>
+            <Icons.logo className="h-6 w-6 text-primary" />
+            <h1 className="text-xl sm:text-2xl font-bold text-primary">GridFocus</h1>
           </Link>
         </div>
         <div className="flex flex-1 items-center justify-end space-x-2">
-          <TotalFocusTime totalHours={totalFocusedTime} />
-          {children}
-          {user && user.email === ADMIN_EMAIL && (
-             <Link href="/admin" passHref>
-               <Button variant="ghost" size="icon" title="Admin Panel">
-                  <Shield className="h-5 w-5" />
-               </Button>
-            </Link>
-          )}
-          <Link href="/stats" passHref>
-             <Button variant="ghost" size="icon" title="Statistics">
-                <BarChart2 className="h-5 w-5" />
-             </Button>
-          </Link>
-          <ThemeToggle />
-          {user && (
-            <Button variant="ghost" size="icon" onClick={handleSignOut} title="Sign Out">
-              <LogOut className="h-5 w-5" />
-            </Button>
-          )}
+          <div className="hidden sm:flex items-center space-x-2">
+              <TotalFocusTime totalHours={totalFocusedTime} />
+              {children}
+              {user && user.email === ADMIN_EMAIL && (
+                <Link href="/admin" passHref>
+                  <Button variant="ghost" size="icon" title="Admin Panel">
+                      <Shield className="h-5 w-5" />
+                  </Button>
+                </Link>
+              )}
+              <Link href="/stats" passHref>
+                <Button variant="ghost" size="icon" title="Statistics">
+                    <BarChart2 className="h-5 w-5" />
+                </Button>
+              </Link>
+              <ThemeToggle />
+              {user && (
+                <Button variant="ghost" size="icon" onClick={handleSignOut} title="Sign Out">
+                  <LogOut className="h-5 w-5" />
+                </Button>
+              )}
+          </div>
+          <div className="sm:hidden">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon">
+                  <MoreVertical className="h-5 w-5" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {user && user.email === ADMIN_EMAIL && (
+                   <Link href="/admin" passHref>
+                    <DropdownMenuItem>
+                      <Shield className="mr-2 h-4 w-4" />
+                      <span>Admin</span>
+                    </DropdownMenuItem>
+                   </Link>
+                )}
+                 <Link href="/stats" passHref>
+                  <DropdownMenuItem>
+                    <BarChart2 className="mr-2 h-4 w-4" />
+                    <span>Stats</span>
+                  </DropdownMenuItem>
+                 </Link>
+                <DropdownMenuSeparator />
+                <div className="px-2 py-1.5">
+                    {children}
+                </div>
+                <div className="px-2 py-1.5">
+                   <ThemeToggle />
+                </div>
+                <DropdownMenuSeparator />
+                 {user && (
+                  <DropdownMenuItem onClick={handleSignOut}>
+                    <LogOut className="mr-2 h-4 w-4" />
+                    <span>Sign Out</span>
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
       </div>
     </header>
