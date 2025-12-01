@@ -49,7 +49,7 @@ export default function Home() {
   const firestore = useFirestore();
   const router = useRouter();
   const [currentDate, setCurrentDate] = useState(startOfDay(new Date()));
-  const [timeBlocks, setTimeBlocks] = useState<TimeBlockState[]>([]);
+  const [timeBlocks, setTimeBlocks] = useState<TimeBlockState[]>(createInitialState([], new Date()));
   const [isChallengeSolved, setChallengeSolved] = useState(false);
   const [isClient, setIsClient] = useState(false);
   const [sleepHours, setSleepHours] = useState<number[]>([]);
@@ -80,25 +80,30 @@ export default function Home() {
       const querySnapshot = await getDocs(timeBlockQuery);
   
       if (!querySnapshot.empty) {
-        const blocks = querySnapshot.docs.map(d => d.data() as TimeBlockState);
-        setTimeBlocks(blocks.sort((a, b) => a.hour - b.hour));
+        const blocksFromDb = querySnapshot.docs.map(d => d.data() as TimeBlockState);
+        // Normalize data to ensure exactly 24 blocks
+        const normalizedBlocks = Array.from({ length: 24 }, (_, i) => {
+            const foundBlock = blocksFromDb.find(b => b.hour === i);
+            if (foundBlock) return foundBlock;
+            // If a block is missing from DB, create a default one
+            const isSleep = sleepHours.includes(i);
+            return { hour: i, subject: isSleep ? 'sleep' : 'idle', duration: 0, date: dateString };
+        });
+        setTimeBlocks(normalizedBlocks.sort((a, b) => a.hour - b.hour));
+
       } else {
-        // When no data exists for the selected day, create a fresh slate.
-        // This uses the already-loaded sleepHours from user settings.
+        // No data for this day, create a fresh grid
         setTimeBlocks(createInitialState(sleepHours, dateToLoad));
       }
   
-      // Challenge solved state only matters for today
       if (isToday(dateToLoad)) {
         const userDoc = await getDoc(userDocRef!);
         if (userDoc.exists()) {
-          const data = userDoc.data();
-          setChallengeSolved(data.isChallengeSolved || false);
+          setChallengeSolved(userDoc.data().isChallengeSolved || false);
         } else {
           setChallengeSolved(false);
         }
       } else {
-        // Not today, so challenge is not solved for this view
         setChallengeSolved(false);
       }
   
@@ -107,7 +112,6 @@ export default function Home() {
     }
   }, [user, firestore, userDocRef, sleepHours, userDataLoaded]);
 
-  // Effect for initial user data load
   useEffect(() => {
     if (user && userDocRef && !userDataLoaded) {
       const loadInitialUserData = async () => {
@@ -123,15 +127,10 @@ export default function Home() {
             setLanguage(data.settings?.language || 'english');
           } else {
              setUserName(user.displayName || '');
-             // Leave other settings as default for a new user
           }
         } catch (e) {
             console.error("Error loading user data", e);
-            const permissionError = new FirestorePermissionError({
-              path: userDocRef.path,
-              operation: 'get',
-            });
-            errorEmitter.emit('permission-error', permissionError);
+            errorEmitter.emit('permission-error', new FirestorePermissionError({ path: userDocRef.path, operation: 'get' }));
         } finally {
             setUserDataLoaded(true); 
         }
@@ -140,23 +139,19 @@ export default function Home() {
     }
   }, [user, userDocRef, userDataLoaded]);
   
-  // Effect to load data for the current date once user data is loaded
   useEffect(() => {
     if (userDataLoaded) {
       loadDayData(currentDate);
     }
-    // This should run when the date changes or when user data is first loaded.
   }, [currentDate, userDataLoaded, loadDayData]);
   
-  // Consolidated effect for saving all data to Firestore
   useEffect(() => {
-    // Don't save anything until the initial data load is complete.
     if (!isClient || !userDataLoaded || !user || !userDocRef ) return;
 
     const handler = setTimeout(() => {
+        if (!firestore) return;
         const batch = writeBatch(firestore);
         
-        // 1. Save user settings (username, language, subjects, sleepHours)
         const settingsData = {
             username: userName,
             settings: { sleepHours, subjects, language },
@@ -164,37 +159,23 @@ export default function Home() {
         };
         batch.set(userDocRef, settingsData, { merge: true });
 
-        // 2. Save time blocks for the current day
-        // Only allow edits for the last 36 hours for performance/security
         const isEditable = differenceInHours(new Date(), currentDate) <= 36;
         if (isEditable && timeBlocks.length === 24) {
             const dateString = format(currentDate, 'yyyy-MM-dd');
 
-            // This is a "blind write" - it doesn't query first.
-            // It just creates/overwrites the blocks for the current date.
             timeBlocks.forEach(block => {
                 const blockWithDate = { ...block, date: dateString };
-                // We create a predictable doc ID to ensure we are overwriting.
                 const blockDocRef = doc(firestore, 'users', user.uid, 'time_blocks', `${dateString}_${block.hour}`);
                 batch.set(blockDocRef, blockWithDate);
             });
         }
         
-        // Commit all batched writes
         batch.commit().catch(error => {
           console.error("Error saving data batch:", error);
-          // Emitting a generic error as this could be settings or time_blocks write failing
-          errorEmitter.emit(
-            'permission-error',
-            new FirestorePermissionError({
-              path: `users/${user.uid}`,
-              operation: 'write', 
-              requestResourceData: { settings: settingsData, timeBlocks }
-            })
-          )
+          errorEmitter.emit('permission-error', new FirestorePermissionError({ path: `users/${user.uid}`, operation: 'write', requestResourceData: { settings: settingsData, timeBlocks } }));
         });
 
-    }, 2000); // Debounce saves by 2 seconds
+    }, 2000);
 
     return () => clearTimeout(handler);
 
@@ -213,25 +194,23 @@ export default function Home() {
       setSubjects(newSubjects);
       setLanguage(newLanguage);
   
-      // After saving settings, rebuild the current day's grid state
-      // This is the key part to prevent duplication.
+      // Re-create the current day's grid state with new sleep hours.
+      // This prevents the duplication bug by ensuring a fresh 24-block array.
       setTimeBlocks(currentBlocks => {
-          // Start with a fresh grid based on new sleep hours
           const newGrid = createInitialState(newSleepHours, currentDate);
           
-          // Re-apply any existing work from the *current* blocks onto the new grid
           return newGrid.map(newBlock => {
               if (newBlock.subject === 'sleep') {
-                  return newBlock; // New sleep hours take precedence
+                  return newBlock; // New sleep hours take precedence.
               }
+              // Preserve any work from the old blocks on the new grid.
               const oldBlock = currentBlocks.find(b => b.hour === newBlock.hour);
-              // If there was an old block that was not idle/sleep, preserve its state
               if (oldBlock && oldBlock.subject !== 'idle' && oldBlock.subject !== 'sleep') {
                   return oldBlock;
               }
-              // Otherwise, use the new idle block
+              // Otherwise, use the new idle block.
               return newBlock;
-          }).sort((a, b) => a.hour - b.hour);
+          });
       });
   };
 
@@ -326,7 +305,9 @@ export default function Home() {
               <AlertDialogContent>
                 <AlertDialogHeader>
                   <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                  <AlertDialogDescription>This will reset all progress for {format(currentDate, 'PPP')}. This action cannot be undone.</AlertDialogDescription>
+                  <AlertDialogDescription>
+                    This will reset all progress for {format(currentDate, 'PPP')}. This action cannot be undone.
+                  </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
                   <AlertDialogCancel>Cancel</AlertDialogCancel>
@@ -345,3 +326,5 @@ export default function Home() {
     </div>
   );
 }
+
+    

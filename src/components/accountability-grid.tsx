@@ -34,6 +34,9 @@ export function AccountabilityGrid({ blocks, subjects, onBlockUpdate, viewingDat
     }
   };
 
+  // Ensure we only render 24 blocks max, as a safeguard.
+  const blocksToRender = blocks.slice(0, 24);
+
   return (
     <div>
       <h2 className="text-2xl font-bold mb-4 text-primary">24-Hour Focus Grid</h2>
@@ -41,7 +44,7 @@ export function AccountabilityGrid({ blocks, subjects, onBlockUpdate, viewingDat
          <p className="text-sm text-yellow-500 mb-4">You can only edit entries from the last 36 hours.</p>
       )}
       <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2">
-        {blocks.map(block => (
+        {blocksToRender.map(block => (
           <TimeBlock
             key={`${format(viewingDate, 'yyyy-MM-dd')}-${block.hour}`}
             hour={block.hour}
@@ -64,3 +67,5 @@ export function AccountabilityGrid({ blocks, subjects, onBlockUpdate, viewingDat
     </div>
   );
 }
+
+    
