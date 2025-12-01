@@ -12,18 +12,23 @@ interface AccountabilityGridProps {
   subjects: Subject[];
   onBlockUpdate: (hour: number, subject: string, duration: number) => void;
   viewingDate: Date;
+  liveTime: Date;
 }
 
-export function AccountabilityGrid({ blocks, subjects, onBlockUpdate, viewingDate }: AccountabilityGridProps) {
+export function AccountabilityGrid({ blocks, subjects, onBlockUpdate, viewingDate, liveTime }: AccountabilityGridProps) {
   const [selectedBlock, setSelectedBlock] = useState<TimeBlockState | null>(null);
 
   const isEditableDate = differenceInHours(new Date(), viewingDate) <= 36;
   const isViewingToday = isToday(viewingDate);
-  const currentHour = new Date().getHours();
+  const currentHour = liveTime.getHours();
 
   const handleBlockClick = (hour: number) => {
-    const isFutureBlock = isViewingToday && hour > currentHour;
-    if (!isEditableDate || isFutureBlock) return;
+    // A block is considered "in the future" if it's for a later hour today.
+    // The current hour is also not editable until it's over.
+    const isFutureOrCurrentBlock = isViewingToday && hour >= currentHour;
+
+    // A block is editable if the date is within the last 36 hours AND it's not a future/current block.
+    if (!isEditableDate || isFutureOrCurrentBlock) return;
     
     const block = blocks.find(b => b.hour === hour);
     if (block && block.subject !== 'sleep') {
@@ -57,6 +62,7 @@ export function AccountabilityGrid({ blocks, subjects, onBlockUpdate, viewingDat
       <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2">
         {blocksToRender.map(block => {
             const isFutureBlock = isViewingToday && block.hour > currentHour;
+            const isCurrentBlock = isViewingToday && block.hour === currentHour;
             return (
               <TimeBlock
                 key={`${format(viewingDate, 'yyyy-MM-dd')}-${block.hour}`}
@@ -67,6 +73,8 @@ export function AccountabilityGrid({ blocks, subjects, onBlockUpdate, viewingDat
                 onClick={() => handleBlockClick(block.hour)}
                 isEditable={isEditableDate}
                 isFuture={isFutureBlock}
+                isCurrent={isCurrentBlock}
+                liveTime={liveTime}
               />
             );
         })}

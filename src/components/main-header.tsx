@@ -88,9 +88,10 @@ export function MainHeader({ totalFocusedTime, children }: MainHeaderProps) {
                     </DropdownMenuItem>
                    </Link>
                 )}
-                <DropdownMenuItem>
+                {/* This is a bit of a hack to get the settings and time in here */}
+                <div className="flex flex-col items-start p-2 gap-2">
                     {children}
-                </DropdownMenuItem>
+                </div>
                 <DropdownMenuSeparator />
                  {user && (
                   <DropdownMenuItem onClick={handleSignOut}>

@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import { GridFocusLoader } from '@/components/grid-focus-loader';
 import { FeedbackDialog } from '@/components/feedback-dialog';
+import { CurrentTime } from '@/components/current-time';
 
 const createInitialState = (sleepHours: number[], date: Date): TimeBlockState[] => {
   const dateString = format(date, 'yyyy-MM-dd');
@@ -49,6 +50,7 @@ export default function Home() {
   const firestore = useFirestore();
   const router = useRouter();
   const [currentDate, setCurrentDate] = useState(startOfDay(new Date()));
+  const [liveTime, setLiveTime] = useState(new Date());
   const [timeBlocks, setTimeBlocks] = useState<TimeBlockState[]>(createInitialState([], new Date()));
   const [isChallengeSolved, setChallengeSolved] = useState(false);
   const [isClient, setIsClient] = useState(false);
@@ -65,6 +67,10 @@ export default function Home() {
     if (!isUserLoading && !user) {
       router.push('/login');
     }
+    const timer = setInterval(() => {
+      setLiveTime(new Date());
+    }, 1000); // Update every second
+    return () => clearInterval(timer);
   }, [user, isUserLoading, router]);
 
   const loadDayData = useCallback(async (dateToLoad: Date) => {
@@ -252,6 +258,7 @@ export default function Home() {
   return (
     <div className="flex flex-col min-h-screen">
       <MainHeader totalFocusedTime={totalFocusedTime}>
+         <CurrentTime time={liveTime} />
          <SettingsDialog
             subjects={subjects}
             sleepHours={sleepHours}
@@ -282,6 +289,7 @@ export default function Home() {
                 subjects={subjects}
                 onBlockUpdate={handleBlockUpdate}
                 viewingDate={currentDate}
+                liveTime={liveTime}
               />
             </CardContent>
           </Card>
