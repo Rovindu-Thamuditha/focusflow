@@ -66,7 +66,13 @@ export function MainHeader({ totalFocusedTime, children }: MainHeaderProps) {
                 </Button>
               )}
           </div>
-          <div className="sm:hidden">
+          <div className="sm:hidden flex items-center">
+            <Link href="/stats" passHref>
+              <Button variant="ghost" size="icon" title="Statistics">
+                  <BarChart2 className="h-5 w-5" />
+              </Button>
+            </Link>
+            <ThemeToggle />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon">
@@ -82,19 +88,9 @@ export function MainHeader({ totalFocusedTime, children }: MainHeaderProps) {
                     </DropdownMenuItem>
                    </Link>
                 )}
-                 <Link href="/stats" passHref>
-                  <DropdownMenuItem>
-                    <BarChart2 className="mr-2 h-4 w-4" />
-                    <span>Stats</span>
-                  </DropdownMenuItem>
-                 </Link>
-                <DropdownMenuSeparator />
-                <div className="flex items-center justify-between px-2 py-1.5">
-                  <div className="flex-grow">
+                <DropdownMenuItem>
                     {children}
-                  </div>
-                  <ThemeToggle />
-                </div>
+                </DropdownMenuItem>
                 <DropdownMenuSeparator />
                  {user && (
                   <DropdownMenuItem onClick={handleSignOut}>
