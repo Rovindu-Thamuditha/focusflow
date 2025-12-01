@@ -146,6 +146,8 @@ export function UserStats({ userId }: UserStatsProps) {
     );
   }
 
+  const subjectsToRender = subjects.filter(s => s.id !== 'idle' && s.id !== 'sleep');
+
   return (
     <Card className="border-primary/20">
         <CardHeader>
@@ -173,8 +175,16 @@ export function UserStats({ userId }: UserStatsProps) {
                         <YAxis tickLine={false} axisLine={false} label={{ value: 'Hours', angle: -90, position: 'insideLeft', offset: 10 }} />
                         <Tooltip content={<CustomTooltip subjects={subjects} />} cursor={{fill: 'hsl(var(--accent))', fillOpacity: 0.1}} />
                         <Legend iconType="circle" />
-                        {subjects.filter(s => s.id !== 'idle' && s.id !== 'sleep').map(subject => (
-                            <Bar key={subject.id} dataKey={subject.id} stackId="a" fill={subject.color} name={subject.name} radius={[4, 4, 0, 0]} />
+                        {subjectsToRender.map((subject, index) => (
+                            <Bar 
+                                key={subject.id} 
+                                dataKey={subject.id} 
+                                stackId="a" 
+                                fill={subject.color} 
+                                name={subject.name} 
+                                radius={index === subjectsToRender.length - 1 ? [4, 4, 0, 0] : 0}
+                                maxBarSize={60}
+                            />
                         ))}
                     </BarChart>
                 </ResponsiveContainer>
