@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { TimeBlock } from './time-block';
 import { LogTimeDialog } from './log-time-dialog';
 import type { TimeBlockState, Subject } from '@/lib/types';
-import { differenceInHours } from 'date-fns';
+import { differenceInHours, format } from 'date-fns';
 
 interface AccountabilityGridProps {
   blocks: TimeBlockState[];
@@ -40,10 +40,10 @@ export function AccountabilityGrid({ blocks, subjects, onBlockUpdate, viewingDat
       {!isEditable && (
          <p className="text-sm text-yellow-500 mb-4">You can only edit entries from the last 36 hours.</p>
       )}
-      <div className="grid grid-cols-8 gap-2">
+      <div className="grid grid-cols-6 md:grid-cols-8 gap-2">
         {blocks.map(block => (
           <TimeBlock
-            key={block.hour}
+            key={`${format(viewingDate, 'yyyy-MM-dd')}-${block.hour}`}
             hour={block.hour}
             subjectId={block.subject}
             duration={block.duration}
