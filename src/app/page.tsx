@@ -63,6 +63,11 @@ export default function Home() {
   const [userName, setUserName] = useState('');
   const [questionIndex, setQuestionIndex] = useState(0);
 
+  // Feature toggles
+  const [enableTimer, setEnableTimer] = useState(true);
+  const [enableDailyChallenge, setEnableDailyChallenge] = useState(true);
+  const [enableTodoList, setEnableTodoList] = useState(true);
+
   // Timer State
   const [timerIsRunning, setTimerIsRunning] = useState(false);
   const [timerSubject, setTimerSubject] = useState<string>(defaultSubjects[0]?.id || 'math');
@@ -144,10 +149,13 @@ export default function Home() {
           if (userDoc.exists()) {
             const data = userDoc.data();
             setUserName(data.username || user.displayName || '');
-            const userSleepHours = data.settings?.sleepHours || [];
-            setSleepHours(userSleepHours);
-            setSubjects(data.settings?.subjects || defaultSubjects);
-            setLanguage(data.settings?.language || 'english');
+            const settings = data.settings || {};
+            setSleepHours(settings.sleepHours || []);
+            setSubjects(settings.subjects || defaultSubjects);
+            setLanguage(settings.language || 'english');
+            setEnableTimer(settings.enableTimer !== false);
+            setEnableDailyChallenge(settings.enableDailyChallenge !== false);
+            setEnableTodoList(settings.enableTodoList !== false);
           } else {
              setUserName(user.displayName || '');
           }
@@ -178,7 +186,14 @@ export default function Home() {
         const todayString = format(new Date(), 'yyyy-MM-dd');
         const settingsData:any = {
             username: userName,
-            settings: { sleepHours, subjects, language },
+            settings: { 
+              sleepHours, 
+              subjects, 
+              language,
+              enableTimer,
+              enableDailyChallenge,
+              enableTodoList
+            },
         };
         if(isToday(currentDate)){
             settingsData.daily = {
@@ -211,7 +226,7 @@ export default function Home() {
 
     return () => clearTimeout(handler);
 
-  }, [timeBlocks, solvedChallenges, questionIndex, sleepHours, subjects, language, userName, currentDate, user, userDocRef, firestore, isClient, userDataLoaded]);
+  }, [timeBlocks, solvedChallenges, questionIndex, sleepHours, subjects, language, userName, currentDate, user, userDocRef, firestore, isClient, userDataLoaded, enableTimer, enableDailyChallenge, enableTodoList]);
   
   // Timer effect
   useEffect(() => {
@@ -263,11 +278,17 @@ export default function Home() {
   const handleSettingsSave = (
     newSleepHours: number[], 
     newSubjects: Subject[], 
-    newLanguage: 'english' | 'sinhala'
+    newLanguage: 'english' | 'sinhala',
+    newEnableTimer: boolean,
+    newEnableDailyChallenge: boolean,
+    newEnableTodoList: boolean
     ) => {
       setSleepHours(newSleepHours);
       setSubjects(newSubjects);
       setLanguage(newLanguage);
+      setEnableTimer(newEnableTimer);
+      setEnableDailyChallenge(newEnableDailyChallenge);
+      setEnableTodoList(newEnableTodoList);
   
       setTimeBlocks(currentBlocks => {
           const newGrid = createInitialState(newSleepHours, currentDate);
@@ -339,6 +360,9 @@ export default function Home() {
             subjects={subjects}
             sleepHours={sleepHours}
             language={language}
+            enableTimer={enableTimer}
+            enableDailyChallenge={enableDailyChallenge}
+            enableTodoList={enableTodoList}
             onSave={handleSettingsSave}
           />
       </MainHeader>
@@ -371,17 +395,19 @@ export default function Home() {
             </CardContent>
           </Card>
           <div className="space-y-6">
-             <DailyChallenge
-                question={dailyQuestions[questionIndex]}
-                isSolved={solvedChallenges[questionIndex]}
-                onSolveChange={handleSolveChange}
-                language={language}
-                isToday={isToday(currentDate)}
-                questionIndex={questionIndex}
-                setQuestionIndex={setQuestionIndex}
-                totalQuestions={dailyQuestions.length}
-              />
-              <TodoList />
+             {enableDailyChallenge && (
+                <DailyChallenge
+                    question={dailyQuestions[questionIndex]}
+                    isSolved={solvedChallenges[questionIndex]}
+                    onSolveChange={handleSolveChange}
+                    language={language}
+                    isToday={isToday(currentDate)}
+                    questionIndex={questionIndex}
+                    setQuestionIndex={setQuestionIndex}
+                    totalQuestions={dailyQuestions.length}
+                />
+             )}
+             {enableTodoList && <TodoList />}
           </div>
         </div>
          <div className="mt-8 flex justify-center">
@@ -407,15 +433,17 @@ export default function Home() {
         </div>
       </main>
 
-      <FloatingTimer
-        subjects={subjects}
-        isRunning={timerIsRunning}
-        setIsRunning={setTimerIsRunning}
-        subject={timerSubject}
-        setSubject={setTimerSubject}
-        elapsedSeconds={elapsedSeconds}
-        setElapsedSeconds={setElapsedSeconds}
-      />
+      {enableTimer && (
+        <FloatingTimer
+            subjects={subjects}
+            isRunning={timerIsRunning}
+            setIsRunning={setTimerIsRunning}
+            subject={timerSubject}
+            setSubject={setTimerSubject}
+            elapsedSeconds={elapsedSeconds}
+            setElapsedSeconds={setElapsedSeconds}
+        />
+      )}
       <FeedbackDialog />
 
 

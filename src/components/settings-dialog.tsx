@@ -2,14 +2,14 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { Settings, Trash2, PlusCircle, Languages, Sparkles, Waves } from 'lucide-react';
+import { Settings, Trash2, PlusCircle, Languages, Sparkles, SlidersHorizontal } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import type { Subject } from '@/lib/types';
 import { ALL_ICONS } from '@/lib/icons';
 import { Switch } from '@/components/ui/switch';
@@ -18,10 +18,16 @@ interface SettingsDialogProps {
   subjects: Subject[];
   sleepHours: number[];
   language: 'english' | 'sinhala';
+  enableTimer: boolean;
+  enableDailyChallenge: boolean;
+  enableTodoList: boolean;
   onSave: (
     sleepHours: number[], 
     subjects: Subject[], 
-    language: 'english' | 'sinhala'
+    language: 'english' | 'sinhala',
+    enableTimer: boolean,
+    enableDailyChallenge: boolean,
+    enableTodoList: boolean,
   ) => void;
 }
 
@@ -31,12 +37,19 @@ export function SettingsDialog({
   subjects, 
   sleepHours, 
   language, 
+  enableTimer,
+  enableDailyChallenge,
+  enableTodoList,
   onSave,
 }: SettingsDialogProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [localSleepHours, setLocalSleepHours] = useState<number[]>(sleepHours);
   const [localSubjects, setLocalSubjects] = useState<Subject[]>(subjects);
   const [localLanguage, setLocalLanguage] = useState<'english' | 'sinhala'>(language);
+  const [localEnableTimer, setLocalEnableTimer] = useState(enableTimer);
+  const [localEnableDailyChallenge, setLocalEnableDailyChallenge] = useState(enableDailyChallenge);
+  const [localEnableTodoList, setLocalEnableTodoList] = useState(enableTodoList);
+
 
   // Effect to sync state from props when the dialog opens
   useEffect(() => {
@@ -44,14 +57,20 @@ export function SettingsDialog({
       setLocalSleepHours(sleepHours);
       setLocalSubjects(subjects);
       setLocalLanguage(language);
+      setLocalEnableTimer(enableTimer);
+      setLocalEnableDailyChallenge(enableDailyChallenge);
+      setLocalEnableTodoList(enableTodoList);
     }
-  }, [isOpen, sleepHours, subjects, language]);
+  }, [isOpen, sleepHours, subjects, language, enableTimer, enableDailyChallenge, enableTodoList]);
 
   const handleSave = () => {
     onSave(
       localSleepHours, 
       localSubjects.filter(s => s.id !== 'idle' && s.id !== 'sleep'), 
       localLanguage,
+      localEnableTimer,
+      localEnableDailyChallenge,
+      localEnableTodoList
     );
     setIsOpen(false);
   };
@@ -89,7 +108,7 @@ export function SettingsDialog({
           <span className="sr-only">Settings</span>
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Settings</DialogTitle>
           <DialogDescription>
@@ -97,10 +116,11 @@ export function SettingsDialog({
           </DialogDescription>
         </DialogHeader>
         <Tabs defaultValue="general">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="general">General</TabsTrigger>
             <TabsTrigger value="subjects">Subjects</TabsTrigger>
             <TabsTrigger value="sleep">Sleep</TabsTrigger>
+            <TabsTrigger value="features">Features</TabsTrigger>
           </TabsList>
           <TabsContent value="general" className="py-4">
              <div className="space-y-4">
@@ -174,6 +194,35 @@ export function SettingsDialog({
                     </div>
                 ))}
             </div>
+          </TabsContent>
+          <TabsContent value="features" className="py-4">
+             <div className="space-y-4">
+                <h4 className="font-semibold">Toggle Features</h4>
+                 <div className="flex items-center justify-between rounded-lg border p-3">
+                    <Label htmlFor="enable-timer">Enable Focus Timer</Label>
+                    <Switch
+                        id="enable-timer"
+                        checked={localEnableTimer}
+                        onCheckedChange={setLocalEnableTimer}
+                    />
+                </div>
+                 <div className="flex items-center justify-between rounded-lg border p-3">
+                    <Label htmlFor="enable-daily-challenge">Enable Daily Challenge</Label>
+                    <Switch
+                        id="enable-daily-challenge"
+                        checked={localEnableDailyChallenge}
+                        onCheckedChange={setLocalEnableDailyChallenge}
+                    />
+                </div>
+                 <div className="flex items-center justify-between rounded-lg border p-3">
+                    <Label htmlFor="enable-todo-list">Enable Todo List</Label>
+                    <Switch
+                        id="enable-todo-list"
+                        checked={localEnableTodoList}
+                        onCheckedChange={setLocalEnableTodoList}
+                    />
+                </div>
+             </div>
           </TabsContent>
         </Tabs>
         <DialogFooter>

@@ -44,6 +44,18 @@
         "darkMode": {
           "type": "boolean",
           "description": "Indicates whether dark mode is enabled."
+        },
+        "enableTimer": {
+          "type": "boolean",
+          "description": "Indicates whether the focus timer feature is enabled."
+        },
+        "enableDailyChallenge": {
+          "type": "boolean",
+          "description": "Indicates whether the daily challenge feature is enabled."
+        },
+        "enableTodoList": {
+          "type": "boolean",
+          "description": "Indicates whether the todo list feature is enabled."
         }
       },
       "required": [
