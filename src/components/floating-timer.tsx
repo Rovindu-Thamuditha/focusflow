@@ -13,6 +13,16 @@ import {
   DialogFooter,
   DialogDescription,
 } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import type { Subject } from '@/lib/types';
 import { cn } from '@/lib/utils';
@@ -36,17 +46,19 @@ export function FloatingTimer({
   elapsedSeconds,
   setElapsedSeconds,
 }: FloatingTimerProps) {
-  const [isOpen, setIsOpen] = useState(false);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isAlertOpen, setIsAlertOpen] = useState(false);
 
-  const handlePrimaryAction = () => {
-    if (isRunning) {
-        setIsRunning(false);
-        setIsOpen(false);
-    } else {
-        setElapsedSeconds(0); // Reset on new start
-        setIsRunning(true);
-        setIsOpen(false);
-    }
+  const handleStart = () => {
+    setElapsedSeconds(0); // Reset on new start
+    setIsRunning(true);
+    setIsDialogOpen(false);
+  };
+  
+  const handleStopConfirm = () => {
+    setIsRunning(false);
+    setIsAlertOpen(false);
+    setIsDialogOpen(false);
   };
 
   const formatTime = (seconds: number) => {
@@ -60,24 +72,17 @@ export function FloatingTimer({
   const activeSubject = subjects.find(s => s.id === subject);
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !isRunning && setIsOpen(open)}>
+    <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
       <DialogTrigger asChild>
         <Button
             variant="default"
             className={cn(
                 "fixed bottom-4 right-20 h-14 w-14 rounded-full shadow-lg z-50 text-white",
-                isRunning ? 'bg-red-500 hover:bg-red-600' : 'bg-primary hover:bg-primary/90'
+                isRunning ? 'bg-red-500 hover:bg-red-600 animate-pulse' : 'bg-primary hover:bg-primary/90'
             )}
-            title={isRunning ? 'Stop Focus Timer' : 'Start Focus Timer'}
-            onClick={() => {
-                if(isRunning) {
-                    setIsRunning(false);
-                } else {
-                    setIsOpen(true);
-                }
-            }}
+            title={isRunning ? 'View Focus Timer' : 'Start Focus Timer'}
         >
-          {isRunning ? <Square className="h-6 w-6" /> : <Timer className="h-6 w-6" />}
+          <Timer className="h-6 w-6" />
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
@@ -111,9 +116,31 @@ export function FloatingTimer({
         </div>
         
         <DialogFooter>
-            <Button onClick={handlePrimaryAction} className={cn(isRunning ? "w-full" : "w-full bg-green-500 hover:bg-green-600")}>
-                {isRunning ? <><Square className="mr-2" /> Stop Session</> : <><Play className="mr-2"/> Start Session</>}
+          {isRunning ? (
+             <AlertDialog open={isAlertOpen} onOpenChange={setIsAlertOpen}>
+                <AlertDialogTrigger asChild>
+                    <Button className="w-full bg-red-500 hover:bg-red-600">
+                        <Square className="mr-2" /> Stop Session
+                    </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                    <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                        This will stop the current focus session. The time will be added to the current hour block.
+                    </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleStopConfirm}>Continue</AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+          ) : (
+            <Button onClick={handleStart} className="w-full bg-green-500 hover:bg-green-600">
+                <Play className="mr-2"/> Start Session
             </Button>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>
