@@ -227,15 +227,15 @@ html.stranger-things .pulsing-glow {
 /* --- 2. Screen Shake (The UI Disruption Trick) --- */
 @keyframes shake {
   0%, 100% { transform: translate(0, 0); }
-  25% { transform: translate(3px, -3px); }
-  50% { transform: translate(-3px, 3px); }
-  75% { transform: translate(3px, 3px); }
+  25% { transform: translate(1px, -1px); }
+  50% { transform: translate(-1px, 1px); }
+  75% { transform: translate(1px, 1px); }
 }
 
 /* --- 3. The Activation Class --- */
 .strike-active {
     /* Apply shake to the entire body */
-    animation: shake 0.15s ease-in-out; 
+    animation: shake 0.1s ease-in-out; 
     
     /* Optional: Briefly dim the whole background for contrast */
     filter: brightness(0.9); 
@@ -246,4 +246,3 @@ html.stranger-things .pulsing-glow {
     opacity: 1;
     transition: none; /* Disable fade-in for instantaneous flash */
 }
-
