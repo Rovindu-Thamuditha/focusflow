@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Settings, Trash2, PlusCircle, Languages, Sparkles, SlidersHorizontal } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -16,67 +16,39 @@ import { Switch } from '@/components/ui/switch';
 
 interface SettingsDialogProps {
   subjects: Subject[];
+  setSubjects: (subjects: Subject[]) => void;
   sleepHours: number[];
+  setSleepHours: (hours: number[]) => void;
   language: 'english' | 'sinhala';
+  setLanguage: (language: 'english' | 'sinhala') => void;
   enableTimer: boolean;
+  setEnableTimer: (enabled: boolean) => void;
   enableDailyChallenge: boolean;
+  setEnableDailyChallenge: (enabled: boolean) => void;
   enableTodoList: boolean;
-  onSave: (
-    sleepHours: number[], 
-    subjects: Subject[], 
-    language: 'english' | 'sinhala',
-    enableTimer: boolean,
-    enableDailyChallenge: boolean,
-    enableTodoList: boolean,
-  ) => void;
+  setEnableTodoList: (enabled: boolean) => void;
 }
 
 const allHours = Array.from({ length: 24 }, (_, i) => i);
 
 export function SettingsDialog({ 
   subjects, 
+  setSubjects,
   sleepHours, 
+  setSleepHours,
   language, 
+  setLanguage,
   enableTimer,
+  setEnableTimer,
   enableDailyChallenge,
+  setEnableDailyChallenge,
   enableTodoList,
-  onSave,
+  setEnableTodoList,
 }: SettingsDialogProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [localSleepHours, setLocalSleepHours] = useState<number[]>(sleepHours);
-  const [localSubjects, setLocalSubjects] = useState<Subject[]>(subjects);
-  const [localLanguage, setLocalLanguage] = useState<'english' | 'sinhala'>(language);
-  const [localEnableTimer, setLocalEnableTimer] = useState(enableTimer);
-  const [localEnableDailyChallenge, setLocalEnableDailyChallenge] = useState(enableDailyChallenge);
-  const [localEnableTodoList, setLocalEnableTodoList] = useState(enableTodoList);
 
-
-  // Effect to sync state from props when the dialog opens
-  useEffect(() => {
-    if (isOpen) {
-      setLocalSleepHours(sleepHours);
-      setLocalSubjects(subjects);
-      setLocalLanguage(language);
-      setLocalEnableTimer(enableTimer);
-      setLocalEnableDailyChallenge(enableDailyChallenge);
-      setLocalEnableTodoList(enableTodoList);
-    }
-  }, [isOpen, sleepHours, subjects, language, enableTimer, enableDailyChallenge, enableTodoList]);
-
-  const handleSave = () => {
-    onSave(
-      localSleepHours, 
-      localSubjects.filter(s => s.id !== 'idle' && s.id !== 'sleep'), 
-      localLanguage,
-      localEnableTimer,
-      localEnableDailyChallenge,
-      localEnableTodoList
-    );
-    setIsOpen(false);
-  };
-  
   const handleSleepCheckboxChange = (hour: number, checked: boolean) => {
-    setLocalSleepHours(prev => {
+    setSleepHours(prev => {
         if(checked) {
             return [...prev, hour];
         } else {
@@ -86,17 +58,20 @@ export function SettingsDialog({
   }
 
   const handleSubjectChange = (index: number, field: keyof Subject, value: string) => {
-    const newSubjects = [...localSubjects];
+    const newSubjects = [...subjects];
     (newSubjects[index] as any)[field] = value;
-    setLocalSubjects(newSubjects);
+    setSubjects(newSubjects);
   };
 
   const addSubject = () => {
-    setLocalSubjects([...localSubjects, { id: `custom-${Date.now()}`, name: 'New Subject', icon: 'Sparkles', color: '#888888' }]);
+    setSubjects([...subjects, { id: `custom-${Date.now()}`, name: 'New Subject', icon: 'Sparkles', color: '#888888' }]);
   };
 
-  const removeSubject = (index: number) => {
-    setLocalSubjects(localSubjects.filter((_, i) => i !== index));
+  const removeSubject = (indexToRemove: number) => {
+    const actualIndex = subjects.findIndex((s, i) => i === indexToRemove && s.id !== 'idle' && s.id !== 'sleep');
+    if (actualIndex !== -1) {
+        setSubjects(subjects.filter((_, i) => i !== actualIndex));
+    }
   };
 
 
@@ -112,7 +87,7 @@ export function SettingsDialog({
         <DialogHeader>
           <DialogTitle>Settings</DialogTitle>
           <DialogDescription>
-            Customize your GridFocus experience.
+            Customize your GridFocus experience. Changes save automatically.
           </DialogDescription>
         </DialogHeader>
         <Tabs defaultValue="general">
@@ -130,7 +105,7 @@ export function SettingsDialog({
                         <Languages className="w-5 h-5" />
                         <Label htmlFor="language-select">Challenge Language</Label>
                     </div>
-                    <Select onValueChange={(value: 'english' | 'sinhala') => setLocalLanguage(value)} defaultValue={localLanguage}>
+                    <Select onValueChange={(value: 'english' | 'sinhala') => setLanguage(value)} defaultValue={language}>
                         <SelectTrigger id="language-select" className="w-[180px]">
                             <SelectValue placeholder="Select language" />
                         </SelectTrigger>
@@ -146,7 +121,7 @@ export function SettingsDialog({
             <h4 className="font-semibold mb-2">Customize Subjects</h4>
             <p className="text-sm text-muted-foreground mb-4">Add, remove, or edit your focus subjects.</p>
             <div className="space-y-2 max-h-64 overflow-y-auto pr-2">
-              {localSubjects.filter(s => s.id !== 'idle' && s.id !== 'sleep').map((subject, index) => (
+              {subjects.filter(s => s.id !== 'idle' && s.id !== 'sleep').map((subject, index) => (
                 <div key={subject.id} className="flex items-center gap-2 p-2 border rounded-lg">
                   <Input
                     type="color"
@@ -179,13 +154,13 @@ export function SettingsDialog({
           </TabsContent>
           <TabsContent value="sleep" className="py-4">
             <h4 className="font-semibold mb-2">Default Sleep Hours</h4>
-            <p className="text-sm text-muted-foreground mb-4">Select hours you're usually asleep. These blocks will be marked as 'Sleep'.</p>
+            <p className="text-sm text-muted-foreground mb-4">Select hours you're usually asleep. These blocks will be marked as 'Sleep' and the grid will reset accordingly.</p>
             <div className="grid grid-cols-4 gap-2">
                 {allHours.map(hour => (
                     <div key={hour} className="flex items-center space-x-2">
                          <Checkbox
                             id={`sleep-hour-${hour}`}
-                            checked={localSleepHours.includes(hour)}
+                            checked={sleepHours.includes(hour)}
                             onCheckedChange={(checked) => handleSleepCheckboxChange(hour, !!checked)}
                         />
                         <Label htmlFor={`sleep-hour-${hour}`} className="text-sm font-mono">
@@ -202,32 +177,31 @@ export function SettingsDialog({
                     <Label htmlFor="enable-timer">Enable Focus Timer</Label>
                     <Switch
                         id="enable-timer"
-                        checked={localEnableTimer}
-                        onCheckedChange={setLocalEnableTimer}
+                        checked={enableTimer}
+                        onCheckedChange={setEnableTimer}
                     />
                 </div>
                  <div className="flex items-center justify-between rounded-lg border p-3">
                     <Label htmlFor="enable-daily-challenge">Enable Daily Challenge</Label>
                     <Switch
                         id="enable-daily-challenge"
-                        checked={localEnableDailyChallenge}
-                        onCheckedChange={setLocalEnableDailyChallenge}
+                        checked={enableDailyChallenge}
+                        onCheckedChange={setEnableDailyChallenge}
                     />
                 </div>
                  <div className="flex items-center justify-between rounded-lg border p-3">
                     <Label htmlFor="enable-todo-list">Enable Todo List</Label>
                     <Switch
                         id="enable-todo-list"
-                        checked={localEnableTodoList}
-                        onCheckedChange={setLocalEnableTodoList}
+                        checked={enableTodoList}
+                        onCheckedChange={setEnableTodoList}
                     />
                 </div>
              </div>
           </TabsContent>
         </Tabs>
         <DialogFooter>
-            <Button variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
-            <Button onClick={handleSave}>Save Changes</Button>
+            <Button variant="secondary" onClick={() => setIsOpen(false)}>Close</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

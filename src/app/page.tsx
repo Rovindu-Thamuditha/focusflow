@@ -284,35 +284,22 @@ export default function Home() {
     );
   };
 
-  const handleSettingsSave = (
-    newSleepHours: number[], 
-    newSubjects: Subject[], 
-    newLanguage: 'english' | 'sinhala',
-    newEnableTimer: boolean,
-    newEnableDailyChallenge: boolean,
-    newEnableTodoList: boolean
-    ) => {
-      setSleepHours(newSleepHours);
-      setSubjects(newSubjects);
-      setLanguage(newLanguage);
-      setEnableTimer(newEnableTimer);
-      setEnableDailyChallenge(newEnableDailyChallenge);
-      setEnableTodoList(newEnableTodoList);
-  
-      setTimeBlocks(currentBlocks => {
-          const newGrid = createInitialState(newSleepHours, currentDate);
-          
-          return newGrid.map(newBlock => {
-              if (newBlock.subject === 'sleep') {
-                  return newBlock; 
-              }
-              const oldBlock = currentBlocks.find(b => b.hour === newBlock.hour);
-              if (oldBlock && oldBlock.subject !== 'idle' && oldBlock.subject !== 'sleep') {
-                  return oldBlock;
-              }
-              return newBlock;
-          });
-      });
+  const handleGridReset = (newSleepHours: number[]) => {
+    setTimeBlocks(currentBlocks => {
+        const newGrid = createInitialState(newSleepHours, currentDate);
+        
+        return newGrid.map(newBlock => {
+            if (newBlock.subject === 'sleep') {
+                return newBlock; 
+            }
+            // Find the corresponding old block to preserve its data if it's not idle/sleep
+            const oldBlock = currentBlocks.find(b => b.hour === newBlock.hour);
+            if (oldBlock && oldBlock.subject !== 'idle' && oldBlock.subject !== 'sleep') {
+                return oldBlock;
+            }
+            return newBlock;
+        });
+    });
   };
 
   const handleResetDay = () => {
@@ -379,12 +366,24 @@ export default function Home() {
          <CurrentTime time={liveTime} />
          <SettingsDialog
             subjects={subjects}
+            setSubjects={setSubjects}
             sleepHours={sleepHours}
+            setSleepHours={(newHours) => {
+              const oldHours = sleepHours;
+              setSleepHours(newHours);
+              // Only reset grid if sleep hours actually changed
+              if (JSON.stringify(oldHours.sort()) !== JSON.stringify(newHours.sort())) {
+                handleGridReset(newHours);
+              }
+            }}
             language={language}
+            setLanguage={setLanguage}
             enableTimer={enableTimer}
+            setEnableTimer={setEnableTimer}
             enableDailyChallenge={enableDailyChallenge}
+            setEnableDailyChallenge={setEnableDailyChallenge}
             enableTodoList={enableTodoList}
-            onSave={handleSettingsSave}
+            setEnableTodoList={setEnableTodoList}
           />
       </MainHeader>
       <main className="flex-grow container mx-auto p-4 sm:p-6 md:p-8">
