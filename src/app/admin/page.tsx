@@ -32,8 +32,8 @@ const ADMIN_EMAIL = 'rovinduthamu@gmail.com';
 
 interface AppUser {
     id: string;
-    username: string;
-    email: string;
+    username?: string;
+    email?: string;
 }
 
 export default function AdminPage() {
@@ -175,18 +175,27 @@ export default function AdminPage() {
               <TableBody>
                 {users.map((u) => (
                   <TableRow key={u.id}>
-                    <TableCell className="font-medium">{u.username}{u.id === user.uid && <Badge variant="secondary" className="ml-2">Admin</Badge>}</TableCell>
-                    <TableCell>{u.email}</TableCell>
+                    <TableCell className="font-medium">
+                        {u.username || <span className="text-muted-foreground italic">(Anonymous User)</span>}
+                        {u.id === user.uid && <Badge variant="secondary" className="ml-2">Admin</Badge>}
+                    </TableCell>
+                    <TableCell>{u.email || <span className="text-muted-foreground italic">N/A</span>}</TableCell>
                     <TableCell className="font-mono">{u.id}</TableCell>
                     <TableCell className="text-right flex items-center justify-end gap-2">
+                        <Link href={`/admin/users/${u.id}`} passHref>
+                            <Button variant="outline" size="icon" title="View/Edit User">
+                            <Eye className="w-4 h-4" />
+                            </Button>
+                        </Link>
                         {u.id !== user.uid ? (
                             <>
-                                <Link href={`/admin/users/${u.id}`} passHref>
-                                  <Button variant="outline" size="icon" title="View/Edit User">
-                                    <Eye className="w-4 h-4" />
-                                  </Button>
-                                </Link>
-                                <Button variant="outline" size="icon" onClick={() => handleResetPassword(u.email)} title="Send Password Reset">
+                                <Button 
+                                    variant="outline" 
+                                    size="icon" 
+                                    onClick={() => handleResetPassword(u.email!)} 
+                                    title="Send Password Reset"
+                                    disabled={!u.email}
+                                >
                                     <KeyRound className="w-4 h-4" />
                                 </Button>
                                 <AlertDialog>
@@ -200,7 +209,7 @@ export default function AdminPage() {
                                         <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
                                         <AlertDialogDescription>
                                             This action cannot be undone. This will permanently delete the user's
-                                            account data from the database.
+                                            account data from the database. Note: The Auth user record is not deleted.
                                         </AlertDialogDescription>
                                         </AlertDialogHeader>
                                         <AlertDialogFooter>
@@ -210,13 +219,7 @@ export default function AdminPage() {
                                     </AlertDialogContent>
                                 </AlertDialog>
                             </>
-                        ) : (
-                           <Link href={`/admin/users/${u.id}`} passHref>
-                              <Button variant="outline" size="icon" asChild title="View/Edit User">
-                                <Eye className="w-4 h-4" />
-                              </Button>
-                            </Link>
-                        )}
+                        ) : null}
                     </TableCell>
                   </TableRow>
                 ))}

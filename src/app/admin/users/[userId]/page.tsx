@@ -16,8 +16,8 @@ const ADMIN_EMAIL = 'rovinduthamu@gmail.com';
 
 interface AppUser {
     id: string;
-    username: string;
-    email: string;
+    username?: string;
+    email?: string;
 }
 
 export default function UserDetailPage() {
@@ -59,7 +59,7 @@ export default function UserDetailPage() {
             <Card className="w-full max-w-md">
                 <CardHeader>
                     <CardTitle>User Not Found</CardTitle>
-                    <CardDescription>The user with ID "{userId}" does not exist.</CardDescription>
+                    <CardDescription>The user with ID "{userId}" does not exist in the database.</CardDescription>
                 </CardHeader>
                 <CardFooter>
                     <Link href="/admin" passHref>
@@ -85,16 +85,16 @@ export default function UserDetailPage() {
             <Card>
             <CardHeader>
                 <CardTitle>User Details</CardTitle>
-                <CardDescription>Viewing data for {viewedUser?.email}.</CardDescription>
+                <CardDescription>Viewing data for {viewedUser?.email || 'anonymous user'}.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
                 <div>
                     <h3 className="font-semibold text-muted-foreground">Username</h3>
-                    <p>{viewedUser?.username}</p>
+                    <p>{viewedUser?.username || <span className="italic text-muted-foreground">(Not set)</span>}</p>
                 </div>
                 <div>
                     <h3 className="font-semibold text-muted-foreground">Email</h3>
-                    <p>{viewedUser?.email}</p>
+                    <p>{viewedUser?.email || <span className="italic text-muted-foreground">(Not set)</span>}</p>
                 </div>
                 <div>
                     <h3 className="font-semibold text-muted-foreground">User ID</h3>
