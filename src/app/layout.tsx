@@ -7,7 +7,6 @@ import { ThemeProvider } from '@/components/providers';
 import { Toaster } from "@/components/ui/toaster"
 import { FirebaseClientProvider } from '@/firebase/client-provider';
 import { SpeedInsights } from '@vercel/speed-insights/next';
-import { StrangerThingsLightning } from '@/components/stranger-things-lightning';
 
 
 import 'katex/dist/katex.min.css';
@@ -48,7 +47,6 @@ export default function RootLayout({
             >
                 {children}
                 <Toaster />
-                <StrangerThingsLightning />
             </ThemeProvider>
         </FirebaseClientProvider>
         <SpeedInsights />
@@ -57,3 +55,4 @@ export default function RootLayout({
   );
 }
 
+    

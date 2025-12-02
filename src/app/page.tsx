@@ -34,6 +34,7 @@ import { CurrentTime } from '@/components/current-time';
 import { TodoList } from '@/components/todo-list';
 import { FloatingTimer } from '@/components/floating-timer';
 import { WhatsNewDialog } from '@/components/whats-new-dialog';
+import { StrangerThingsLightning } from '@/components/stranger-things-lightning';
 
 const createInitialState = (sleepHours: number[], date: Date): TimeBlockState[] => {
   const dateString = format(date, 'yyyy-MM-dd');
@@ -71,6 +72,7 @@ export default function Home() {
   const [enableTimer, setEnableTimer] = useState(true);
   const [enableDailyChallenge, setEnableDailyChallenge] = useState(true);
   const [enableTodoList, setEnableTodoList] = useState(true);
+  const [enableLightning, setEnableLightning] = useState(true);
 
   // Timer State
   const [timerIsRunning, setTimerIsRunning] = useState(false);
@@ -164,6 +166,7 @@ export default function Home() {
             setEnableTimer(settings.enableTimer !== false);
             setEnableDailyChallenge(settings.enableDailyChallenge !== false);
             setEnableTodoList(settings.enableTodoList !== false);
+            setEnableLightning(settings.enableLightning !== false);
             setSeenWhatsNewVersions(data.seenWhatsNewVersions || []);
           } else {
              setUserName(user.displayName || (user.isAnonymous ? '' : 'User'));
@@ -201,7 +204,8 @@ export default function Home() {
               language,
               enableTimer,
               enableDailyChallenge,
-              enableTodoList
+              enableTodoList,
+              enableLightning,
             },
         };
         if(isToday(currentDate)){
@@ -235,7 +239,7 @@ export default function Home() {
 
     return () => clearTimeout(handler);
 
-  }, [timeBlocks, solvedChallenges, questionIndex, sleepHours, subjects, language, userName, currentDate, user, userDocRef, firestore, isClient, userDataLoaded, enableTimer, enableDailyChallenge, enableTodoList]);
+  }, [timeBlocks, solvedChallenges, questionIndex, sleepHours, subjects, language, userName, currentDate, user, userDocRef, firestore, isClient, userDataLoaded, enableTimer, enableDailyChallenge, enableTodoList, enableLightning]);
   
   // Timer effect
   useEffect(() => {
@@ -327,6 +331,7 @@ export default function Home() {
     setEnableTimer(newSettings.enableTimer);
     setEnableDailyChallenge(newSettings.enableDailyChallenge);
     setEnableTodoList(newSettings.enableTodoList);
+    setEnableLightning(newSettings.enableLightning);
 
     // Only reset grid if sleep hours actually changed
     if (JSON.stringify(oldSleepHours.sort()) !== JSON.stringify([...newSettings.sleepHours].sort())) {
@@ -387,6 +392,7 @@ export default function Home() {
             enableTimer={enableTimer}
             enableDailyChallenge={enableDailyChallenge}
             enableTodoList={enableTodoList}
+            enableLightning={enableLightning}
             onSave={handleSettingsSave}
           />
       </MainHeader>
@@ -475,6 +481,7 @@ export default function Home() {
         onMarkAsSeen={markWhatsNewAsSeen}
       />
 
+      {enableLightning && <StrangerThingsLightning />}
 
       <footer className="text-center py-4 text-muted-foreground text-sm">
         <p>Made with ♥ for focused minds by <a href="https://github.com/Rovindu-Thamuditha/" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Tipiz</a></p>
@@ -482,5 +489,7 @@ export default function Home() {
     </div>
   );
 }
+
+    
 
     

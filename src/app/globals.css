@@ -94,7 +94,7 @@ body {
     --accent-foreground: 0 0% 95%;
     --destructive: 0 100% 50%;
     --destructive-foreground: 0 0% 100%;
-    --border: 0 100% 25%;
+    --border: 0 0% 20%;
     --input: 0 0% 10%;
     --ring: 0 100% 50%;
     --chart-1: 0 100% 50%;
@@ -113,6 +113,14 @@ body {
     --sidebar-ring: 0 100% 50%;
 
     font-family: var(--font-cinzel-decorative), 'Courier New', Courier, monospace;
+  }
+  
+  html.stranger-things body {
+    transform: rotate(180deg);
+  }
+
+  html.stranger-things * {
+    vertical-align: middle;
   }
 }
 
@@ -246,3 +254,5 @@ html.stranger-things .pulsing-glow {
     opacity: 1;
     transition: none; /* Disable fade-in for instantaneous flash */
 }
+
+    

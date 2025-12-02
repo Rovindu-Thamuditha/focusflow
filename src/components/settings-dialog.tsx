@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { Settings, Trash2, PlusCircle, Languages, Sparkles, SlidersHorizontal, Bed } from 'lucide-react';
+import { Settings, Trash2, PlusCircle, Languages, Sparkles, SlidersHorizontal, Bed, Zap } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -21,6 +21,7 @@ interface SettingsDialogProps {
   enableTimer: boolean;
   enableDailyChallenge: boolean;
   enableTodoList: boolean;
+  enableLightning: boolean;
   onSave: (settings: {
     subjects: Subject[];
     sleepHours: number[];
@@ -28,6 +29,7 @@ interface SettingsDialogProps {
     enableTimer: boolean;
     enableDailyChallenge: boolean;
     enableTodoList: boolean;
+    enableLightning: boolean;
   }) => void;
 }
 
@@ -40,6 +42,7 @@ export function SettingsDialog({
   enableTimer: initialEnableTimer,
   enableDailyChallenge: initialEnableDailyChallenge,
   enableTodoList: initialEnableTodoList,
+  enableLightning: initialEnableLightning,
   onSave,
 }: SettingsDialogProps) {
   const [isOpen, setIsOpen] = useState(false);
@@ -51,6 +54,7 @@ export function SettingsDialog({
   const [enableTimer, setEnableTimer] = useState(initialEnableTimer);
   const [enableDailyChallenge, setEnableDailyChallenge] = useState(initialEnableDailyChallenge);
   const [enableTodoList, setEnableTodoList] = useState(initialEnableTodoList);
+  const [enableLightning, setEnableLightning] = useState(initialEnableLightning);
 
   // Sync with props when dialog opens or props change
   useEffect(() => {
@@ -61,11 +65,12 @@ export function SettingsDialog({
         setEnableTimer(initialEnableTimer);
         setEnableDailyChallenge(initialEnableDailyChallenge);
         setEnableTodoList(initialEnableTodoList);
+        setEnableLightning(initialEnableLightning);
     }
-  }, [isOpen, initialSubjects, initialSleepHours, initialLanguage, initialEnableTimer, initialEnableDailyChallenge, initialEnableTodoList]);
+  }, [isOpen, initialSubjects, initialSleepHours, initialLanguage, initialEnableTimer, initialEnableDailyChallenge, initialEnableTodoList, initialEnableLightning]);
 
   const handleSave = () => {
-    onSave({ subjects, sleepHours, language, enableTimer, enableDailyChallenge, enableTodoList });
+    onSave({ subjects, sleepHours, language, enableTimer, enableDailyChallenge, enableTodoList, enableLightning });
     setIsOpen(false);
   };
 
@@ -220,6 +225,17 @@ export function SettingsDialog({
                         onCheckedChange={setEnableTodoList}
                     />
                 </div>
+                 <div className="flex items-center justify-between rounded-lg border p-3">
+                    <div className='flex items-center gap-2'>
+                        <Zap className="w-4 h-4 text-red-500"/>
+                        <Label htmlFor="enable-lightning">Enable Lightning</Label>
+                    </div>
+                    <Switch
+                        id="enable-lightning"
+                        checked={enableLightning}
+                        onCheckedChange={setEnableLightning}
+                    />
+                </div>
              </div>
           </TabsContent>
         </Tabs>
@@ -231,3 +247,5 @@ export function SettingsDialog({
     </Dialog>
   );
 }
+
+    
