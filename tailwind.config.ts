@@ -13,6 +13,7 @@ export default {
         body: ['Inter', 'sans-serif'],
         headline: ['Inter', 'sans-serif'],
         code: ['monospace'],
+        'cinzel-decorative': ['var(--font-cinzel-decorative)', 'sans-serif'],
       },
       colors: {
         background: 'hsl(var(--background))',

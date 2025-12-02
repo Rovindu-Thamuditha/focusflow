@@ -1,17 +1,24 @@
 
 import type { Metadata } from 'next';
-import { Inter } from 'next/font/google';
+import { Inter, Cinzel_Decorative } from 'next/font/google';
 import './globals.css';
 import { cn } from '@/lib/utils';
 import { ThemeProvider } from '@/components/providers';
 import { Toaster } from "@/components/ui/toaster"
 import { FirebaseClientProvider } from '@/firebase/client-provider';
 import { SpeedInsights } from '@vercel/speed-insights/next';
+import { StrangerThingsLightning } from '@/components/stranger-things-lightning';
+
 
 import 'katex/dist/katex.min.css';
 
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-sans' });
+const cinzelDecorative = Cinzel_Decorative({
+  subsets: ['latin'],
+  weight: ['400', '700', '900'],
+  variable: '--font-cinzel-decorative',
+});
 
 export const metadata: Metadata = {
   title: 'GridFocus',
@@ -28,7 +35,8 @@ export default function RootLayout({
       <body
         className={cn(
           'min-h-screen bg-background font-sans antialiased',
-          inter.variable
+          inter.variable,
+          cinzelDecorative.variable
         )}
       >
         <FirebaseClientProvider>
@@ -40,6 +48,7 @@ export default function RootLayout({
             >
                 {children}
                 <Toaster />
+                <StrangerThingsLightning />
             </ThemeProvider>
         </FirebaseClientProvider>
         <SpeedInsights />
@@ -47,3 +56,4 @@ export default function RootLayout({
     </html>
   );
 }
+

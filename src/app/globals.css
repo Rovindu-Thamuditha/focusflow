@@ -104,7 +104,7 @@ body {
     --chart-5: 25 70% 45%;
     --radius: 0.3rem;
 
-    font-family: 'Benguiat', 'Courier New', Courier, monospace;
+    font-family: var(--font-cinzel-decorative), 'Courier New', Courier, monospace;
   }
 }
 
@@ -129,6 +129,10 @@ body {
       opacity: 0.8;
       text-shadow: 0 0 6px hsl(var(--primary) / 0.6), 0 0 8px hsl(var(--primary) / 0.4);
     }
+  }
+
+  .stranger-things .text-glow {
+    animation: flicker 1.5s infinite linear;
   }
 }
 
@@ -172,3 +176,46 @@ body {
     box-shadow: 0 0 5px var(--glow-color-start), 0 0 10px var(--glow-color-start);
   }
 }
+
+/* Red Lightning */
+.lightning {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+  z-index: 9999;
+  opacity: 0;
+}
+
+.lightning.flash {
+  animation: flash 7s infinite;
+}
+
+@keyframes flash {
+  0%, 100% { opacity: 0; }
+  2% { opacity: 1; }
+  4% { opacity: 0; }
+  6% { opacity: 0.5; }
+  7% { opacity: 0; }
+}
+
+.lightning-bolt {
+    position: absolute;
+    background: red;
+    box-shadow: 0 0 10px 2px red, 0 0 20px 5px #ff5c5c;
+    border-radius: 5px;
+    animation: strike 0.2s linear forwards;
+    transform-origin: top;
+}
+
+@keyframes strike {
+    from {
+        transform: scaleY(0);
+    }
+    to {
+        transform: scaleY(1);
+    }
+}
+
