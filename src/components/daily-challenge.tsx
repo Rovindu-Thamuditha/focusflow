@@ -2,7 +2,7 @@
 "use client"
 
 import { useState } from 'react';
-import { Trophy, ArrowRight } from 'lucide-react';
+import { Trophy, ArrowRight, ArrowLeft } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
@@ -35,6 +35,12 @@ export function DailyChallenge({ question, isSolved, onSolveChange, language, is
   const handleNextQuestion = () => {
     if (questionIndex < totalQuestions - 1) {
       setQuestionIndex(questionIndex + 1);
+    }
+  };
+
+  const handlePreviousQuestion = () => {
+    if (questionIndex > 0) {
+      setQuestionIndex(questionIndex - 1);
     }
   };
 
@@ -72,13 +78,23 @@ export function DailyChallenge({ question, isSolved, onSolveChange, language, is
             </Label>
           </div>
            {isToday && (
-            <Button 
-              size="sm"
-              onClick={handleNextQuestion}
-              disabled={questionIndex >= totalQuestions - 1}
-            >
-              Next <ArrowRight className="w-4 h-4 ml-2" />
-            </Button>
+            <div className="flex gap-2">
+                <Button 
+                    size="sm"
+                    variant="outline"
+                    onClick={handlePreviousQuestion}
+                    disabled={questionIndex === 0}
+                >
+                    <ArrowLeft className="w-4 h-4 mr-2" /> Prev
+                </Button>
+                <Button 
+                    size="sm"
+                    onClick={handleNextQuestion}
+                    disabled={questionIndex >= totalQuestions - 1}
+                >
+                    Next <ArrowRight className="w-4 h-4 ml-2" />
+                </Button>
+            </div>
           )}
         </div>
       </CardContent>
