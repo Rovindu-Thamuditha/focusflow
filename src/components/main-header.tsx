@@ -1,5 +1,5 @@
 
-import { LogOut, Shield, MoreVertical, BarChart2, Info, Newspaper } from "lucide-react";
+import { LogOut, Shield, MoreVertical, BarChart2, Info, Newspaper, UserPlus } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Icons } from "@/components/icons";
@@ -35,6 +35,8 @@ export function MainHeader({ totalFocusedTime, children }: MainHeaderProps) {
     }
   }
 
+  const isAnonymousUser = user?.isAnonymous;
+
   return (
     <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur-sm">
       <div className="container flex h-16 items-center space-x-4 sm:justify-between sm:space-x-0">
@@ -69,13 +71,27 @@ export function MainHeader({ totalFocusedTime, children }: MainHeaderProps) {
               </Link>
               <InfoDialog />
               <ThemeToggle />
-              {user && (
+              {isAnonymousUser ? (
+                 <Link href="/login" passHref>
+                    <Button>
+                        <UserPlus className="mr-2" />
+                        Sign up to Save
+                    </Button>
+                 </Link>
+              ) : user ? (
                 <Button variant="ghost" size="icon" onClick={handleSignOut} title="Sign Out">
                   <LogOut className="h-5 w-5" />
                 </Button>
-              )}
+              ) : null}
           </div>
           <div className="sm:hidden flex items-center">
+            {isAnonymousUser && (
+                <Link href="/login" passHref>
+                    <Button variant="ghost" size="icon" title="Sign Up">
+                        <UserPlus className="h-5 w-5" />
+                    </Button>
+                </Link>
+            )}
             <Link href="/stats" passHref>
               <Button variant="ghost" size="icon" title="Statistics">
                   <BarChart2 className="h-5 w-5" />
@@ -113,7 +129,7 @@ export function MainHeader({ totalFocusedTime, children }: MainHeaderProps) {
                   <InfoDialog />
                 </div>
                 <DropdownMenuSeparator />
-                 {user && (
+                 {user && !isAnonymousUser && (
                   <DropdownMenuItem onClick={handleSignOut}>
                     <LogOut className="mr-2 h-4 w-4" />
                     <span>Sign Out</span>

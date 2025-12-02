@@ -11,9 +11,10 @@ import { getDayOfYear, format, addDays, subDays, startOfDay, isToday, isFuture, 
 import { Card, CardContent } from '@/components/ui/card';
 import { SettingsDialog } from '@/components/settings-dialog';
 import { defaultSubjects } from '@/lib/subjects';
-import { useUser, useFirestore, useMemoFirebase, FirestorePermissionError, errorEmitter } from '@/firebase';
+import { useUser, useAuth, useFirestore, useMemoFirebase, FirestorePermissionError, errorEmitter } from '@/firebase';
 import { useRouter } from 'next/navigation';
 import { doc, setDoc, getDoc, getDocs, collection, query, where, writeBatch, arrayUnion, updateDoc } from 'firebase/firestore';
+import { signInAnonymously } from 'firebase/auth';
 import { Button } from '@/components/ui/button';
 import { ChevronLeft, ChevronRight, RotateCcw } from 'lucide-react';
 import {
@@ -50,6 +51,7 @@ const createInitialState = (sleepHours: number[], date: Date): TimeBlockState[] 
 
 export default function Home() {
   const { user, isUserLoading } = useUser();
+  const auth = useAuth();
   const firestore = useFirestore();
   const router = useRouter();
   const [currentDate, setCurrentDate] = useState(startOfDay(new Date()));
@@ -81,13 +83,17 @@ export default function Home() {
   useEffect(() => {
     setIsClient(true);
     if (!isUserLoading && !user) {
-      router.push('/login');
+        if (auth) {
+            signInAnonymously(auth).catch(error => {
+                console.error("Anonymous sign-in failed:", error);
+            });
+        }
     }
     const timer = setInterval(() => {
       setLiveTime(new Date());
     }, 1000); // Update every second
     return () => clearInterval(timer);
-  }, [user, isUserLoading, router]);
+  }, [user, isUserLoading, auth]);
 
   const loadDayData = useCallback(async (dateToLoad: Date) => {
     if (!user || !firestore || !userDataLoaded) return;
@@ -160,7 +166,7 @@ export default function Home() {
             setEnableTodoList(settings.enableTodoList !== false);
             setSeenWhatsNewVersions(data.seenWhatsNewVersions || []);
           } else {
-             setUserName(user.displayName || '');
+             setUserName(user.displayName || (user.isAnonymous ? '' : 'User'));
           }
         } catch (e) {
             console.error("Error loading user data", e);
@@ -355,7 +361,7 @@ export default function Home() {
     return dailyQuestions[(dayIndex + qIndex) % dailyQuestions.length];
   }, [isClient, currentDate, questionIndex]);
 
-  if (isUserLoading || !isClient || !userDataLoaded) {
+  if (isUserLoading || !isClient || !user || !userDataLoaded) {
     return (
         <div className="flex flex-col items-center justify-center min-h-screen">
           <GridFocusLoader />
@@ -385,6 +391,7 @@ export default function Home() {
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
             <div>
               {userName && <h2 className="text-2xl sm:text-3xl font-bold text-foreground">Welcome back, {userName}!</h2>}
+              {user.isAnonymous && <p className="text-sm text-amber-500">Your data is temporary. Sign up to save your progress.</p>}
               <div className="flex items-center gap-2 mt-2">
                 <Button variant="outline" size="icon" onClick={() => changeDay(-1)}>
                     <ChevronLeft className="w-4 h-4" />
