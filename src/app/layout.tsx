@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils';
 import { ThemeProvider } from '@/components/providers';
 import { Toaster } from "@/components/ui/toaster"
 import { FirebaseClientProvider } from '@/firebase/client-provider';
+import { SpeedInsights } from '@vercel/speed-insights/next';
 
 import 'katex/dist/katex.min.css';
 
@@ -41,6 +42,7 @@ export default function RootLayout({
                 <Toaster />
             </ThemeProvider>
         </FirebaseClientProvider>
+        <SpeedInsights />
       </body>
     </html>
   );
