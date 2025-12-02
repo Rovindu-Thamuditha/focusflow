@@ -55,7 +55,7 @@ export function TimeBlock({ hour, subjectId, duration, subjects, onClick, onStat
   const Icon = ICONS[subject.icon] || Sparkles;
 
   const sleepStyles = "dark:bg-gray-800 dark:text-gray-500 bg-slate-700 text-slate-300";
-  const idleStyles = "dark:text-gray-500 text-slate-500";
+  const idleStyles = "text-muted-foreground";
   const finalIsEditable = isEditable && !isFuture && !isCurrent;
 
   const glowStyle = activeTimerSubject ? {
