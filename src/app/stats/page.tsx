@@ -13,6 +13,9 @@ import { subDays, startOfDay, format, parseISO, endOfDay, eachDayOfInterval } fr
 import type { TimeBlockState, Subject } from '@/lib/types';
 import { defaultSubjects } from '@/lib/subjects';
 import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
+import Link from 'next/link';
+import { UserPlus } from 'lucide-react';
 
 const CustomTooltip = ({ active, payload, label, subjects }: any) => {
   if (active && payload && payload.length) {
@@ -151,7 +154,7 @@ export default function StatsPage() {
     }, 0) / 60; // convert to hours
   }, [timeBlocks]);
 
-  if (isUserLoading || !dataLoaded) {
+  if (isUserLoading || !dataLoaded || !user) {
     return (
         <div className="flex items-center justify-center min-h-screen bg-background">
           <div className="text-xl">Loading Statistics...</div>
@@ -160,57 +163,78 @@ export default function StatsPage() {
   }
 
   const subjectsToRender = subjects.filter(s => s.id !== 'idle' && s.id !== 'sleep');
+  const isAnonymousUser = user.isAnonymous;
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
       <MainHeader totalFocusedTime={totalFocusTimeInRange} />
       <main className="flex-grow container mx-auto p-4 sm:p-6 md:p-8">
-        <Card className="border-primary/20">
-            <CardHeader>
-                <CardTitle className="flex justify-between items-center text-2xl font-bold">
-                   <span>Focus Statistics</span>
-                   <Select value={timeRange} onValueChange={setTimeRange}>
-                     <SelectTrigger className="w-[180px]">
-                       <SelectValue placeholder="Select time range" />
-                     </SelectTrigger>
-                     <SelectContent>
-                       <SelectItem value="7">Last 7 Days</SelectItem>
-                       <SelectItem value="30">Last 30 Days</SelectItem>
-                       <SelectItem value="90">Last 90 Days</SelectItem>
-                     </SelectContent>
-                   </Select>
-                </CardTitle>
-                <CardDescription>Your daily focused time breakdown by subject.</CardDescription>
-            </CardHeader>
-            <CardContent>
-                {chartData.length > 0 ? (
-                    <ResponsiveContainer width="100%" height={400}>
-                        <BarChart data={chartData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }} className={cn(chartData.length > 0 && "glow-primary")}>
-                            <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.2} />
-                            <XAxis dataKey="date" tickLine={false} axisLine={false} />
-                            <YAxis tickLine={false} axisLine={false} label={{ value: 'Hours', angle: -90, position: 'insideLeft', offset: 10 }} />
-                            <Tooltip content={<CustomTooltip subjects={subjects} />} cursor={{fill: 'hsl(var(--accent))', fillOpacity: 0.1}} />
-                            <Legend iconType="circle" />
-                            {subjectsToRender.map((subject, index) => (
-                               <Bar 
-                                 key={subject.id} 
-                                 dataKey={subject.id} 
-                                 stackId="a" 
-                                 fill={subject.color} 
-                                 name={subject.name} 
-                                 radius={index === subjectsToRender.length - 1 ? [4, 4, 0, 0] : 0}
-                                 maxBarSize={40}
-                               />
-                            ))}
-                        </BarChart>
-                    </ResponsiveContainer>
-                ) : (
-                    <div className="flex items-center justify-center h-[400px] text-muted-foreground">
-                        No focus data available for the selected period.
-                    </div>
-                )}
-            </CardContent>
-        </Card>
+        <div className="relative">
+          <Card className={cn("border-primary/20 transition-all", isAnonymousUser && "blur-sm pointer-events-none")}>
+              <CardHeader>
+                  <CardTitle className="flex justify-between items-center text-2xl font-bold">
+                    <span>Focus Statistics</span>
+                    <Select value={timeRange} onValueChange={setTimeRange}>
+                      <SelectTrigger className="w-[180px]">
+                        <SelectValue placeholder="Select time range" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="7">Last 7 Days</SelectItem>
+                        <SelectItem value="30">Last 30 Days</SelectItem>
+                        <SelectItem value="90">Last 90 Days</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </CardTitle>
+                  <CardDescription>Your daily focused time breakdown by subject.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                  {chartData.length > 0 ? (
+                      <ResponsiveContainer width="100%" height={400}>
+                          <BarChart data={chartData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }} className={cn(chartData.length > 0 && "glow-primary")}>
+                              <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.2} />
+                              <XAxis dataKey="date" tickLine={false} axisLine={false} />
+                              <YAxis tickLine={false} axisLine={false} label={{ value: 'Hours', angle: -90, position: 'insideLeft', offset: 10 }} />
+                              <Tooltip content={<CustomTooltip subjects={subjects} />} cursor={{fill: 'hsl(var(--accent))', fillOpacity: 0.1}} />
+                              <Legend iconType="circle" />
+                              {subjectsToRender.map((subject, index) => (
+                                <Bar 
+                                  key={subject.id} 
+                                  dataKey={subject.id} 
+                                  stackId="a" 
+                                  fill={subject.color} 
+                                  name={subject.name} 
+                                  radius={index === subjectsToRender.length - 1 ? [4, 4, 0, 0] : 0}
+                                  maxBarSize={40}
+                                />
+                              ))}
+                          </BarChart>
+                      </ResponsiveContainer>
+                  ) : (
+                      <div className="flex items-center justify-center h-[400px] text-muted-foreground">
+                          No focus data available for the selected period.
+                      </div>
+                  )}
+              </CardContent>
+          </Card>
+          {isAnonymousUser && (
+             <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/50 backdrop-blur-sm z-10 rounded-lg">
+                <Card className="p-8 text-center">
+                    <CardHeader>
+                        <CardTitle className="text-2xl font-bold">See Your Progress</CardTitle>
+                        <CardDescription>Create a free account to view your long-term statistics and save your data permanently.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <Link href="/login" passHref>
+                            <Button size="lg">
+                                <UserPlus className="mr-2" />
+                                Sign Up to View Stats
+                            </Button>
+                        </Link>
+                    </CardContent>
+                </Card>
+            </div>
+          )}
+        </div>
       </main>
     </div>
   );

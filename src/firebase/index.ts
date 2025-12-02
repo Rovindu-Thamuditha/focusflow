@@ -3,25 +3,39 @@
 import { firebaseConfig } from '@/firebase/config';
 import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore'
+import { getFirestore, enableIndexedDbPersistence } from 'firebase/firestore'
 
 // IMPORTANT: DO NOT MODIFY THIS FUNCTION
 export function initializeFirebase() {
   if (!getApps().length) {
-    // For Vercel and other environments, we explicitly initialize with our config.
     const firebaseApp = initializeApp(firebaseConfig);
-    return getSdks(firebaseApp);
+    const firestore = getFirestore(firebaseApp);
+    
+    // Enable offline persistence
+    enableIndexedDbPersistence(firestore).catch((err) => {
+      if (err.code == 'failed-precondition') {
+        // Multiple tabs open, persistence can only be enabled in one tab at a time.
+        console.warn('Firestore persistence failed: multiple tabs open.');
+      } else if (err.code == 'unimplemented') {
+        // The current browser does not support all of the features required to enable persistence
+        console.warn('Firestore persistence not available in this browser.');
+      }
+    });
+    
+    return getSdks(firebaseApp, firestore);
   }
 
   // If already initialized, return the SDKs with the already initialized App
-  return getSdks(getApp());
+  const app = getApp();
+  const firestore = getFirestore(app);
+  return getSdks(app, firestore);
 }
 
-export function getSdks(firebaseApp: FirebaseApp) {
+export function getSdks(firebaseApp: FirebaseApp, firestore: any) {
   return {
     firebaseApp,
     auth: getAuth(firebaseApp),
-    firestore: getFirestore(firebaseApp)
+    firestore: firestore
   };
 }
 
