@@ -462,7 +462,7 @@ export default function Home() {
         <FloatingTimer
             subjects={subjects}
             isRunning={timerIsRunning}
-            setIsRunning={setIsRunning}
+            setIsRunning={setTimerIsRunning}
             subject={timerSubject}
             setSubject={setTimerSubject}
             elapsedSeconds={elapsedSeconds}
@@ -482,3 +482,5 @@ export default function Home() {
     </div>
   );
 }
+
+    
