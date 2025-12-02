@@ -6,10 +6,8 @@ import { useEffect, useState } from 'react';
 
 interface Bolt {
     id: number;
-    x: number;
-    y: number;
-    height: number;
-    width: number;
+    left: number;
+    top: number;
 }
 
 export function StrangerThingsLightning() {
@@ -28,14 +26,12 @@ export function StrangerThingsLightning() {
       
       const createBolts = () => {
         const newBolts: Bolt[] = [];
-        const numBolts = Math.floor(Math.random() * 3) + 1; // 1 to 3 bolts
+        const numBolts = Math.floor(Math.random() * 2) + 1; // 1 to 2 bolts
         for (let i = 0; i < numBolts; i++) {
           newBolts.push({
             id: Date.now() + i,
-            x: Math.random() * 100,
-            y: Math.random() * 20, // Start from top
-            height: Math.random() * 60 + 30, // 30% to 90% of height
-            width: Math.random() * 2 + 1, // 1px to 3px wide
+            left: Math.random() * 100,
+            top: (Math.random() * -30) - 20, // Start off-screen
           });
         }
         setBolts(newBolts);
@@ -64,10 +60,8 @@ export function StrangerThingsLightning() {
           key={bolt.id}
           className="lightning-bolt"
           style={{
-            left: `${bolt.x}%`,
-            top: `${bolt.y}%`,
-            height: `${bolt.height}vh`,
-            width: `${bolt.width}px`,
+            left: `${bolt.left}%`,
+            top: `${bolt.top}%`,
           }}
         />
       ))}
