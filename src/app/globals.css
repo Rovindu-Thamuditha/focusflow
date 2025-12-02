@@ -91,7 +91,7 @@ body {
     --muted: 0 0% 14%;
     --muted-foreground: 0 0% 70%;
     --accent: 0 100% 30%;
-    --accent-foreground: 0 0% 100%;
+    --accent-foreground: 0 0% 95%;
     --destructive: 0 100% 50%;
     --destructive-foreground: 0 0% 100%;
     --border: 0 100% 25%;
@@ -103,6 +103,14 @@ body {
     --chart-4: 0 70% 45%;
     --chart-5: 25 70% 45%;
     --radius: 0.3rem;
+    --sidebar-background: 0 0% 8%;
+    --sidebar-foreground: 0 0% 95%;
+    --sidebar-primary: 0 100% 50%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 0 0% 14%;
+    --sidebar-accent-foreground: 0 0% 95%;
+    --sidebar-border: 0 100% 25%;
+    --sidebar-ring: 0 100% 50%;
 
     font-family: var(--font-cinzel-decorative), 'Courier New', Courier, monospace;
   }
