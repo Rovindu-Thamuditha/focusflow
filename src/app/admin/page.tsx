@@ -173,8 +173,8 @@ export default function AdminPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {users.map((u) => (
-                  <TableRow key={u.id}>
+                {users.map((u, index) => (
+                  <TableRow key={u.email || u.id || index}>
                     <TableCell className="font-medium">
                         {u.username || <span className="text-muted-foreground italic">(Anonymous User)</span>}
                         {u.id === user.uid && <Badge variant="secondary" className="ml-2">Admin</Badge>}
