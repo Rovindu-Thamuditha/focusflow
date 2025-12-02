@@ -122,6 +122,10 @@ body {
   html.stranger-things * {
     vertical-align: middle;
   }
+
+  .is-flipping {
+    animation: flip-world 1s ease-in-out forwards;
+  }
 }
 
 @layer utilities {
@@ -254,5 +258,38 @@ html.stranger-things .pulsing-glow {
     opacity: 1;
     transition: none; /* Disable fade-in for instantaneous flash */
 }
+
+/* --- 4. World Flip Animation --- */
+@keyframes flip-world {
+  0% {
+    transform: scaleY(1);
+    opacity: 1;
+    filter: none;
+  }
+  /* Collapse the world */
+  40% {
+    transform: scaleY(0);
+    opacity: 0;
+  }
+  /* The red blast */
+  50% {
+    transform: scaleY(0);
+    background-color: #ff0000;
+    filter: brightness(2);
+  }
+  60% {
+    transform: scaleY(0);
+    background-color: #ff0000;
+    filter: brightness(2);
+  }
+  /* Fade back to normal */
+  100% {
+    transform: scaleY(1);
+    opacity: 1;
+    background-color: transparent;
+    filter: none;
+  }
+}
+    
 
     

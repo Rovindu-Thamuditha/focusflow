@@ -58,7 +58,10 @@ export default function Home() {
   const firestore = useFirestore();
   const router = useRouter();
   const { theme } = useTheme();
+  
   const [isFlipped, setIsFlipped] = useState(false);
+  const [isAnimating, setIsAnimating] = useState(false);
+
   const [currentDate, setCurrentDate] = useState(startOfDay(new Date()));
   const [liveTime, setLiveTime] = useState(new Date());
   const [timeBlocks, setTimeBlocks] = useState<TimeBlockState[]>(createInitialState([], new Date()));
@@ -85,6 +88,15 @@ export default function Home() {
   const [timerIntervalId, setTimerIntervalId] = useState<NodeJS.Timeout | null>(null);
   
   const userDocRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
+  
+  // Set initial flipped state when theme changes
+  useEffect(() => {
+    if (theme === 'stranger-things') {
+      setIsFlipped(true);
+    } else {
+      setIsFlipped(false);
+    }
+  }, [theme]);
 
   useEffect(() => {
     setIsClient(true);
@@ -373,6 +385,20 @@ export default function Home() {
     return dailyQuestions[(dayIndex + qIndex) % dailyQuestions.length];
   }, [isClient, currentDate, questionIndex]);
 
+  const handleFlipClick = () => {
+    if (isFlipped) {
+      setIsAnimating(true);
+      // The animation is 1 second long. After it finishes, update the state.
+      setTimeout(() => {
+        setIsFlipped(false);
+        setIsAnimating(false);
+      }, 1000);
+    } else {
+      setIsFlipped(true);
+    }
+  };
+
+
   if (isUserLoading || !isClient || !user || !userDataLoaded) {
     return (
         <div className="flex flex-col items-center justify-center min-h-screen">
@@ -386,7 +412,10 @@ export default function Home() {
 
 
   return (
-    <div className={cn("flex flex-col min-h-screen", isFlipped && "is-flipped")}>
+    <div className={cn("flex flex-col min-h-screen", 
+        isFlipped && "is-flipped",
+        isAnimating && "is-flipping"
+    )}>
       <MainHeader totalFocusedTime={totalFocusedTime}>
          <CurrentTime time={liveTime} />
          <SettingsDialog
@@ -491,8 +520,9 @@ export default function Home() {
             <Button
                 variant="destructive"
                 className="fixed bottom-4 left-4 h-14 w-14 rounded-full shadow-lg z-50 animate-pulse"
-                title="Invert"
-                onClick={() => setIsFlipped(!isFlipped)}
+                title="Restore Reality"
+                onClick={handleFlipClick}
+                disabled={isAnimating}
             >
                 <ToyBrick className="h-6 w-6" />
             </Button>
@@ -506,3 +536,5 @@ export default function Home() {
     </div>
   );
 }
+
+    
