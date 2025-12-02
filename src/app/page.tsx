@@ -318,6 +318,21 @@ export default function Home() {
     setSolvedChallenges(newSolvedChallenges);
   };
   
+  const handleSettingsSave = (newSettings: any) => {
+    const oldSleepHours = sleepHours;
+    setSubjects(newSettings.subjects);
+    setSleepHours(newSettings.sleepHours);
+    setLanguage(newSettings.language);
+    setEnableTimer(newSettings.enableTimer);
+    setEnableDailyChallenge(newSettings.enableDailyChallenge);
+    setEnableTodoList(newSettings.enableTodoList);
+
+    // Only reset grid if sleep hours actually changed
+    if (JSON.stringify([...oldSleepHours].sort()) !== JSON.stringify([...newSettings.sleepHours].sort())) {
+      handleGridReset(newSettings.sleepHours);
+    }
+  };
+
   const markWhatsNewAsSeen = async (version: string) => {
     if (!userDocRef) return;
     try {
@@ -366,26 +381,12 @@ export default function Home() {
          <CurrentTime time={liveTime} />
          <SettingsDialog
             subjects={subjects}
-            setSubjects={setSubjects}
             sleepHours={sleepHours}
-            setSleepHours={(newHoursUpdater) => {
-              const oldHours = sleepHours;
-              // The updater function gives us the new state
-              const newHours = newHoursUpdater(oldHours); 
-              setSleepHours(newHours);
-              // Only reset grid if sleep hours actually changed
-              if (JSON.stringify([...oldHours].sort()) !== JSON.stringify([...newHours].sort())) {
-                handleGridReset(newHours);
-              }
-            }}
             language={language}
-            setLanguage={setLanguage}
             enableTimer={enableTimer}
-            setEnableTimer={setEnableTimer}
             enableDailyChallenge={enableDailyChallenge}
-            setEnableDailyChallenge={setEnableDailyChallenge}
             enableTodoList={enableTodoList}
-            setEnableTodoList={setEnableTodoList}
+            onSave={handleSettingsSave}
           />
       </MainHeader>
       <main className="flex-grow container mx-auto p-4 sm:p-6 md:p-8">

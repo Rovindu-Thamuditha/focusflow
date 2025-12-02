@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Settings, Trash2, PlusCircle, Languages, Sparkles, SlidersHorizontal } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -16,36 +16,58 @@ import { Switch } from '@/components/ui/switch';
 
 interface SettingsDialogProps {
   subjects: Subject[];
-  setSubjects: (subjects: Subject[]) => void;
   sleepHours: number[];
-  setSleepHours: (updater: (prev: number[]) => number[]) => void;
   language: 'english' | 'sinhala';
-  setLanguage: (language: 'english' | 'sinhala') => void;
   enableTimer: boolean;
-  setEnableTimer: (enabled: boolean) => void;
   enableDailyChallenge: boolean;
-  setEnableDailyChallenge: (enabled: boolean) => void;
   enableTodoList: boolean;
-  setEnableTodoList: (enabled: boolean) => void;
+  onSave: (settings: {
+    subjects: Subject[];
+    sleepHours: number[];
+    language: 'english' | 'sinhala';
+    enableTimer: boolean;
+    enableDailyChallenge: boolean;
+    enableTodoList: boolean;
+  }) => void;
 }
 
 const allHours = Array.from({ length: 24 }, (_, i) => i);
 
 export function SettingsDialog({ 
-  subjects, 
-  setSubjects,
-  sleepHours, 
-  setSleepHours,
-  language, 
-  setLanguage,
-  enableTimer,
-  setEnableTimer,
-  enableDailyChallenge,
-  setEnableDailyChallenge,
-  enableTodoList,
-  setEnableTodoList,
+  subjects: initialSubjects, 
+  sleepHours: initialSleepHours, 
+  language: initialLanguage,
+  enableTimer: initialEnableTimer,
+  enableDailyChallenge: initialEnableDailyChallenge,
+  enableTodoList: initialEnableTodoList,
+  onSave,
 }: SettingsDialogProps) {
   const [isOpen, setIsOpen] = useState(false);
+  
+  // Local state for editing
+  const [subjects, setSubjects] = useState(initialSubjects);
+  const [sleepHours, setSleepHours] = useState(initialSleepHours);
+  const [language, setLanguage] = useState(initialLanguage);
+  const [enableTimer, setEnableTimer] = useState(initialEnableTimer);
+  const [enableDailyChallenge, setEnableDailyChallenge] = useState(initialEnableDailyChallenge);
+  const [enableTodoList, setEnableTodoList] = useState(initialEnableTodoList);
+
+  // Sync with props when dialog opens or props change
+  useEffect(() => {
+    if (isOpen) {
+        setSubjects(initialSubjects);
+        setSleepHours(initialSleepHours);
+        setLanguage(initialLanguage);
+        setEnableTimer(initialEnableTimer);
+        setEnableDailyChallenge(initialEnableDailyChallenge);
+        setEnableTodoList(initialEnableTodoList);
+    }
+  }, [isOpen, initialSubjects, initialSleepHours, initialLanguage, initialEnableTimer, initialEnableDailyChallenge, initialEnableTodoList]);
+
+  const handleSave = () => {
+    onSave({ subjects, sleepHours, language, enableTimer, enableDailyChallenge, enableTodoList });
+    setIsOpen(false);
+  };
 
   const handleSleepCheckboxChange = (hour: number, checked: boolean) => {
     setSleepHours(prev => {
@@ -68,9 +90,11 @@ export function SettingsDialog({
   };
 
   const removeSubject = (indexToRemove: number) => {
-    const actualIndex = subjects.findIndex((s, i) => i === indexToRemove && s.id !== 'idle' && s.id !== 'sleep');
-    if (actualIndex !== -1) {
-        setSubjects(subjects.filter((_, i) => i !== actualIndex));
+    // This is tricky because the index is based on the filtered list.
+    // We need to find the actual index in the original `subjects` array.
+    const subjectToRemove = subjects.filter(s => s.id !== 'idle' && s.id !== 'sleep')[indexToRemove];
+    if (subjectToRemove) {
+      setSubjects(subjects.filter(s => s.id !== subjectToRemove.id));
     }
   };
 
@@ -87,7 +111,7 @@ export function SettingsDialog({
         <DialogHeader>
           <DialogTitle>Settings</DialogTitle>
           <DialogDescription>
-            Customize your GridFocus experience. Changes save automatically.
+            Customize your GridFocus experience.
           </DialogDescription>
         </DialogHeader>
         <Tabs defaultValue="general">
@@ -154,7 +178,7 @@ export function SettingsDialog({
           </TabsContent>
           <TabsContent value="sleep" className="py-4">
             <h4 className="font-semibold mb-2">Default Sleep Hours</h4>
-            <p className="text-sm text-muted-foreground mb-4">Select hours you're usually asleep. These blocks will be marked as 'Sleep' and the grid will reset accordingly.</p>
+            <p className="text-sm text-muted-foreground mb-4">Select hours you're usually asleep. The grid will reset to these sleep hours if you reset a day.</p>
             <div className="grid grid-cols-4 gap-2">
                 {allHours.map(hour => (
                     <div key={hour} className="flex items-center space-x-2">
@@ -201,7 +225,8 @@ export function SettingsDialog({
           </TabsContent>
         </Tabs>
         <DialogFooter>
-            <Button variant="secondary" onClick={() => setIsOpen(false)}>Close</Button>
+            <Button variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
+            <Button onClick={handleSave}>Save</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
