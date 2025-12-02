@@ -6,6 +6,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Button } from '@/components/ui/button';
 import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query, orderBy, limit } from 'firebase/firestore';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 interface WhatsNew {
   id: string;
@@ -57,16 +60,18 @@ export function WhatsNewDialog({ seenVersions, onMarkAsSeen }: WhatsNewDialogPro
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent>
+      <DialogContent className="max-w-xl">
         <DialogHeader>
           <DialogTitle>{announcement.title}</DialogTitle>
           <DialogDescription>Here's what's new in GridFocus!</DialogDescription>
         </DialogHeader>
-        <div 
-          className="prose prose-sm dark:prose-invert max-w-none py-4"
-          dangerouslySetInnerHTML={{ __html: announcement.content.replace(/\n/g, '<br />') }}
-        >
-        </div>
+        <ScrollArea className="h-[60vh] pr-6">
+            <div className="prose prose-sm dark:prose-invert max-w-none">
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                    {announcement.content}
+                </ReactMarkdown>
+            </div>
+        </ScrollArea>
         <DialogFooter>
           <Button onClick={handleClose}>Got it!</Button>
         </DialogFooter>
