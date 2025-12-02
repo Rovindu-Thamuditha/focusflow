@@ -77,14 +77,34 @@ body {
     --sidebar-border: 240 3.7% 15.9%;
     --sidebar-ring: 217.2 91.2% 59.8%;
   }
-}
+  .stranger-things {
+    --background: 0 0% 4%;
+    --foreground: 0 0% 95%;
+    --card: 0 0% 8%;
+    --card-foreground: 0 0% 95%;
+    --popover: 0 0% 8%;
+    --popover-foreground: 0 0% 95%;
+    --primary: 0 100% 50%; /* Bright Red */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 0 0% 14%;
+    --secondary-foreground: 0 0% 95%;
+    --muted: 0 0% 14%;
+    --muted-foreground: 0 0% 60%;
+    --accent: 25 95% 53%; /* Orange-ish accent */
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 100% 50%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 0 100% 25%;
+    --input: 0 0% 14%;
+    --ring: 0 100% 50%;
+    --chart-1: 0 100% 50%;
+    --chart-2: 25 95% 53%;
+    --chart-3: 39 100% 50%;
+    --chart-4: 0 70% 45%;
+    --chart-5: 25 70% 45%;
+    --radius: 0.3rem;
 
-@layer base {
-  * {
-    @apply border-border;
-  }
-  body {
-    @apply bg-background text-foreground;
+    font-family: 'Benguiat', 'Courier New', Courier, monospace;
   }
 }
 
@@ -94,6 +114,21 @@ body {
   }
   .glow-accent {
     filter: drop-shadow(0 0 8px hsl(var(--accent) / 0.5)) drop-shadow(0 0 16px hsl(var(--accent) / 0.2));
+  }
+  .text-glow {
+    text-shadow: 0 0 8px hsl(var(--primary) / 0.8), 0 0 10px hsl(var(--primary) / 0.6);
+    animation: flicker 3s infinite linear;
+  }
+
+  @keyframes flicker {
+    0%, 100% {
+      opacity: 1;
+      text-shadow: 0 0 8px hsl(var(--primary) / 0.8), 0 0 10px hsl(var(--primary) / 0.6);
+    }
+    50% {
+      opacity: 0.8;
+      text-shadow: 0 0 6px hsl(var(--primary) / 0.6), 0 0 8px hsl(var(--primary) / 0.4);
+    }
   }
 }
 

@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { useUser, useAuth } from "@/firebase";
 import { InfoDialog } from "./info-dialog";
+import { Badge } from "./ui/badge";
 
 const ADMIN_EMAIL = 'rovinduthamu@gmail.com';
 
@@ -43,7 +44,7 @@ export function MainHeader({ totalFocusedTime, children }: MainHeaderProps) {
         <div className="flex gap-6 items-center">
           <Link href="/" className="flex items-center gap-2">
             <Icons.logo className="h-6 w-6 text-primary" />
-            <h1 className="text-xl sm:text-2xl font-bold text-primary">GridFocus</h1>
+            <h1 className="text-xl sm:text-2xl font-bold text-primary [.stranger-things_&]:text-glow">GridFocus</h1>
           </Link>
         </div>
         <div className="flex flex-1 items-center justify-end space-x-2">
@@ -70,7 +71,10 @@ export function MainHeader({ totalFocusedTime, children }: MainHeaderProps) {
                 </Button>
               </Link>
               <InfoDialog />
-              <ThemeToggle />
+              <div className="relative">
+                <ThemeToggle />
+                <Badge className="absolute -top-1 -right-2 bg-accent text-accent-foreground text-xs px-1.5 py-0.5 pointer-events-none animate-pulse">New!</Badge>
+              </div>
               {isAnonymousUser ? (
                  <Link href="/login" passHref>
                     <Button>
@@ -97,7 +101,10 @@ export function MainHeader({ totalFocusedTime, children }: MainHeaderProps) {
                   <BarChart2 className="h-5 w-5" />
               </Button>
             </Link>
-            <ThemeToggle />
+            <div className="relative">
+                <ThemeToggle />
+                <Badge className="absolute -top-1 -right-2 bg-accent text-accent-foreground text-xs px-1.5 py-0.5 pointer-events-none animate-pulse">New!</Badge>
+            </div>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon">
