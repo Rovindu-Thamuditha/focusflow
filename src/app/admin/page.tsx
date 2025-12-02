@@ -12,7 +12,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Trash2, KeyRound, Eye } from 'lucide-react';
+import { Trash2, KeyRound, Eye, Newspaper } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -150,9 +150,17 @@ export default function AdminPage() {
       <MainHeader totalFocusedTime={0} />
       <main className="flex-grow container mx-auto p-4 sm:p-6 md:p-8">
         <Card>
-          <CardHeader>
-            <CardTitle>Admin Panel</CardTitle>
-            <CardDescription>Monitor and manage user data.</CardDescription>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <div>
+              <CardTitle>Admin Panel</CardTitle>
+              <CardDescription>Monitor and manage user data.</CardDescription>
+            </div>
+            <Link href="/admin/whats-new" passHref>
+              <Button variant="outline">
+                <Newspaper className="mr-2 h-4 w-4" />
+                Manage What's New
+              </Button>
+            </Link>
           </CardHeader>
           <CardContent>
             <Table>
@@ -174,7 +182,7 @@ export default function AdminPage() {
                         {u.id !== user.uid ? (
                             <>
                                 <Link href={`/admin/users/${u.id}`} passHref>
-                                  <Button variant="outline" size="icon" asChild title="View/Edit User">
+                                  <Button variant="outline" size="icon" title="View/Edit User">
                                     <Eye className="w-4 h-4" />
                                   </Button>
                                 </Link>
