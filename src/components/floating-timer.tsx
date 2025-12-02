@@ -38,24 +38,16 @@ export function FloatingTimer({
 }: FloatingTimerProps) {
   const [isOpen, setIsOpen] = useState(false);
 
-  const handleToggle = () => {
+  const handlePrimaryAction = () => {
     if (isRunning) {
-      // Stop the timer
-      setIsRunning(false);
-      // Optional: keep the dialog open or close it. For now, let's close it.
-      setIsOpen(false);
+        setIsRunning(false);
+        setIsOpen(false);
     } else {
-      // Start the timer
-      setIsRunning(true);
-      setIsOpen(false); // Close dialog on start
+        setElapsedSeconds(0); // Reset on new start
+        setIsRunning(true);
+        setIsOpen(false);
     }
   };
-
-  const handleStopAndReset = () => {
-    setIsRunning(false);
-    setElapsedSeconds(0);
-    setIsOpen(false);
-  }
 
   const formatTime = (seconds: number) => {
     const hours = Math.floor(seconds / 3600);
@@ -63,29 +55,44 @@ export function FloatingTimer({
     const secs = seconds % 60;
     return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
   };
-
+  
   const filteredSubjects = subjects.filter(s => s.id !== 'idle' && s.id !== 'sleep');
+  const activeSubject = subjects.find(s => s.id === subject);
 
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+    <Dialog open={isOpen} onOpenChange={(open) => !isRunning && setIsOpen(open)}>
       <DialogTrigger asChild>
         <Button
-          variant={isRunning ? 'destructive' : 'default'}
-          size="icon"
-          className="fixed bottom-4 right-20 h-14 w-14 rounded-full shadow-lg z-50"
-          title={isRunning ? 'Stop Focus Timer' : 'Start Focus Timer'}
-          onClick={() => !isRunning && setIsOpen(true)}
+            variant="default"
+            className={cn(
+                "fixed bottom-4 right-20 h-14 w-14 rounded-full shadow-lg z-50 text-white",
+                isRunning ? 'bg-red-500 hover:bg-red-600' : 'bg-primary hover:bg-primary/90'
+            )}
+            title={isRunning ? 'Stop Focus Timer' : 'Start Focus Timer'}
+            onClick={() => {
+                if(isRunning) {
+                    setIsRunning(false);
+                } else {
+                    setIsOpen(true);
+                }
+            }}
         >
           {isRunning ? <Square className="h-6 w-6" /> : <Timer className="h-6 w-6" />}
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Start Focus Session</DialogTitle>
-          <DialogDescription>Select a subject and start the timer. The current hour block will be updated automatically.</DialogDescription>
+          <DialogTitle>{isRunning ? 'Focus Session In Progress' : 'Start New Focus Session'}</DialogTitle>
+          <DialogDescription>
+            {isRunning 
+                ? `Tracking time for: ${activeSubject?.name || '...'}`
+                : 'Select a subject to begin tracking your focus time.'
+            }
+          </DialogDescription>
         </DialogHeader>
+        
         <div className="grid gap-4 py-4">
-          <Select onValueChange={setSubject} defaultValue={subject}>
+          <Select onValueChange={setSubject} defaultValue={subject} disabled={isRunning}>
             <SelectTrigger>
               <SelectValue placeholder="Select a subject" />
             </SelectTrigger>
@@ -97,16 +104,15 @@ export function FloatingTimer({
               ))}
             </SelectContent>
           </Select>
+          
           <div className="text-center font-mono text-4xl font-bold p-4 bg-secondary rounded-lg">
             {formatTime(elapsedSeconds)}
           </div>
         </div>
-        <DialogFooter className="sm:justify-between gap-2">
-            <Button variant="outline" onClick={handleStopAndReset}>
-                Stop & Reset
-            </Button>
-            <Button onClick={handleToggle} className={cn(isRunning ? "bg-red-500" : "bg-green-500")}>
-                {isRunning ? <><Square className="mr-2" /> Stop</> : <><Play className="mr-2"/> Start</>}
+        
+        <DialogFooter>
+            <Button onClick={handlePrimaryAction} className={cn(isRunning ? "w-full" : "w-full bg-green-500 hover:bg-green-600")}>
+                {isRunning ? <><Square className="mr-2" /> Stop Session</> : <><Play className="mr-2"/> Start Session</>}
             </Button>
         </DialogFooter>
       </DialogContent>

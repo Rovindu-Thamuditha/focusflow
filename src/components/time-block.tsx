@@ -6,8 +6,6 @@ import * as React from 'react';
 import { Book, Zap, Coffee, Bed, Sparkles, BrainCircuit, FlaskConical, Dna, Code, PenTool, Briefcase, Moon } from "lucide-react";
 import type { Subject } from "@/lib/types";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { getMinutes } from "date-fns";
-import { FocusTimer } from "./focus-timer";
 
 interface TimeBlockProps {
   hour: number;
@@ -15,11 +13,11 @@ interface TimeBlockProps {
   duration: number;
   subjects: Subject[];
   onClick: () => void;
-  onBlockUpdate: (hour: number, subject: string, duration: number) => void;
   isEditable: boolean;
   isFuture: boolean;
   isCurrent: boolean;
   liveTime: Date;
+  activeTimerSubject: Subject | null;
 }
 
 const ICONS: { [key: string]: React.FC<React.SVGProps<SVGSVGElement>> } = {
@@ -34,7 +32,7 @@ const ICONS: { [key: string]: React.FC<React.SVGProps<SVGSVGElement>> } = {
   Moon,
 };
 
-export function TimeBlock({ hour, subjectId, duration, subjects, onClick, onBlockUpdate, isEditable, isFuture, isCurrent, liveTime }: TimeBlockProps) {
+export function TimeBlock({ hour, subjectId, duration, subjects, onClick, isEditable, isFuture, isCurrent, liveTime, activeTimerSubject }: TimeBlockProps) {
   const isSleep = subjectId === 'sleep';
 
   const subject = isSleep 
@@ -57,28 +55,10 @@ export function TimeBlock({ hour, subjectId, duration, subjects, onClick, onBloc
   const idleStyles = "dark:text-gray-500 text-slate-500";
   const finalIsEditable = isEditable && !isFuture && !isCurrent;
 
-  const minutesPast = getMinutes(liveTime);
-  const progressPercent = (minutesPast / 60) * 100;
-  
-  if(isCurrent) {
-    return (
-        <div 
-            className={cn("relative aspect-square rounded-lg flex flex-col items-center justify-center p-1 transition-all duration-300 ease-in-out transform border", getBrightness())}
-            style={{ backgroundColor: subject.id !== 'idle' ? subject.color : undefined } as React.CSSProperties}
-        >
-            <FocusTimer 
-                hour={hour} 
-                subjects={subjects}
-                currentSubjectId={subjectId}
-                currentDuration={duration}
-                onBlockUpdate={onBlockUpdate}
-            />
-             <div className="absolute left-0 right-0 h-0.5 bg-red-500" style={{ bottom: `0%` }}>
-                <div className="absolute -left-1 -bottom-1 w-2 h-2 rounded-full bg-red-500"></div>
-            </div>
-        </div>
-    )
-  }
+  const glowStyle = activeTimerSubject ? {
+    '--glow-color-start': `${activeTimerSubject.color}99`,
+    '--glow-color-end': `${activeTimerSubject.color}ff`,
+  } as React.CSSProperties : {};
 
   return (
     <TooltipProvider delayDuration={100}>
@@ -93,11 +73,13 @@ export function TimeBlock({ hour, subjectId, duration, subjects, onClick, onBloc
                     isSleep ? sleepStyles : (subject.id === 'idle' ? idleStyles : getBrightness()),
                     !finalIsEditable && 'cursor-not-allowed',
                     isFuture && 'opacity-50',
+                    isCurrent && activeTimerSubject && 'pulsing-glow',
                     isSleep && 'opacity-70',
                     'border-border'
                 )}
                 style={{ 
                     backgroundColor: subject.id !== 'idle' ? subject.color : undefined,
+                    ...glowStyle,
                 } as React.CSSProperties}
                 aria-label={`Hour ${hour}:00, current state: ${subject.name}. Click to change.`}
                 disabled={!finalIsEditable || isSleep}

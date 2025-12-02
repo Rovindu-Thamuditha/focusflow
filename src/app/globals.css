@@ -95,23 +95,6 @@ body {
   .glow-accent {
     filter: drop-shadow(0 0 8px hsl(var(--accent) / 0.5)) drop-shadow(0 0 16px hsl(var(--accent) / 0.2));
   }
-
-  /* Style for the FocusTimer component */
-  .focus-timer-container select {
-    @apply text-xs h-6 rounded-md;
-  }
-
-  .focus-timer-container .timer-display {
-    @apply text-base font-mono font-semibold;
-  }
-  
-  .focus-timer-container .timer-controls button {
-    @apply h-6 w-6;
-  }
-  
-  .focus-timer-container .timer-controls svg {
-    @apply h-3 w-3;
-  }
 }
 
 
@@ -135,5 +118,22 @@ body {
   }
   100% {
     filter: drop-shadow(0 0 2px hsl(var(--primary)));
+  }
+}
+
+/* Pulsing glow animation for the active timer block */
+.pulsing-glow {
+  animation: pulse-glow 2s infinite ease-in-out;
+}
+
+@keyframes pulse-glow {
+  0% {
+    box-shadow: 0 0 5px var(--glow-color-start), 0 0 10px var(--glow-color-start);
+  }
+  50% {
+    box-shadow: 0 0 20px var(--glow-color-end), 0 0 30px var(--glow-color-end);
+  }
+  100% {
+    box-shadow: 0 0 5px var(--glow-color-start), 0 0 10px var(--glow-color-start);
   }
 }

@@ -13,9 +13,10 @@ interface AccountabilityGridProps {
   onBlockUpdate: (hour: number, subject: string, duration: number) => void;
   viewingDate: Date;
   liveTime: Date;
+  activeTimerSubject: Subject | null;
 }
 
-export function AccountabilityGrid({ blocks, subjects, onBlockUpdate, viewingDate, liveTime }: AccountabilityGridProps) {
+export function AccountabilityGrid({ blocks, subjects, onBlockUpdate, viewingDate, liveTime, activeTimerSubject }: AccountabilityGridProps) {
   const [selectedBlock, setSelectedBlock] = useState<TimeBlockState | null>(null);
 
   const isEditableDate = differenceInHours(new Date(), viewingDate) <= 36;
@@ -67,11 +68,11 @@ export function AccountabilityGrid({ blocks, subjects, onBlockUpdate, viewingDat
                 duration={block.duration}
                 subjects={subjects}
                 onClick={() => handleBlockClick(block.hour)}
-                onBlockUpdate={onBlockUpdate}
                 isEditable={isEditableDate}
                 isFuture={isFutureBlock}
                 isCurrent={isCurrentBlock}
                 liveTime={liveTime}
+                activeTimerSubject={isCurrentBlock ? activeTimerSubject : null}
               />
             );
         })}

@@ -31,6 +31,7 @@ import { GridFocusLoader } from '@/components/grid-focus-loader';
 import { FeedbackDialog } from '@/components/feedback-dialog';
 import { CurrentTime } from '@/components/current-time';
 import { TodoList } from '@/components/todo-list';
+import { FloatingTimer } from '@/components/floating-timer';
 
 const createInitialState = (sleepHours: number[], date: Date): TimeBlockState[] => {
   const dateString = format(date, 'yyyy-MM-dd');
@@ -61,6 +62,12 @@ export default function Home() {
   const [userDataLoaded, setUserDataLoaded] = useState(false);
   const [userName, setUserName] = useState('');
   const [questionIndex, setQuestionIndex] = useState(0);
+
+  // Timer State
+  const [timerIsRunning, setTimerIsRunning] = useState(false);
+  const [timerSubject, setTimerSubject] = useState<string>(defaultSubjects[0]?.id || 'math');
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [timerIntervalId, setTimerIntervalId] = useState<NodeJS.Timeout | null>(null);
   
   const userDocRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
 
@@ -206,6 +213,45 @@ export default function Home() {
 
   }, [timeBlocks, solvedChallenges, questionIndex, sleepHours, subjects, language, userName, currentDate, user, userDocRef, firestore, isClient, userDataLoaded]);
   
+  // Timer effect
+  useEffect(() => {
+    if (timerIsRunning) {
+        const currentHour = new Date().getHours();
+        
+        // Update the subject of the current hour block as soon as the timer starts
+        setTimeBlocks(currentBlocks =>
+            currentBlocks.map(block =>
+                block.hour === currentHour ? { ...block, subject: timerSubject } : block
+            )
+        );
+
+        const interval = setInterval(() => {
+            setElapsedSeconds(prev => {
+                const newElapsed = prev + 1;
+                // Update duration every minute
+                if (newElapsed % 60 === 0) {
+                    const minutesToAdd = 1;
+                    setTimeBlocks(currentBlocks =>
+                        currentBlocks.map(block => {
+                            if (block.hour === currentHour) {
+                                const newDuration = Math.min(block.duration + minutesToAdd, 60);
+                                return { ...block, duration: newDuration };
+                            }
+                            return block;
+                        })
+                    );
+                }
+                return newElapsed;
+            });
+        }, 1000);
+        setTimerIntervalId(interval);
+        return () => clearInterval(interval);
+    } else if (timerIntervalId) {
+        clearInterval(timerIntervalId);
+        setTimerIntervalId(null);
+    }
+  }, [timerIsRunning, timerSubject]);
+
   const handleBlockUpdate = (hour: number, subject: string, duration: number) => {
     setTimeBlocks(currentBlocks =>
       currentBlocks.map(block =>
@@ -282,6 +328,9 @@ export default function Home() {
     );
   }
 
+  const activeTimerSubject = timerIsRunning ? subjects.find(s => s.id === timerSubject) : null;
+
+
   return (
     <div className="flex flex-col min-h-screen">
       <MainHeader totalFocusedTime={totalFocusedTime}>
@@ -317,6 +366,7 @@ export default function Home() {
                 onBlockUpdate={handleBlockUpdate}
                 viewingDate={currentDate}
                 liveTime={liveTime}
+                activeTimerSubject={activeTimerSubject}
               />
             </CardContent>
           </Card>
@@ -357,7 +407,17 @@ export default function Home() {
         </div>
       </main>
 
+      <FloatingTimer
+        subjects={subjects}
+        isRunning={timerIsRunning}
+        setIsRunning={setTimerIsRunning}
+        subject={timerSubject}
+        setSubject={setTimerSubject}
+        elapsedSeconds={elapsedSeconds}
+        setElapsedSeconds={setElapsedSeconds}
+      />
       <FeedbackDialog />
+
 
       <footer className="text-center py-4 text-muted-foreground text-sm">
         <p>Made with ♥ for focused minds by <a href="https://github.com/Rovindu-Thamuditha/" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Tipiz</a></p>
