@@ -3,10 +3,6 @@
 @tailwind components;
 @tailwind utilities;
 
-body {
-  font-family: Arial, Helvetica, sans-serif;
-}
-
 @layer base {
   :root {
     --background: 210 17% 98%;
@@ -42,6 +38,7 @@ body {
     --sidebar-accent-foreground: 240 5.9% 10%;
     --sidebar-border: 220 13% 91%;
     --sidebar-ring: 217.2 91.2% 59.8%;
+    font-family: Arial, Helvetica, sans-serif;
   }
   .dark {
     --background: 210 8% 15%;
@@ -76,6 +73,7 @@ body {
     --sidebar-accent-foreground: 240 4.8% 95.9%;
     --sidebar-border: 240 3.7% 15.9%;
     --sidebar-ring: 217.2 91.2% 59.8%;
+    font-family: Arial, Helvetica, sans-serif;
   }
   .stranger-things {
     --background: 0 0% 4%;
@@ -290,6 +288,5 @@ html.stranger-things .pulsing-glow {
     filter: none;
   }
 }
-    
 
     
