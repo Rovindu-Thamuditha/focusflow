@@ -54,14 +54,12 @@ export function SettingsDialog({
 
   // Sync with props when dialog opens or props change
   useEffect(() => {
-    if (isOpen) {
-        setSubjects(initialSubjects);
-        setSleepHours(initialSleepHours);
-        setLanguage(initialLanguage);
-        setEnableTimer(initialEnableTimer);
-        setEnableDailyChallenge(initialEnableDailyChallenge);
-        setEnableTodoList(initialEnableTodoList);
-    }
+    setSubjects(initialSubjects);
+    setSleepHours(initialSleepHours);
+    setLanguage(initialLanguage);
+    setEnableTimer(initialEnableTimer);
+    setEnableDailyChallenge(initialEnableDailyChallenge);
+    setEnableTodoList(initialEnableTodoList);
   }, [isOpen, initialSubjects, initialSleepHours, initialLanguage, initialEnableTimer, initialEnableDailyChallenge, initialEnableTodoList]);
 
   const handleSave = () => {
