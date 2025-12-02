@@ -18,7 +18,7 @@ interface SettingsDialogProps {
   subjects: Subject[];
   setSubjects: (subjects: Subject[]) => void;
   sleepHours: number[];
-  setSleepHours: (hours: number[]) => void;
+  setSleepHours: (updater: (prev: number[]) => number[]) => void;
   language: 'english' | 'sinhala';
   setLanguage: (language: 'english' | 'sinhala') => void;
   enableTimer: boolean;

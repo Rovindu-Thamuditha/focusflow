@@ -368,11 +368,13 @@ export default function Home() {
             subjects={subjects}
             setSubjects={setSubjects}
             sleepHours={sleepHours}
-            setSleepHours={(newHours) => {
+            setSleepHours={(newHoursUpdater) => {
               const oldHours = sleepHours;
+              // The updater function gives us the new state
+              const newHours = newHoursUpdater(oldHours); 
               setSleepHours(newHours);
               // Only reset grid if sleep hours actually changed
-              if (JSON.stringify(oldHours.sort()) !== JSON.stringify(newHours.sort())) {
+              if (JSON.stringify([...oldHours].sort()) !== JSON.stringify([...newHours].sort())) {
                 handleGridReset(newHours);
               }
             }}
