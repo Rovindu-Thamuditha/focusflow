@@ -83,7 +83,8 @@ export function TimeBlock({ hour, subjectId, duration, subjects, onClick, onStat
             'border-border'
         )}
         style={{ 
-            backgroundColor: subject.id !== 'idle' ? subject.color : undefined,
+            backgroundColor: subject.id !== 'idle' ? subject.color : 'transparent',
+            color: subject.id === 'idle' ? 'hsl(var(--muted-foreground))' : undefined,
             ...glowStyle,
         } as React.CSSProperties}
         aria-label={`Hour ${hour}:00, current state: ${subject.name}. Click to change.`}
@@ -133,3 +134,5 @@ export function TimeBlock({ hour, subjectId, duration, subjects, onClick, onStat
     </TooltipProvider>
   );
 }
+
+    

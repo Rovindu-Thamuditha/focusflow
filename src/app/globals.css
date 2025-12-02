@@ -90,12 +90,12 @@ body {
     --secondary-foreground: 0 0% 95%;
     --muted: 0 0% 14%;
     --muted-foreground: 0 0% 70%;
-    --accent: 25 95% 53%; /* Orange-ish accent */
+    --accent: 0 100% 30%;
     --accent-foreground: 0 0% 100%;
     --destructive: 0 100% 50%;
     --destructive-foreground: 0 0% 100%;
-    --border: 0 100% 15%;
-    --input: 0 0% 14%;
+    --border: 0 100% 25%;
+    --input: 0 0% 10%;
     --ring: 0 100% 50%;
     --chart-1: 0 100% 50%;
     --chart-2: 25 95% 53%;
@@ -256,3 +256,5 @@ html.stranger-things .pulsing-glow {
         transform: scaleY(1);
     }
 }
+
+    
