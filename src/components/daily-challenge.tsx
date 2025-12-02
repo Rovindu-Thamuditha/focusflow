@@ -49,7 +49,7 @@ export function DailyChallenge({ question, isSolved, onSolveChange, language, is
       <CardHeader className="flex flex-row items-center gap-4 space-y-0 pb-4">
         <Trophy className="w-8 h-8 text-primary" />
         <div>
-          <CardTitle className="text-xl font-bold">Daily Challenge</CardTitle>
+          <CardTitle className="text-xl font-bold [.stranger-things_&]:text-glow">Demogorgon Challenge</CardTitle>
           <CardDescription>Question {questionIndex + 1} of {totalQuestions}</CardDescription>
         </div>
       </CardHeader>

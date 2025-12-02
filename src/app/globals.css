@@ -94,7 +94,7 @@ body {
     --accent-foreground: 0 0% 100%;
     --destructive: 0 100% 50%;
     --destructive-foreground: 0 0% 100%;
-    --border: 0 100% 25%;
+    --border: 0 100% 15%;
     --input: 0 0% 14%;
     --ring: 0 100% 50%;
     --chart-1: 0 100% 50%;
@@ -131,7 +131,7 @@ body {
     }
   }
 
-  .stranger-things .text-glow {
+  html.stranger-things .text-glow {
     animation: flicker 1.5s infinite linear;
   }
 }
@@ -176,6 +176,23 @@ body {
     box-shadow: 0 0 5px var(--glow-color-start), 0 0 10px var(--glow-color-start);
   }
 }
+
+html.stranger-things .pulsing-glow {
+    animation: stranger-pulse-glow 1.5s infinite ease-in-out;
+}
+
+@keyframes stranger-pulse-glow {
+    0% {
+        box-shadow: 0 0 10px #ff4500, 0 0 20px #ff4500, 0 0 30px #ff0000, 0 0 40px #ff0000;
+    }
+    50% {
+        box-shadow: 0 0 20px #ff4500, 0 0 35px #ff4500, 0 0 50px #ff0000, 0 0 65px #ff0000;
+    }
+    100% {
+        box-shadow: 0 0 10px #ff4500, 0 0 20px #ff4500, 0 0 30px #ff0000, 0 0 40px #ff0000;
+    }
+}
+
 
 /* Red Lightning */
 .lightning {
