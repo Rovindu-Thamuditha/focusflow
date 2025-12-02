@@ -68,6 +68,7 @@ export function AccountabilityGrid({ blocks, subjects, onBlockUpdate, viewingDat
                 duration={block.duration}
                 subjects={subjects}
                 onClick={() => handleBlockClick(block.hour)}
+                onWakeUp={() => onBlockUpdate(block.hour, 'idle', 0)}
                 isEditable={isEditableDate}
                 isFuture={isFutureBlock}
                 isCurrent={isCurrentBlock}

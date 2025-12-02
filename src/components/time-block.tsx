@@ -3,9 +3,11 @@
 
 import { cn } from "@/lib/utils";
 import * as React from 'react';
-import { Book, Zap, Coffee, Bed, Sparkles, BrainCircuit, FlaskConical, Dna, Code, PenTool, Briefcase, Moon } from "lucide-react";
+import { Book, Zap, Coffee, Bed, Sparkles, BrainCircuit, FlaskConical, Dna, Code, PenTool, Briefcase, Moon, Sun } from "lucide-react";
 import type { Subject } from "@/lib/types";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger } from "@/components/ui/context-menu";
+
 
 interface TimeBlockProps {
   hour: number;
@@ -13,6 +15,7 @@ interface TimeBlockProps {
   duration: number;
   subjects: Subject[];
   onClick: () => void;
+  onWakeUp: () => void;
   isEditable: boolean;
   isFuture: boolean;
   isCurrent: boolean;
@@ -32,7 +35,7 @@ const ICONS: { [key: string]: React.FC<React.SVGProps<SVGSVGElement>> } = {
   Moon,
 };
 
-export function TimeBlock({ hour, subjectId, duration, subjects, onClick, isEditable, isFuture, isCurrent, liveTime, activeTimerSubject }: TimeBlockProps) {
+export function TimeBlock({ hour, subjectId, duration, subjects, onClick, onWakeUp, isEditable, isFuture, isCurrent, liveTime, activeTimerSubject }: TimeBlockProps) {
   const isSleep = subjectId === 'sleep';
 
   const subject = isSleep 
@@ -60,45 +63,65 @@ export function TimeBlock({ hour, subjectId, duration, subjects, onClick, isEdit
     '--glow-color-end': `${activeTimerSubject.color}ff`,
   } as React.CSSProperties : {};
 
+  const blockButton = (
+      <button
+        onClick={onClick}
+        className={cn(
+            "relative w-full h-full aspect-square rounded-lg flex flex-col items-center justify-center p-2 transition-all duration-300 ease-in-out transform border",
+            finalIsEditable && !isSleep && "hover:scale-105",
+            finalIsEditable && !isSleep && "focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-background focus:ring-primary",
+            isSleep ? sleepStyles : (subject.id === 'idle' ? idleStyles : getBrightness()),
+            !finalIsEditable && !isSleep && 'cursor-not-allowed', // Make sleep blocks clickable for context menu
+            isFuture && 'opacity-50',
+            isCurrent && activeTimerSubject && 'pulsing-glow',
+            isSleep && 'opacity-70',
+            'border-border'
+        )}
+        style={{ 
+            backgroundColor: subject.id !== 'idle' ? subject.color : undefined,
+            ...glowStyle,
+        } as React.CSSProperties}
+        aria-label={`Hour ${hour}:00, current state: ${subject.name}. Click to change.`}
+        disabled={!finalIsEditable && !isSleep}
+        >
+        <Icon className="w-5 h-5 sm:w-7 sm:h-7" />
+        <span className="text-xs sm:text-sm font-mono mt-1">{formattedHour}</span>
+        {duration > 0 && subject.id !== 'idle' && subject.id !== 'sleep' && (
+            <div 
+                className={cn(
+                    "absolute inset-0 rounded-lg pointer-events-none",
+                )}
+                style={{boxShadow: `0 0 8px ${subject.color}, 0 0 16px ${subject.color}`}}
+            />
+        )}
+        </button>
+  );
+
   return (
     <TooltipProvider delayDuration={100}>
         <Tooltip>
             <TooltipTrigger asChild>
-                <button
-                onClick={onClick}
-                className={cn(
-                    "relative aspect-square rounded-lg flex flex-col items-center justify-center p-2 transition-all duration-300 ease-in-out transform border",
-                    finalIsEditable && !isSleep && "hover:scale-105",
-                    finalIsEditable && !isSleep && "focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-background focus:ring-primary",
-                    isSleep ? sleepStyles : (subject.id === 'idle' ? idleStyles : getBrightness()),
-                    !finalIsEditable && 'cursor-not-allowed',
-                    isFuture && 'opacity-50',
-                    isCurrent && activeTimerSubject && 'pulsing-glow',
-                    isSleep && 'opacity-70',
-                    'border-border'
+                {isSleep ? (
+                    <ContextMenu>
+                        <ContextMenuTrigger className="aspect-square w-full h-full">{blockButton}</ContextMenuTrigger>
+                        <ContextMenuContent>
+                        <ContextMenuItem onClick={onWakeUp}>
+                            <Sun className="mr-2 h-4 w-4" />
+                            <span>Wake Up</span>
+                        </ContextMenuItem>
+                        </ContextMenuContent>
+                    </ContextMenu>
+                ) : (
+                    blockButton
                 )}
-                style={{ 
-                    backgroundColor: subject.id !== 'idle' ? subject.color : undefined,
-                    ...glowStyle,
-                } as React.CSSProperties}
-                aria-label={`Hour ${hour}:00, current state: ${subject.name}. Click to change.`}
-                disabled={!finalIsEditable || isSleep}
-                >
-                <Icon className="w-5 h-5 sm:w-7 sm:h-7" />
-                <span className="text-xs sm:text-sm font-mono mt-1">{formattedHour}</span>
-                {duration > 0 && subject.id !== 'idle' && subject.id !== 'sleep' && (
-                    <div 
-                        className={cn(
-                            "absolute inset-0 rounded-lg pointer-events-none",
-                        )}
-                        style={{boxShadow: `0 0 8px ${subject.color}, 0 0 16px ${subject.color}`}}
-                    />
-                )}
-                </button>
             </TooltipTrigger>
             <TooltipContent>
                 <p className="font-semibold">{subject.name}</p>
-                <p className="text-sm text-muted-foreground">Duration: {duration} minutes</p>
+                 {isSleep ? (
+                    <p className="text-sm text-muted-foreground">Right-click to wake up</p>
+                ) : (
+                    <p className="text-sm text-muted-foreground">Duration: {duration} minutes</p>
+                )}
                 <p className="text-xs text-muted-foreground">{timeSlot}</p>
                  {isCurrent && <p className="text-xs text-red-500 font-semibold">In Progress</p>}
             </TooltipContent>
