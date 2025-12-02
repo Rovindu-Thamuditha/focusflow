@@ -5,23 +5,23 @@ import React, { useEffect, useState } from 'react';
 import { usePeriodicStrike } from '@/hooks/use-periodic-strike';
 
 // Generates a more realistic, downward-branching lightning bolt path.
-const generateJaggedBolt = (width: number, height: number): [string, number] => {
+const generateJaggedBolt = (width: number, height: number, isFlipped: boolean): [string, number] => {
   let path = '';
   const strokeWidth = Math.floor(Math.random() * 2) + 2; // Random thickness between 2 and 4
 
-  // Start at a random position along the top edge
+  // Start at a random position along the top (or bottom if flipped) edge
   const startX = Math.random() * width;
-  const startY = 0;
+  const startY = isFlipped ? height : 0;
   path += `M ${startX} ${startY}`;
   
   let currentX = startX;
   let currentY = startY;
   const segments = 15;
-  const segmentLength = height / segments;
-  const jitter = 0.3 * segmentLength; // Jitter is proportional to segment length
+  const segmentLength = height / segments * (isFlipped ? -1 : 1);
+  const jitter = 0.3 * Math.abs(segmentLength); // Jitter is proportional to segment length
 
-  // Create the main bolt path downwards
-  while (currentY < height) {
+  // Create the main bolt path
+  while (isFlipped ? currentY > 0 : currentY < height) {
     const nextY = currentY + segmentLength;
     const nextX = currentX + (Math.random() * 2 - 1) * jitter * 2;
     path += ` L ${nextX} ${nextY}`;
@@ -34,10 +34,10 @@ const generateJaggedBolt = (width: number, height: number): [string, number] => 
       path += ` M ${nextX} ${nextY}`; // Move to branch start
 
       for (let j = 0; j < branchSegments; j++) {
-        branchY += segmentLength * 0.8; // Branches are also biased downwards
+        branchY += segmentLength * 0.8; // Branches are also biased in the same direction
         branchX += (Math.random() * 2 - 1) * jitter * 3;
         path += ` L ${branchX} ${branchY}`;
-        if(branchY > height) break;
+        if(isFlipped ? branchY < 0 : branchY > height) break;
       }
       path += ` M ${nextX} ${nextY}`; // Return to main path
     }
@@ -49,8 +49,11 @@ const generateJaggedBolt = (width: number, height: number): [string, number] => 
   return [path, strokeWidth];
 };
 
+interface StrangerThingsLightningProps {
+    isFlipped: boolean;
+}
 
-export function StrangerThingsLightning() {
+export function StrangerThingsLightning({ isFlipped }: StrangerThingsLightningProps) {
   const { theme } = useTheme();
   const [lightningPath, setLightningPath] = useState('');
   const [strokeWidth, setStrokeWidth] = useState(2);
@@ -67,7 +70,7 @@ export function StrangerThingsLightning() {
     }
 
     if (strikeCount > 0) {
-      const [newPath, newStrokeWidth] = generateJaggedBolt(window.innerWidth, window.innerHeight);
+      const [newPath, newStrokeWidth] = generateJaggedBolt(window.innerWidth, window.innerHeight, isFlipped);
       setLightningPath(newPath);
       setStrokeWidth(newStrokeWidth);
       setIsStriking(true);
@@ -81,7 +84,7 @@ export function StrangerThingsLightning() {
 
       return () => clearTimeout(timeout);
     }
-  }, [strikeCount, theme]);
+  }, [strikeCount, theme, isFlipped]);
 
   if (!isStriking || theme !== 'stranger-things') {
     return null;

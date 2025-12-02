@@ -16,7 +16,7 @@ import { useRouter } from 'next/navigation';
 import { doc, setDoc, getDoc, getDocs, collection, query, where, writeBatch, arrayUnion, updateDoc } from 'firebase/firestore';
 import { signInAnonymously } from 'firebase/auth';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, ChevronRight, RotateCcw } from 'lucide-react';
+import { ChevronLeft, ChevronRight, RotateCcw, ToyBrick } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -35,6 +35,8 @@ import { TodoList } from '@/components/todo-list';
 import { FloatingTimer } from '@/components/floating-timer';
 import { WhatsNewDialog } from '@/components/whats-new-dialog';
 import { StrangerThingsLightning } from '@/components/stranger-things-lightning';
+import { useTheme } from 'next-themes';
+import { cn } from '@/lib/utils';
 
 const createInitialState = (sleepHours: number[], date: Date): TimeBlockState[] => {
   const dateString = format(date, 'yyyy-MM-dd');
@@ -55,6 +57,8 @@ export default function Home() {
   const auth = useAuth();
   const firestore = useFirestore();
   const router = useRouter();
+  const { theme } = useTheme();
+  const [isFlipped, setIsFlipped] = useState(false);
   const [currentDate, setCurrentDate] = useState(startOfDay(new Date()));
   const [liveTime, setLiveTime] = useState(new Date());
   const [timeBlocks, setTimeBlocks] = useState<TimeBlockState[]>(createInitialState([], new Date()));
@@ -382,7 +386,7 @@ export default function Home() {
 
 
   return (
-    <div className="flex flex-col min-h-screen">
+    <div className={cn("flex flex-col min-h-screen", isFlipped && "is-flipped")}>
       <MainHeader totalFocusedTime={totalFocusedTime}>
          <CurrentTime time={liveTime} />
          <SettingsDialog
@@ -481,7 +485,20 @@ export default function Home() {
         onMarkAsSeen={markWhatsNewAsSeen}
       />
 
-      {enableLightning && <StrangerThingsLightning />}
+      {isClient && theme === 'stranger-things' && (
+        <>
+            {enableLightning && <StrangerThingsLightning isFlipped={isFlipped} />}
+            <Button
+                variant="destructive"
+                className="fixed bottom-4 left-4 h-14 w-14 rounded-full shadow-lg z-50 animate-pulse"
+                title="Invert"
+                onClick={() => setIsFlipped(!isFlipped)}
+            >
+                <ToyBrick className="h-6 w-6" />
+            </Button>
+        </>
+      )}
+
 
       <footer className="text-center py-4 text-muted-foreground text-sm">
         <p>Made with ♥ for focused minds by <a href="https://github.com/Rovindu-Thamuditha/" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Tipiz</a></p>
@@ -489,7 +506,3 @@ export default function Home() {
     </div>
   );
 }
-
-    
-
-    

@@ -94,7 +94,7 @@ body {
     --accent-foreground: 0 0% 95%;
     --destructive: 0 100% 50%;
     --destructive-foreground: 0 0% 100%;
-    --border: 0 0% 20%;
+    --border: 0 100% 25%;
     --input: 0 0% 10%;
     --ring: 0 100% 50%;
     --chart-1: 0 100% 50%;
@@ -115,7 +115,7 @@ body {
     font-family: var(--font-cinzel-decorative), 'Courier New', Courier, monospace;
   }
   
-  html.stranger-things body {
+  html.stranger-things .is-flipped {
     transform: rotate(180deg);
   }
 
