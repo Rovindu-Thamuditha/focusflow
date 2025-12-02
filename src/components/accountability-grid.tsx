@@ -29,7 +29,7 @@ export function AccountabilityGrid({ blocks, subjects, onBlockUpdate, viewingDat
     if (!isEditableDate || isFutureOrCurrentBlock) return;
     
     const block = blocks.find(b => b.hour === hour);
-    if (block && block.subject !== 'sleep') {
+    if (block) { // Allow clicking any block to open dialog
       setSelectedBlock(block);
     }
   };
@@ -68,7 +68,7 @@ export function AccountabilityGrid({ blocks, subjects, onBlockUpdate, viewingDat
                 duration={block.duration}
                 subjects={subjects}
                 onClick={() => handleBlockClick(block.hour)}
-                onWakeUp={() => onBlockUpdate(block.hour, 'idle', 0)}
+                onStateChange={(subject, duration) => onBlockUpdate(block.hour, subject, duration)}
                 isEditable={isEditableDate}
                 isFuture={isFutureBlock}
                 isCurrent={isCurrentBlock}

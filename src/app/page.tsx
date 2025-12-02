@@ -319,7 +319,8 @@ export default function Home() {
   };
   
   const handleSettingsSave = (newSettings: any) => {
-    const oldSleepHours = sleepHours;
+    const oldSleepHours = [...sleepHours]; // Create a copy for comparison
+    
     setSubjects(newSettings.subjects);
     setSleepHours(newSettings.sleepHours);
     setLanguage(newSettings.language);
@@ -328,7 +329,7 @@ export default function Home() {
     setEnableTodoList(newSettings.enableTodoList);
 
     // Only reset grid if sleep hours actually changed
-    if (JSON.stringify([...oldSleepHours].sort()) !== JSON.stringify([...newSettings.sleepHours].sort())) {
+    if (JSON.stringify(oldSleepHours.sort()) !== JSON.stringify([...newSettings.sleepHours].sort())) {
       handleGridReset(newSettings.sleepHours);
     }
   };
@@ -461,7 +462,7 @@ export default function Home() {
         <FloatingTimer
             subjects={subjects}
             isRunning={timerIsRunning}
-            setIsRunning={setTimerIsRunning}
+            setIsRunning={setIsRunning}
             subject={timerSubject}
             setSubject={setTimerSubject}
             elapsedSeconds={elapsedSeconds}

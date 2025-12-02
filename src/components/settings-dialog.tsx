@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { Settings, Trash2, PlusCircle, Languages, Sparkles, SlidersHorizontal } from 'lucide-react';
+import { Settings, Trash2, PlusCircle, Languages, Sparkles, SlidersHorizontal, Bed } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -54,12 +54,14 @@ export function SettingsDialog({
 
   // Sync with props when dialog opens or props change
   useEffect(() => {
-    setSubjects(initialSubjects);
-    setSleepHours(initialSleepHours);
-    setLanguage(initialLanguage);
-    setEnableTimer(initialEnableTimer);
-    setEnableDailyChallenge(initialEnableDailyChallenge);
-    setEnableTodoList(initialEnableTodoList);
+    if (isOpen) {
+        setSubjects(initialSubjects);
+        setSleepHours(initialSleepHours);
+        setLanguage(initialLanguage);
+        setEnableTimer(initialEnableTimer);
+        setEnableDailyChallenge(initialEnableDailyChallenge);
+        setEnableTodoList(initialEnableTodoList);
+    }
   }, [isOpen, initialSubjects, initialSleepHours, initialLanguage, initialEnableTimer, initialEnableDailyChallenge, initialEnableTodoList]);
 
   const handleSave = () => {
@@ -79,7 +81,8 @@ export function SettingsDialog({
 
   const handleSubjectChange = (index: number, field: keyof Subject, value: string) => {
     const newSubjects = [...subjects];
-    (newSubjects[index] as any)[field] = value;
+    const actualIndex = subjects.findIndex(s => s.id === subjects.filter(s => s.id !== 'idle' && s.id !== 'sleep')[index].id);
+    (newSubjects[actualIndex] as any)[field] = value;
     setSubjects(newSubjects);
   };
 
@@ -88,8 +91,6 @@ export function SettingsDialog({
   };
 
   const removeSubject = (indexToRemove: number) => {
-    // This is tricky because the index is based on the filtered list.
-    // We need to find the actual index in the original `subjects` array.
     const subjectToRemove = subjects.filter(s => s.id !== 'idle' && s.id !== 'sleep')[indexToRemove];
     if (subjectToRemove) {
       setSubjects(subjects.filter(s => s.id !== subjectToRemove.id));

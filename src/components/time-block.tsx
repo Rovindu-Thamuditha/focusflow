@@ -15,7 +15,7 @@ interface TimeBlockProps {
   duration: number;
   subjects: Subject[];
   onClick: () => void;
-  onWakeUp: () => void;
+  onStateChange: (subjectId: string, duration: number) => void;
   isEditable: boolean;
   isFuture: boolean;
   isCurrent: boolean;
@@ -35,7 +35,7 @@ const ICONS: { [key: string]: React.FC<React.SVGProps<SVGSVGElement>> } = {
   Moon,
 };
 
-export function TimeBlock({ hour, subjectId, duration, subjects, onClick, onWakeUp, isEditable, isFuture, isCurrent, liveTime, activeTimerSubject }: TimeBlockProps) {
+export function TimeBlock({ hour, subjectId, duration, subjects, onClick, onStateChange, isEditable, isFuture, isCurrent, liveTime, activeTimerSubject }: TimeBlockProps) {
   const isSleep = subjectId === 'sleep';
 
   const subject = isSleep 
@@ -63,18 +63,23 @@ export function TimeBlock({ hour, subjectId, duration, subjects, onClick, onWake
     '--glow-color-end': `${activeTimerSubject.color}ff`,
   } as React.CSSProperties : {};
 
+  const handleBlockClick = () => {
+    if (finalIsEditable && !isSleep) {
+        onClick();
+    }
+  }
+
   const blockButton = (
       <button
-        onClick={onClick}
+        onClick={handleBlockClick}
         className={cn(
             "relative w-full h-full aspect-square rounded-lg flex flex-col items-center justify-center p-2 transition-all duration-300 ease-in-out transform border",
             finalIsEditable && !isSleep && "hover:scale-105",
             finalIsEditable && !isSleep && "focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-background focus:ring-primary",
             isSleep ? sleepStyles : (subject.id === 'idle' ? idleStyles : getBrightness()),
-            !finalIsEditable && !isSleep && 'cursor-not-allowed', // Make sleep blocks clickable for context menu
+            !finalIsEditable && 'cursor-not-allowed',
             isFuture && 'opacity-50',
             isCurrent && activeTimerSubject && 'pulsing-glow',
-            isSleep && 'opacity-70',
             'border-border'
         )}
         style={{ 
@@ -101,27 +106,26 @@ export function TimeBlock({ hour, subjectId, duration, subjects, onClick, onWake
     <TooltipProvider delayDuration={100}>
         <Tooltip>
             <TooltipTrigger asChild>
-                {isSleep ? (
-                    <ContextMenu>
-                        <ContextMenuTrigger className="aspect-square w-full h-full">{blockButton}</ContextMenuTrigger>
-                        <ContextMenuContent>
-                        <ContextMenuItem onClick={onWakeUp}>
+                <ContextMenu>
+                    <ContextMenuTrigger className="aspect-square w-full h-full">{blockButton}</ContextMenuTrigger>
+                    <ContextMenuContent>
+                    {isSleep ? (
+                         <ContextMenuItem onClick={() => onStateChange('idle', 0)}>
                             <Sun className="mr-2 h-4 w-4" />
                             <span>Wake Up</span>
                         </ContextMenuItem>
-                        </ContextMenuContent>
-                    </ContextMenu>
-                ) : (
-                    blockButton
-                )}
+                    ) : (
+                        <ContextMenuItem onClick={() => onStateChange('sleep', 0)}>
+                            <Bed className="mr-2 h-4 w-4" />
+                            <span>Mark as Sleep</span>
+                        </ContextMenuItem>
+                    )}
+                    </ContextMenuContent>
+                </ContextMenu>
             </TooltipTrigger>
             <TooltipContent>
                 <p className="font-semibold">{subject.name}</p>
-                 {isSleep ? (
-                    <p className="text-sm text-muted-foreground">Right-click to wake up</p>
-                ) : (
-                    <p className="text-sm text-muted-foreground">Duration: {duration} minutes</p>
-                )}
+                <p className="text-sm text-muted-foreground">{isSleep ? "Right-click for options" : `Duration: ${duration} minutes`}</p>
                 <p className="text-xs text-muted-foreground">{timeSlot}</p>
                  {isCurrent && <p className="text-xs text-red-500 font-semibold">In Progress</p>}
             </TooltipContent>
