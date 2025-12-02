@@ -23,11 +23,8 @@ export function AccountabilityGrid({ blocks, subjects, onBlockUpdate, viewingDat
   const currentHour = liveTime.getHours();
 
   const handleBlockClick = (hour: number) => {
-    // A block is considered "in the future" if it's for a later hour today.
-    // The current hour is also not editable until it's over.
     const isFutureOrCurrentBlock = isViewingToday && hour >= currentHour;
 
-    // A block is editable if the date is within the last 36 hours AND it's not a future/current block.
     if (!isEditableDate || isFutureOrCurrentBlock) return;
     
     const block = blocks.find(b => b.hour === hour);
@@ -50,7 +47,6 @@ export function AccountabilityGrid({ blocks, subjects, onBlockUpdate, viewingDat
     }
   };
 
-  // Ensure we only render 24 blocks max, as a safeguard.
   const blocksToRender = blocks.slice(0, 24);
 
   return (
@@ -71,6 +67,7 @@ export function AccountabilityGrid({ blocks, subjects, onBlockUpdate, viewingDat
                 duration={block.duration}
                 subjects={subjects}
                 onClick={() => handleBlockClick(block.hour)}
+                onBlockUpdate={onBlockUpdate}
                 isEditable={isEditableDate}
                 isFuture={isFutureBlock}
                 isCurrent={isCurrentBlock}

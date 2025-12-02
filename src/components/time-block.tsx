@@ -7,6 +7,7 @@ import { Book, Zap, Coffee, Bed, Sparkles, BrainCircuit, FlaskConical, Dna, Code
 import type { Subject } from "@/lib/types";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { getMinutes } from "date-fns";
+import { FocusTimer } from "./focus-timer";
 
 interface TimeBlockProps {
   hour: number;
@@ -14,6 +15,7 @@ interface TimeBlockProps {
   duration: number;
   subjects: Subject[];
   onClick: () => void;
+  onBlockUpdate: (hour: number, subject: string, duration: number) => void;
   isEditable: boolean;
   isFuture: boolean;
   isCurrent: boolean;
@@ -32,7 +34,7 @@ const ICONS: { [key: string]: React.FC<React.SVGProps<SVGSVGElement>> } = {
   Moon,
 };
 
-export function TimeBlock({ hour, subjectId, duration, subjects, onClick, isEditable, isFuture, isCurrent, liveTime }: TimeBlockProps) {
+export function TimeBlock({ hour, subjectId, duration, subjects, onClick, onBlockUpdate, isEditable, isFuture, isCurrent, liveTime }: TimeBlockProps) {
   const isSleep = subjectId === 'sleep';
 
   const subject = isSleep 
@@ -53,11 +55,30 @@ export function TimeBlock({ hour, subjectId, duration, subjects, onClick, isEdit
 
   const sleepStyles = "dark:bg-gray-800 dark:text-gray-500 bg-slate-700 text-slate-300";
   const idleStyles = "dark:text-gray-500 text-slate-500";
-  // The current hour is also not editable until it's over.
   const finalIsEditable = isEditable && !isFuture && !isCurrent;
 
   const minutesPast = getMinutes(liveTime);
   const progressPercent = (minutesPast / 60) * 100;
+  
+  if(isCurrent) {
+    return (
+        <div 
+            className={cn("relative aspect-square rounded-lg flex flex-col items-center justify-center p-1 transition-all duration-300 ease-in-out transform border", getBrightness())}
+            style={{ backgroundColor: subject.id !== 'idle' ? subject.color : undefined } as React.CSSProperties}
+        >
+            <FocusTimer 
+                hour={hour} 
+                subjects={subjects}
+                currentSubjectId={subjectId}
+                currentDuration={duration}
+                onBlockUpdate={onBlockUpdate}
+            />
+             <div className="absolute left-0 right-0 h-0.5 bg-red-500" style={{ bottom: `0%` }}>
+                <div className="absolute -left-1 -bottom-1 w-2 h-2 rounded-full bg-red-500"></div>
+            </div>
+        </div>
+    )
+  }
 
   return (
     <TooltipProvider delayDuration={100}>
@@ -71,7 +92,7 @@ export function TimeBlock({ hour, subjectId, duration, subjects, onClick, isEdit
                     finalIsEditable && !isSleep && "focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-background focus:ring-primary",
                     isSleep ? sleepStyles : (subject.id === 'idle' ? idleStyles : getBrightness()),
                     !finalIsEditable && 'cursor-not-allowed',
-                    (isFuture || isCurrent) && 'opacity-50',
+                    isFuture && 'opacity-50',
                     isSleep && 'opacity-70',
                     'border-border'
                 )}
@@ -90,11 +111,6 @@ export function TimeBlock({ hour, subjectId, duration, subjects, onClick, isEdit
                         )}
                         style={{boxShadow: `0 0 8px ${subject.color}, 0 0 16px ${subject.color}`}}
                     />
-                )}
-                {isCurrent && (
-                    <div className="absolute left-0 right-0 h-0.5 bg-red-500" style={{ top: `${progressPercent}%` }}>
-                       <div className="absolute -left-1 -top-1 w-2 h-2 rounded-full bg-red-500"></div>
-                    </div>
                 )}
                 </button>
             </TooltipTrigger>

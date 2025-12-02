@@ -95,6 +95,23 @@ body {
   .glow-accent {
     filter: drop-shadow(0 0 8px hsl(var(--accent) / 0.5)) drop-shadow(0 0 16px hsl(var(--accent) / 0.2));
   }
+
+  /* Style for the FocusTimer component */
+  .focus-timer-container select {
+    @apply text-xs h-6 rounded-md;
+  }
+
+  .focus-timer-container .timer-display {
+    @apply text-base font-mono font-semibold;
+  }
+  
+  .focus-timer-container .timer-controls button {
+    @apply h-6 w-6;
+  }
+  
+  .focus-timer-container .timer-controls svg {
+    @apply h-3 w-3;
+  }
 }
 
 
