@@ -23,6 +23,13 @@
         "settingsId": {
           "type": "string",
           "description": "Reference to UserSettings. (Relationship: User 1:1 UserSettings)"
+        },
+        "seenWhatsNewVersions": {
+          "type": "array",
+          "description": "An array of version strings for 'What's New' announcements the user has seen.",
+          "items": {
+            "type": "string"
+          }
         }
       },
       "required": [
@@ -188,6 +195,42 @@
         "createdAt",
         "userId"
       ]
+    },
+    "WhatsNew": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "WhatsNew",
+      "type": "object",
+      "description": "Represents a 'What's New' announcement.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the announcement."
+        },
+        "version": {
+          "type": "string",
+          "description": "A unique version identifier for the announcement (e.g., 'v1.1.0')."
+        },
+        "title": {
+          "type": "string",
+          "description": "The title of the announcement."
+        },
+        "content": {
+          "type": "string",
+          "description": "The main content of the announcement, can include markdown."
+        },
+        "publishedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The date and time when the announcement was published."
+        }
+      },
+      "required": [
+        "id",
+        "version",
+        "title",
+        "content",
+        "publishedAt"
+      ]
     }
   },
   "auth": {
@@ -306,6 +349,22 @@
             {
               "name": "todoId",
               "description": "The unique identifier of the to-do item."
+            }
+          ]
+        }
+      },
+       {
+        "path": "/whatsnew/{whatsNewId}",
+        "definition": {
+          "entityName": "WhatsNew",
+          "schema": {
+            "$ref": "#/backend/entities/WhatsNew"
+          },
+          "description": "Stores 'What's New' announcements. Publicly readable, but only writable by admins.",
+          "params": [
+            {
+              "name": "whatsNewId",
+              "description": "The unique identifier of the announcement."
             }
           ]
         }

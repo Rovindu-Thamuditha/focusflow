@@ -1,5 +1,5 @@
 
-import { LogOut, Shield, MoreVertical, BarChart2, Info } from "lucide-react";
+import { LogOut, Shield, MoreVertical, BarChart2, Info, Newspaper } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Icons } from "@/components/icons";
@@ -49,11 +49,18 @@ export function MainHeader({ totalFocusedTime, children }: MainHeaderProps) {
               <TotalFocusTime totalHours={totalFocusedTime} />
               {children}
               {user && user.email === ADMIN_EMAIL && (
-                <Link href="/admin" passHref>
-                  <Button variant="ghost" size="icon" title="Admin Panel">
-                      <Shield className="h-5 w-5" />
-                  </Button>
-                </Link>
+                <>
+                    <Link href="/admin" passHref>
+                        <Button variant="ghost" size="icon" title="Admin Panel">
+                            <Shield className="h-5 w-5" />
+                        </Button>
+                    </Link>
+                    <Link href="/admin/whats-new" passHref>
+                        <Button variant="ghost" size="icon" title="What's New Admin">
+                            <Newspaper className="h-5 w-5" />
+                        </Button>
+                    </Link>
+                </>
               )}
               <Link href="/stats" passHref>
                 <Button variant="ghost" size="icon" title="Statistics">
@@ -83,12 +90,20 @@ export function MainHeader({ totalFocusedTime, children }: MainHeaderProps) {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 {user && user.email === ADMIN_EMAIL && (
-                   <Link href="/admin" passHref>
-                    <DropdownMenuItem>
-                      <Shield className="mr-2 h-4 w-4" />
-                      <span>Admin</span>
-                    </DropdownMenuItem>
-                   </Link>
+                    <>
+                        <Link href="/admin" passHref>
+                            <DropdownMenuItem>
+                            <Shield className="mr-2 h-4 w-4" />
+                            <span>Admin</span>
+                            </DropdownMenuItem>
+                        </Link>
+                        <Link href="/admin/whats-new" passHref>
+                            <DropdownMenuItem>
+                            <Newspaper className="mr-2 h-4 w-4" />
+                            <span>What's New</span>
+                            </DropdownMenuItem>
+                        </Link>
+                    </>
                 )}
                 {/* This is a bit of a hack to get the settings and time in here */}
                 <div className="flex flex-col items-start p-2 gap-2">

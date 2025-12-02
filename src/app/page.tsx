@@ -13,7 +13,7 @@ import { SettingsDialog } from '@/components/settings-dialog';
 import { defaultSubjects } from '@/lib/subjects';
 import { useUser, useFirestore, useMemoFirebase, FirestorePermissionError, errorEmitter } from '@/firebase';
 import { useRouter } from 'next/navigation';
-import { doc, setDoc, getDoc, getDocs, collection, query, where, writeBatch } from 'firebase/firestore';
+import { doc, setDoc, getDoc, getDocs, collection, query, where, writeBatch, arrayUnion, updateDoc } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { ChevronLeft, ChevronRight, RotateCcw } from 'lucide-react';
 import {
@@ -32,6 +32,7 @@ import { FeedbackDialog } from '@/components/feedback-dialog';
 import { CurrentTime } from '@/components/current-time';
 import { TodoList } from '@/components/todo-list';
 import { FloatingTimer } from '@/components/floating-timer';
+import { WhatsNewDialog } from '@/components/whats-new-dialog';
 
 const createInitialState = (sleepHours: number[], date: Date): TimeBlockState[] => {
   const dateString = format(date, 'yyyy-MM-dd');
@@ -61,6 +62,7 @@ export default function Home() {
   const [language, setLanguage] = useState<'english' | 'sinhala'>('english');
   const [userDataLoaded, setUserDataLoaded] = useState(false);
   const [userName, setUserName] = useState('');
+  const [seenWhatsNewVersions, setSeenWhatsNewVersions] = useState<string[]>([]);
   const [questionIndex, setQuestionIndex] = useState(0);
 
   // Feature toggles
@@ -156,6 +158,7 @@ export default function Home() {
             setEnableTimer(settings.enableTimer !== false);
             setEnableDailyChallenge(settings.enableDailyChallenge !== false);
             setEnableTodoList(settings.enableTodoList !== false);
+            setSeenWhatsNewVersions(data.seenWhatsNewVersions || []);
           } else {
              setUserName(user.displayName || '');
           }
@@ -244,7 +247,7 @@ export default function Home() {
             setElapsedSeconds(prev => {
                 const newElapsed = prev + 1;
                 // Update duration every minute
-                if (newElapsed % 60 === 0) {
+                if (newElapsed > 0 && newElapsed % 60 === 0) {
                     const minutesToAdd = 1;
                     setTimeBlocks(currentBlocks =>
                         currentBlocks.map(block => {
@@ -320,6 +323,18 @@ export default function Home() {
     const newSolvedChallenges = [...solvedChallenges];
     newSolvedChallenges[questionIndex] = solved;
     setSolvedChallenges(newSolvedChallenges);
+  };
+  
+  const markWhatsNewAsSeen = async (version: string) => {
+    if (!userDocRef) return;
+    try {
+        await updateDoc(userDocRef, {
+            seenWhatsNewVersions: arrayUnion(version)
+        });
+        setSeenWhatsNewVersions(prev => [...prev, version]);
+    } catch (e) {
+        console.error("Error marking What's New as seen:", e);
+    }
   };
 
   const totalFocusedTime = useMemo(() => {
@@ -445,6 +460,10 @@ export default function Home() {
         />
       )}
       <FeedbackDialog />
+      <WhatsNewDialog 
+        seenVersions={seenWhatsNewVersions}
+        onMarkAsSeen={markWhatsNewAsSeen}
+      />
 
 
       <footer className="text-center py-4 text-muted-foreground text-sm">

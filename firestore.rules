@@ -1,3 +1,4 @@
+
 /**
  * This ruleset enforces a strict user-ownership security model for the GridFocus application.
  * It is designed for rapid prototyping, prioritizing strong authorization controls while maintaining
@@ -88,6 +89,21 @@ service cloud.firestore {
       allow get: if true;
       allow list: if true;
       allow create, update, delete: if false;
+    }
+
+    /**
+     * @description
+     *   Stores 'What's New' announcements. This data is public and readable by any authenticated user.
+     *   Only admins are allowed to create, update, or delete these announcements.
+     * @path /whatsnew/{whatsNewId}
+     * @allow Any signed-in user can (get) or (list) announcements.
+     * @allow An admin user can (create), (update), and (delete) announcements.
+     * @deny Unauthenticated users cannot access this data.
+     * @principle Makes announcements visible to all users while securing content management to admins.
+     */
+    match /whatsnew/{whatsNewId} {
+      allow get, list: if isSignedIn();
+      allow write: if isAdmin();
     }
   }
 }
