@@ -107,7 +107,7 @@ export function SettingsDialog({
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
         <Button variant="ghost" size="icon">
-          <Settings className="h-[1.2rem] w-[1.2rem]" />
+          <Settings className="h-[1.2rem] w-[1.2rem] text-foreground" />
           <span className="sr-only">Settings</span>
         </Button>
       </DialogTrigger>

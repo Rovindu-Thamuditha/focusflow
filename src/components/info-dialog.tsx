@@ -43,7 +43,7 @@ export function InfoDialog() {
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
         <Button variant="ghost" size="icon" title="How to use">
-          <Info className="h-5 w-5" />
+          <Info className="h-5 w-5 text-foreground" />
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-lg">

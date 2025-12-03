@@ -59,17 +59,16 @@ export function MainHeader({ totalFocusedTime, children, isFlipped, onFlipClick,
         {/* Desktop View */}
         <div className="hidden flex-1 items-center justify-end space-x-2 sm:flex">
           <TotalFocusTime totalHours={totalFocusedTime} />
-          <div className="hidden sm:block">{children}</div>
           {user && user.email === ADMIN_EMAIL && (
             <>
                 <Link href="/admin" passHref>
                     <Button variant="ghost" size="icon" title="Admin Panel">
-                        <Shield className="h-5 w-5" />
+                        <Shield className="h-5 w-5 text-foreground" />
                     </Button>
                 </Link>
                 <Link href="/admin/whats-new" passHref>
                     <Button variant="ghost" size="icon" title="What's New Admin">
-                        <Newspaper className="h-5 w-5" />
+                        <Newspaper className="h-5 w-5 text-foreground" />
                     </Button>
                 </Link>
             </>
@@ -83,7 +82,7 @@ export function MainHeader({ totalFocusedTime, children, isFlipped, onFlipClick,
           {settingsContent}
           {theme === 'stranger-things' && (
              <Button variant="ghost" size="icon" onClick={onFlipClick} disabled={isAnimating} title="Restore Reality">
-                <ToyBrick className="h-5 w-5"/>
+                <ToyBrick className="h-5 w-5 text-foreground"/>
             </Button>
           )}
           <div className="relative">
@@ -99,7 +98,7 @@ export function MainHeader({ totalFocusedTime, children, isFlipped, onFlipClick,
               </Link>
           ) : user ? (
             <Button variant="ghost" size="icon" onClick={handleSignOut} title="Sign Out">
-              <LogOut className="h-5 w-5" />
+              <LogOut className="h-5 w-5 text-foreground" />
             </Button>
           ) : null}
         </div>
@@ -119,7 +118,7 @@ export function MainHeader({ totalFocusedTime, children, isFlipped, onFlipClick,
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon">
-                <MoreVertical className="h-5 w-5" />
+                <MoreVertical className="h-5 w-5 text-foreground" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
