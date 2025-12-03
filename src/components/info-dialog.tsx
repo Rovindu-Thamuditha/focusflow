@@ -11,6 +11,7 @@ import { collection, query, orderBy, limit } from 'firebase/firestore';
 import { ScrollArea } from './ui/scroll-area';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { FeedbackDialog } from './feedback-dialog';
 
 interface WhatsNew {
   id: string;
@@ -79,6 +80,11 @@ export function InfoDialog() {
                    <div className="space-y-1">
                       <h4 className="font-semibold">5. Manage Your Tasks</h4>
                       <p className="text-muted-foreground">Use the "Today's Tasks" list to add, check off, and delete your to-do items. It's a simple way to keep track of what you need to accomplish.</p>
+                  </div>
+                  <div className="space-y-2 pt-4 border-t">
+                      <h4 className="font-semibold">Have Feedback?</h4>
+                      <p className="text-muted-foreground">Found a bug or have a feature idea? Let us know!</p>
+                      <FeedbackDialog />
                   </div>
               </div>
             </ScrollArea>

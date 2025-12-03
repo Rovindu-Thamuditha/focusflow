@@ -1,5 +1,5 @@
 
-import { LogOut, Shield, MoreVertical, BarChart2, Info, Newspaper, UserPlus } from "lucide-react";
+import { LogOut, Shield, MoreVertical, BarChart2, Info, Newspaper, UserPlus, ToyBrick, Clock } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Icons } from "@/components/icons";
@@ -16,18 +16,26 @@ import {
 import { useUser, useAuth } from "@/firebase";
 import { InfoDialog } from "./info-dialog";
 import { Badge } from "./ui/badge";
+import { useTheme } from "next-themes";
+import { SettingsDialog } from "./settings-dialog";
+
 
 const ADMIN_EMAIL = 'rovinduthamu@gmail.com';
 
 interface MainHeaderProps {
   totalFocusedTime: number;
   children?: React.ReactNode;
+  isFlipped?: boolean;
+  onFlipClick?: () => void;
+  isAnimating?: boolean;
+  settingsContent?: React.ReactNode;
 }
 
-export function MainHeader({ totalFocusedTime, children }: MainHeaderProps) {
+export function MainHeader({ totalFocusedTime, children, isFlipped, onFlipClick, isAnimating, settingsContent }: MainHeaderProps) {
   const { user } = useUser();
   const auth = useAuth();
   const router = useRouter();
+  const { theme } = useTheme();
 
   const handleSignOut = async () => {
     if(auth) {
@@ -72,6 +80,7 @@ export function MainHeader({ totalFocusedTime, children }: MainHeaderProps) {
             </Button>
           </Link>
           <InfoDialog />
+          {settingsContent}
           <div className="relative">
             <ThemeToggle />
             <Badge className="absolute -top-1 -right-2 bg-accent text-accent-foreground text-xs px-1.5 py-0.5 pointer-events-none animate-pulse">New!</Badge>
@@ -93,9 +102,12 @@ export function MainHeader({ totalFocusedTime, children }: MainHeaderProps) {
         {/* Mobile View */}
         <div className="sm:hidden flex flex-1 items-center justify-end space-x-1">
           <TotalFocusTime totalHours={totalFocusedTime} />
-          <div className="[&>div]:p-1 [&>div>span]:text-base">
-            {children}
-          </div>
+          <Link href="/stats" passHref>
+            <Button variant="ghost" size="icon" title="Statistics">
+                <BarChart2 className="h-5 w-5" />
+            </Button>
+          </Link>
+          {settingsContent}
           
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -112,12 +124,17 @@ export function MainHeader({ totalFocusedTime, children }: MainHeaderProps) {
                     </DropdownMenuItem>
                 </Link>
               ) : null}
-              <Link href="/stats" passHref>
-                  <DropdownMenuItem>
-                    <BarChart2 className="mr-2 h-4 w-4" />
-                    <span>Statistics</span>
-                  </DropdownMenuItem>
-              </Link>
+              {theme === 'stranger-things' && (
+                <DropdownMenuItem onSelect={(e) => { e.preventDefault(); onFlipClick?.(); }}>
+                    <ToyBrick className="mr-2 h-4 w-4"/>
+                    <span>Restore Reality</span>
+                </DropdownMenuItem>
+              )}
+               <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                  <div className="p-0 flex items-center w-full">
+                    {children}
+                  </div>
+              </DropdownMenuItem>
               {user && user.email === ADMIN_EMAIL && (
                   <>
                       <Link href="/admin" passHref>

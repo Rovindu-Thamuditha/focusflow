@@ -59,11 +59,10 @@ export function FeedbackDialog() {
       <DialogTrigger asChild>
         <Button
           variant="outline"
-          size="icon"
-          className="fixed bottom-4 right-4 h-14 w-14 rounded-full shadow-lg z-50 bg-primary text-primary-foreground hover:bg-primary/90"
-          title="Send Feedback"
+          className="w-full"
         >
-            <MessageSquarePlus className="h-6 w-6" />
+            <MessageSquarePlus className="h-4 w-4 mr-2" />
+            Submit Feedback
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">

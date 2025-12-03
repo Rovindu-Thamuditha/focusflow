@@ -29,7 +29,6 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import { GridFocusLoader } from '@/components/grid-focus-loader';
-import { FeedbackDialog } from '@/components/feedback-dialog';
 import { CurrentTime } from '@/components/current-time';
 import { TodoList } from '@/components/todo-list';
 import { FloatingTimer } from '@/components/floating-timer';
@@ -416,9 +415,12 @@ export default function Home() {
         isFlipped && "is-flipped",
         isAnimating && "is-flipping"
     )}>
-      <MainHeader totalFocusedTime={totalFocusedTime}>
-         <CurrentTime time={liveTime} />
-         <SettingsDialog
+      <MainHeader 
+        totalFocusedTime={totalFocusedTime}
+        onFlipClick={handleFlipClick}
+        isAnimating={isAnimating}
+        settingsContent={
+          <SettingsDialog
             subjects={subjects}
             sleepHours={sleepHours}
             language={language}
@@ -428,6 +430,9 @@ export default function Home() {
             enableLightning={enableLightning}
             onSave={handleSettingsSave}
           />
+        }
+      >
+         <CurrentTime time={liveTime} />
       </MainHeader>
       <main className="flex-grow container mx-auto p-4 sm:p-6 md:p-8">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
@@ -508,27 +513,13 @@ export default function Home() {
             setElapsedSeconds={setElapsedSeconds}
         />
       )}
-      <FeedbackDialog />
+      
       <WhatsNewDialog 
         seenVersions={seenWhatsNewVersions}
         onMarkAsSeen={markWhatsNewAsSeen}
       />
 
-      {isClient && theme === 'stranger-things' && (
-        <>
-            {enableLightning && <StrangerThingsLightning isFlipped={isFlipped} />}
-            <Button
-                variant="destructive"
-                className="fixed bottom-4 left-4 h-14 w-14 rounded-full shadow-lg z-50 animate-pulse"
-                title="Restore Reality"
-                onClick={handleFlipClick}
-                disabled={isAnimating}
-            >
-                <ToyBrick className="h-6 w-6" />
-            </Button>
-        </>
-      )}
-
+      {isClient && theme === 'stranger-things' && enableLightning && <StrangerThingsLightning isFlipped={isFlipped} />}
 
       <footer className="text-center py-4 text-muted-foreground text-sm">
         <p>Made with ♥ for focused minds by <a href="https://github.com/Rovindu-Thamuditha/" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Tipiz</a></p>
@@ -536,5 +527,3 @@ export default function Home() {
     </div>
   );
 }
-
-    
