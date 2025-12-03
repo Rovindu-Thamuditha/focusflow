@@ -28,6 +28,8 @@ interface MainHeaderProps {
   settingsContent?: React.ReactNode;
 }
 
+const ADMIN_EMAIL = 'rovinduthamu@gmail.com';
+
 export function MainHeader({ totalFocusedTime, children, isFlipped, onFlipClick, isAnimating, settingsContent }: MainHeaderProps) {
   const { user } = useUser();
   const auth = useAuth();
