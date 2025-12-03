@@ -6,14 +6,15 @@ import type {
   ToastProps,
 } from "@/components/ui/toast"
 
-const TOAST_LIMIT = 1
-const TOAST_REMOVE_DELAY = 1000000
+const TOAST_LIMIT = 3
+const TOAST_REMOVE_DELAY = 5000 // Default 5 seconds
 
 type ToasterToast = ToastProps & {
   id: string
   title?: React.ReactNode
   description?: React.ReactNode
   action?: ToastActionElement
+  duration?: number
 }
 
 const actionTypes = {
@@ -56,18 +57,18 @@ interface State {
 
 const toastTimeouts = new Map<string, ReturnType<typeof setTimeout>>()
 
-const addToRemoveQueue = (toastId: string) => {
-  if (toastTimeouts.has(toastId)) {
+const addToRemoveQueue = (toastId: string, duration: number) => {
+  if (toastTimeouts.has(toastId) || duration === Infinity) {
     return
   }
 
   const timeout = setTimeout(() => {
     toastTimeouts.delete(toastId)
     dispatch({
-      type: "REMOVE_TOAST",
+      type: "DISMISS_TOAST", // Change to DISMISS_TOAST to trigger fade-out animation
       toastId: toastId,
     })
-  }, TOAST_REMOVE_DELAY)
+  }, duration)
 
   toastTimeouts.set(toastId, timeout)
 }
@@ -75,12 +76,23 @@ const addToRemoveQueue = (toastId: string) => {
 export const reducer = (state: State, action: Action): State => {
   switch (action.type) {
     case "ADD_TOAST":
+      // Add new toast and schedule its removal
+      addToRemoveQueue(action.toast.id, action.toast.duration || TOAST_REMOVE_DELAY)
       return {
         ...state,
         toasts: [action.toast, ...state.toasts].slice(0, TOAST_LIMIT),
       }
 
     case "UPDATE_TOAST":
+      // When updating, also update the removal timeout if duration changes
+      const updatedToast = state.toasts.find(t => t.id === action.toast.id);
+      if (updatedToast) {
+        if (toastTimeouts.has(updatedToast.id)) {
+            clearTimeout(toastTimeouts.get(updatedToast.id));
+            toastTimeouts.delete(updatedToast.id);
+        }
+        addToRemoveQueue(updatedToast.id, action.toast.duration || updatedToast.duration || TOAST_REMOVE_DELAY);
+      }
       return {
         ...state,
         toasts: state.toasts.map((t) =>
@@ -91,16 +103,21 @@ export const reducer = (state: State, action: Action): State => {
     case "DISMISS_TOAST": {
       const { toastId } = action
 
-      // ! Side effects ! - This could be extracted into a dismissToast() action,
-      // but I'll keep it here for simplicity
+      // For a single toast, schedule its removal after animation
       if (toastId) {
-        addToRemoveQueue(toastId)
+         const removalTimeout = setTimeout(() => {
+            dispatch({ type: "REMOVE_TOAST", toastId });
+         }, 500); // Wait for fade-out animation
+         // We don't store this timeout as it's for final cleanup
       } else {
+         // For dismissing all, do the same for each
         state.toasts.forEach((toast) => {
-          addToRemoveQueue(toast.id)
-        })
+             const removalTimeout = setTimeout(() => {
+                dispatch({ type: "REMOVE_TOAST", toastId: toast.id });
+             }, 500);
+        });
       }
-
+      
       return {
         ...state,
         toasts: state.toasts.map((t) =>
