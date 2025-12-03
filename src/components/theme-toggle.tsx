@@ -16,6 +16,16 @@ import {
 export function ThemeToggle() {
   const { setTheme, theme } = useTheme()
 
+  const handleThemeChange = (newTheme: string) => {
+    if (theme === 'stranger-things' && newTheme !== 'stranger-things') {
+      setTheme(newTheme);
+      // Force a reload to ensure all styles are correctly applied
+      window.location.reload();
+    } else {
+      setTheme(newTheme);
+    }
+  };
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -27,21 +37,19 @@ export function ThemeToggle() {
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        <DropdownMenuItem onClick={() => setTheme("light")}>
+        <DropdownMenuItem onClick={() => handleThemeChange("light")}>
           Light
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => setTheme("dark")}>
+        <DropdownMenuItem onClick={() => handleThemeChange("dark")}>
           Dark
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => setTheme("system")}>
+        <DropdownMenuItem onClick={() => handleThemeChange("system")}>
           System
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => setTheme("stranger-things")}>
+        <DropdownMenuItem onClick={() => handleThemeChange("stranger-things")}>
           Stranger Themes
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   )
 }
-
-    

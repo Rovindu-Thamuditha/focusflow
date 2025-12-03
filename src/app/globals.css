@@ -77,19 +77,19 @@
   }
   .stranger-things {
     --background: 0 0% 4%;
-    --foreground: 0 0% 95%;
+    --foreground: 0 0% 95%; /* Light text color */
     --card: 0 0% 8%;
     --card-foreground: 0 0% 95%;
     --popover: 0 0% 8%;
     --popover-foreground: 0 0% 95%;
-    --primary: 0 100% 50%; /* Bright Red */
+    --primary: 0 100% 50%; 
     --primary-foreground: 0 0% 100%;
     --secondary: 0 0% 14%;
     --secondary-foreground: 0 0% 95%;
     --muted: 0 0% 14%;
     --muted-foreground: 0 0% 70%;
     --accent: 0 100% 30%;
-    --accent-foreground: 0 0% 95%;
+    --accent-foreground: 0 0% 95%; /* FIXED: Change to light text color */
     --destructive: 0 100% 50%;
     --destructive-foreground: 0 0% 100%;
     --border: 0 100% 25%;
