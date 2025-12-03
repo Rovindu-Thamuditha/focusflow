@@ -1,5 +1,5 @@
 
-import { LogOut, Shield, MoreVertical, BarChart2, Info, Newspaper, UserPlus, ToyBrick, Clock, Settings, BrainCircuit } from "lucide-react";
+import { LogOut, Shield, MoreVertical, BarChart2, Info, Newspaper, UserPlus, ToyBrick } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Icons } from "@/components/icons";
@@ -59,7 +59,7 @@ export function MainHeader({ totalFocusedTime, children, isFlipped, onFlipClick,
         {/* Desktop View */}
         <div className="hidden flex-1 items-center justify-end space-x-2 sm:flex">
           <TotalFocusTime totalHours={totalFocusedTime} />
-          {children}
+          <div className="hidden sm:block">{children}</div>
           {user && user.email === ADMIN_EMAIL && (
             <>
                 <Link href="/admin" passHref>
@@ -81,6 +81,11 @@ export function MainHeader({ totalFocusedTime, children, isFlipped, onFlipClick,
           </Link>
           <InfoDialog />
           {settingsContent}
+          {theme === 'stranger-things' && (
+             <Button variant="ghost" size="icon" onClick={onFlipClick} disabled={isAnimating} title="Restore Reality">
+                <ToyBrick className="h-5 w-5"/>
+            </Button>
+          )}
           <div className="relative">
             <ThemeToggle />
             <Badge className="absolute -top-1 -right-2 bg-accent text-accent-foreground text-xs px-1.5 py-0.5 pointer-events-none animate-pulse">New!</Badge>

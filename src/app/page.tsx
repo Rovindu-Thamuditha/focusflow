@@ -36,6 +36,7 @@ import { WhatsNewDialog } from '@/components/whats-new-dialog';
 import { StrangerThingsLightning } from '@/components/stranger-things-lightning';
 import { useTheme } from 'next-themes';
 import { cn } from '@/lib/utils';
+import { FeedbackDialog } from '@/components/feedback-dialog';
 
 const createInitialState = (sleepHours: number[], date: Date): TimeBlockState[] => {
   const dateString = format(date, 'yyyy-MM-dd');
@@ -412,8 +413,8 @@ export default function Home() {
 
   return (
     <div className={cn("flex flex-col min-h-screen", 
-        isFlipped && "is-flipped",
-        isAnimating && "is-flipping"
+        theme === 'stranger-things' && isFlipped && "is-flipped",
+        theme === 'stranger-things' && isAnimating && "is-flipping"
     )}>
       <MainHeader 
         totalFocusedTime={totalFocusedTime}
@@ -439,7 +440,7 @@ export default function Home() {
             <div>
               {userName && <h2 className="text-2xl sm:text-3xl font-bold text-foreground">Welcome back, {userName}!</h2>}
               {user.isAnonymous && <p className="text-sm text-amber-500">Your data is temporary. Sign up to save your progress.</p>}
-              <div className="flex items-center gap-2 mt-2">
+              <div className="flex items-center gap-2 mt-2 bg-secondary p-1 rounded-lg">
                 <Button variant="outline" size="icon" onClick={() => changeDay(-1)}>
                     <ChevronLeft className="w-4 h-4" />
                 </Button>
