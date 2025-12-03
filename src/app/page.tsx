@@ -37,6 +37,8 @@ import { StrangerThingsLightning } from '@/components/stranger-things-lightning'
 import { useTheme } from 'next-themes';
 import { cn } from '@/lib/utils';
 import { FeedbackDialog } from '@/components/feedback-dialog';
+import { useToast } from '@/hooks/use-toast';
+import { Icons } from '@/components/icons';
 
 const createInitialState = (sleepHours: number[], date: Date): TimeBlockState[] => {
   const dateString = format(date, 'yyyy-MM-dd');
@@ -58,6 +60,7 @@ export default function Home() {
   const firestore = useFirestore();
   const router = useRouter();
   const { theme } = useTheme();
+  const { toast, dismiss } = useToast();
   
   const [isFlipped, setIsFlipped] = useState(false);
   const [isAnimating, setIsAnimating] = useState(false);
@@ -97,6 +100,36 @@ export default function Home() {
       setIsFlipped(false);
     }
   }, [theme]);
+
+  // Effect to show the hint toast
+  useEffect(() => {
+    let toastId: string | undefined;
+
+    if (theme === 'stranger-things' && isFlipped) {
+      const { id } = toast({
+        variant: 'destructive',
+        duration: Infinity, // Keep it visible
+        title: (
+          <div className="flex items-center gap-2">
+            <Icons.logo className="h-6 w-6" />
+            <span className="text-lg font-bold">A voice echoes...</span>
+          </div>
+        ),
+        description: (
+          <p className="text-base italic">
+            "Click what is most familiar to escape this place..."
+          </p>
+        ),
+      });
+      toastId = id;
+    }
+
+    return () => {
+      if (toastId) {
+        dismiss(toastId);
+      }
+    };
+  }, [theme, isFlipped, toast, dismiss]);
 
   useEffect(() => {
     setIsClient(true);
@@ -528,3 +561,5 @@ export default function Home() {
     </div>
   );
 }
+
+    
