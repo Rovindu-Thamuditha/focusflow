@@ -1,3 +1,4 @@
+
 // Inspired by react-hot-toast library
 import * as React from "react"
 import type {
@@ -183,8 +184,11 @@ function useToast() {
 
   return {
     ...state,
-    toast,
-    dismiss: (toastId?: string) => dispatch({ type: "DISMISS_TOAST", toastId }),
+    toast: React.useCallback((props: Toast) => toast(props), []),
+    dismiss: React.useCallback(
+      (toastId?: string) => dispatch({ type: "DISMISS_TOAST", toastId }),
+      []
+    ),
   }
 }
 
