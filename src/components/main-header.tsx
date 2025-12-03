@@ -1,5 +1,5 @@
 
-import { LogOut, Shield, MoreVertical, BarChart2, Info, Newspaper, UserPlus, ToyBrick, Clock } from "lucide-react";
+import { LogOut, Shield, MoreVertical, BarChart2, Info, Newspaper, UserPlus, ToyBrick, Clock, Settings, BrainCircuit } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Icons } from "@/components/icons";
@@ -76,7 +76,7 @@ export function MainHeader({ totalFocusedTime, children, isFlipped, onFlipClick,
           )}
           <Link href="/stats" passHref>
             <Button variant="ghost" size="icon" title="Statistics">
-                <BarChart2 className="h-5 w-5" />
+                <BarChart2 className="h-5 w-5 text-foreground" />
             </Button>
           </Link>
           <InfoDialog />
@@ -102,11 +102,13 @@ export function MainHeader({ totalFocusedTime, children, isFlipped, onFlipClick,
         {/* Mobile View */}
         <div className="sm:hidden flex flex-1 items-center justify-end space-x-1">
           <TotalFocusTime totalHours={totalFocusedTime} />
+          
           <Link href="/stats" passHref>
             <Button variant="ghost" size="icon" title="Statistics">
-                <BarChart2 className="h-5 w-5" />
+                <BarChart2 className="h-5 w-5 text-foreground" />
             </Button>
           </Link>
+
           {settingsContent}
           
           <DropdownMenu>
@@ -124,17 +126,20 @@ export function MainHeader({ totalFocusedTime, children, isFlipped, onFlipClick,
                     </DropdownMenuItem>
                 </Link>
               ) : null}
+
               {theme === 'stranger-things' && (
                 <DropdownMenuItem onSelect={(e) => { e.preventDefault(); onFlipClick?.(); }}>
                     <ToyBrick className="mr-2 h-4 w-4"/>
                     <span>Restore Reality</span>
                 </DropdownMenuItem>
               )}
-               <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+
+              <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
                   <div className="p-0 flex items-center w-full">
                     {children}
                   </div>
               </DropdownMenuItem>
+              
               {user && user.email === ADMIN_EMAIL && (
                   <>
                       <Link href="/admin" passHref>
@@ -151,12 +156,14 @@ export function MainHeader({ totalFocusedTime, children, isFlipped, onFlipClick,
                       </Link>
                   </>
               )}
+              
                <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
                   <div className="p-0 flex items-center">
                     <InfoDialog />
                     <span className="ml-2">How to Use</span>
                   </div>
               </DropdownMenuItem>
+
                <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
                   <div className="p-0 flex items-center w-full">
                     <span className="mr-2">Theme</span>
