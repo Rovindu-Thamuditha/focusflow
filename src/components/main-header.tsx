@@ -1,5 +1,5 @@
 
-import { LogOut, Shield, MoreVertical, BarChart2, Info, Newspaper, UserPlus, ToyBrick } from "lucide-react";
+import { LogOut, Shield, MoreVertical, BarChart2, Info, Newspaper, UserPlus, ToyBrick, Settings } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Icons } from "@/components/icons";
@@ -17,10 +17,7 @@ import { useUser, useAuth } from "@/firebase";
 import { InfoDialog } from "./info-dialog";
 import { Badge } from "./ui/badge";
 import { useTheme } from "next-themes";
-import { SettingsDialog } from "./settings-dialog";
-
-
-const ADMIN_EMAIL = 'rovinduthamu@gmail.com';
+import { cn } from "@/lib/utils";
 
 interface MainHeaderProps {
   totalFocusedTime: number;
@@ -47,7 +44,10 @@ export function MainHeader({ totalFocusedTime, children, isFlipped, onFlipClick,
   const isAnonymousUser = user?.isAnonymous;
 
   return (
-    <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur-sm">
+    <header className={cn(
+        "z-40 w-full border-b bg-background/95 backdrop-blur-sm",
+        theme === 'stranger-things' ? 'relative' : 'sticky top-0'
+      )}>
       <div className="container flex h-16 items-center space-x-4 sm:justify-between sm:space-x-0">
         <div className="flex gap-6 items-center">
           <Link href="/" className="flex items-center gap-2">
