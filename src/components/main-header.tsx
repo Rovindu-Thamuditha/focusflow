@@ -1,5 +1,5 @@
 
-import { LogOut, Shield, MoreVertical, BarChart2, Info, Newspaper, UserPlus, ToyBrick, Settings } from "lucide-react";
+import { LogOut, Shield, MoreVertical, BarChart2, Info, Newspaper, Settings } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Icons } from "@/components/icons";
@@ -43,6 +43,14 @@ export function MainHeader({ totalFocusedTime, children, isFlipped, onFlipClick,
     }
   }
 
+  const handleLogoClick = (e: React.MouseEvent) => {
+    if (theme === 'stranger-things' && onFlipClick) {
+        e.preventDefault(); // Prevent navigation
+        onFlipClick();
+    }
+    // Otherwise, let the Link component handle navigation
+  }
+
   const isAnonymousUser = user?.isAnonymous;
 
   return (
@@ -52,7 +60,7 @@ export function MainHeader({ totalFocusedTime, children, isFlipped, onFlipClick,
       )}>
       <div className="container flex h-16 items-center space-x-4 sm:justify-between sm:space-x-0">
         <div className="flex gap-6 items-center">
-          <Link href="/" className="flex items-center gap-2">
+          <Link href="/" className="flex items-center gap-2" onClick={handleLogoClick} aria-label={theme === 'stranger-things' ? "Restore Reality" : "Go to Homepage"}>
             <Icons.logo className="h-6 w-6 text-primary" />
             <h1 className="text-xl sm:text-2xl font-bold text-primary [.stranger-things_&]:text-glow">GridFocus</h1>
           </Link>
@@ -82,11 +90,6 @@ export function MainHeader({ totalFocusedTime, children, isFlipped, onFlipClick,
           </Link>
           <InfoDialog />
           {settingsContent}
-          {theme === 'stranger-things' && (
-             <Button variant="ghost" size="icon" onClick={onFlipClick} disabled={isAnimating} title="Restore Reality">
-                <ToyBrick className="h-5 w-5 text-foreground"/>
-            </Button>
-          )}
           <div className="relative">
             <ThemeToggle />
             <Badge className="absolute -top-1 -right-2 bg-accent text-accent-foreground text-xs px-1.5 py-0.5 pointer-events-none animate-pulse">New!</Badge>
@@ -132,13 +135,6 @@ export function MainHeader({ totalFocusedTime, children, isFlipped, onFlipClick,
                     </DropdownMenuItem>
                 </Link>
               ) : null}
-
-              {theme === 'stranger-things' && (
-                <DropdownMenuItem onSelect={(e) => { e.preventDefault(); onFlipClick?.(); }}>
-                    <ToyBrick className="mr-2 h-4 w-4"/>
-                    <span>Restore Reality</span>
-                </DropdownMenuItem>
-              )}
 
               <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
                   <div className="p-0 flex items-center w-full">
