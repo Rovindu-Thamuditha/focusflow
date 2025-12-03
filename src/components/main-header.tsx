@@ -47,104 +47,118 @@ export function MainHeader({ totalFocusedTime, children }: MainHeaderProps) {
             <h1 className="text-xl sm:text-2xl font-bold text-primary [.stranger-things_&]:text-glow">GridFocus</h1>
           </Link>
         </div>
-        <div className="flex flex-1 items-center justify-end space-x-2">
-          <div className="hidden sm:flex items-center space-x-2">
-              <TotalFocusTime totalHours={totalFocusedTime} />
-              {children}
-              {user && user.email === ADMIN_EMAIL && (
-                <>
-                    <Link href="/admin" passHref>
-                        <Button variant="ghost" size="icon" title="Admin Panel">
-                            <Shield className="h-5 w-5" />
-                        </Button>
-                    </Link>
-                    <Link href="/admin/whats-new" passHref>
-                        <Button variant="ghost" size="icon" title="What's New Admin">
-                            <Newspaper className="h-5 w-5" />
-                        </Button>
-                    </Link>
-                </>
-              )}
-              <Link href="/stats" passHref>
-                <Button variant="ghost" size="icon" title="Statistics">
-                    <BarChart2 className="h-5 w-5" />
-                </Button>
-              </Link>
-              <InfoDialog />
-              <div className="relative">
-                <ThemeToggle />
-                <Badge className="absolute -top-1 -right-2 bg-accent text-accent-foreground text-xs px-1.5 py-0.5 pointer-events-none animate-pulse">New!</Badge>
-              </div>
-              {isAnonymousUser ? (
-                 <Link href="/login" passHref>
-                    <Button>
-                        <UserPlus className="mr-2" />
-                        Sign up to Save
-                    </Button>
-                 </Link>
-              ) : user ? (
-                <Button variant="ghost" size="icon" onClick={handleSignOut} title="Sign Out">
-                  <LogOut className="h-5 w-5" />
-                </Button>
-              ) : null}
-          </div>
-          <div className="sm:hidden flex items-center">
-            {isAnonymousUser && (
-                <Link href="/login" passHref>
-                    <Button variant="ghost" size="icon" title="Sign Up">
-                        <UserPlus className="h-5 w-5" />
+
+        {/* Desktop View */}
+        <div className="hidden flex-1 items-center justify-end space-x-2 sm:flex">
+          <TotalFocusTime totalHours={totalFocusedTime} />
+          {children}
+          {user && user.email === ADMIN_EMAIL && (
+            <>
+                <Link href="/admin" passHref>
+                    <Button variant="ghost" size="icon" title="Admin Panel">
+                        <Shield className="h-5 w-5" />
                     </Button>
                 </Link>
-            )}
-            <Link href="/stats" passHref>
-              <Button variant="ghost" size="icon" title="Statistics">
-                  <BarChart2 className="h-5 w-5" />
-              </Button>
-            </Link>
-            <div className="relative">
-                <ThemeToggle />
-                <Badge className="absolute -top-1 -right-2 bg-accent text-accent-foreground text-xs px-1.5 py-0.5 pointer-events-none animate-pulse">New!</Badge>
-            </div>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon">
-                  <MoreVertical className="h-5 w-5" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                {user && user.email === ADMIN_EMAIL && (
-                    <>
-                        <Link href="/admin" passHref>
-                            <DropdownMenuItem>
-                            <Shield className="mr-2 h-4 w-4" />
-                            <span>Admin</span>
-                            </DropdownMenuItem>
-                        </Link>
-                        <Link href="/admin/whats-new" passHref>
-                            <DropdownMenuItem>
-                            <Newspaper className="mr-2 h-4 w-4" />
-                            <span>What's New</span>
-                            </DropdownMenuItem>
-                        </Link>
-                    </>
-                )}
-                {/* This is a bit of a hack to get the settings and time in here */}
-                <div className="flex flex-col items-start p-2 gap-2">
-                    {children}
-                </div>
-                <div className="p-2">
-                  <InfoDialog />
-                </div>
-                <DropdownMenuSeparator />
-                 {user && !isAnonymousUser && (
-                  <DropdownMenuItem onClick={handleSignOut}>
-                    <LogOut className="mr-2 h-4 w-4" />
-                    <span>Sign Out</span>
-                  </DropdownMenuItem>
-                )}
-              </DropdownMenuContent>
-            </DropdownMenu>
+                <Link href="/admin/whats-new" passHref>
+                    <Button variant="ghost" size="icon" title="What's New Admin">
+                        <Newspaper className="h-5 w-5" />
+                    </Button>
+                </Link>
+            </>
+          )}
+          <Link href="/stats" passHref>
+            <Button variant="ghost" size="icon" title="Statistics">
+                <BarChart2 className="h-5 w-5" />
+            </Button>
+          </Link>
+          <InfoDialog />
+          <div className="relative">
+            <ThemeToggle />
+            <Badge className="absolute -top-1 -right-2 bg-accent text-accent-foreground text-xs px-1.5 py-0.5 pointer-events-none animate-pulse">New!</Badge>
           </div>
+          {isAnonymousUser ? (
+              <Link href="/login" passHref>
+                <Button>
+                    <UserPlus className="mr-2" />
+                    Sign up to Save
+                </Button>
+              </Link>
+          ) : user ? (
+            <Button variant="ghost" size="icon" onClick={handleSignOut} title="Sign Out">
+              <LogOut className="h-5 w-5" />
+            </Button>
+          ) : null}
+        </div>
+        
+        {/* Mobile View */}
+        <div className="sm:hidden flex flex-1 items-center justify-end space-x-1">
+          <TotalFocusTime totalHours={totalFocusedTime} />
+          <div className="[&>div]:p-1 [&>div>span]:text-base">
+            {children}
+          </div>
+          
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon">
+                <MoreVertical className="h-5 w-5" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {isAnonymousUser ? (
+                <Link href="/login" passHref>
+                    <DropdownMenuItem>
+                      <UserPlus className="mr-2 h-4 w-4" />
+                      <span>Sign Up to Save</span>
+                    </DropdownMenuItem>
+                </Link>
+              ) : null}
+              <Link href="/stats" passHref>
+                  <DropdownMenuItem>
+                    <BarChart2 className="mr-2 h-4 w-4" />
+                    <span>Statistics</span>
+                  </DropdownMenuItem>
+              </Link>
+              {user && user.email === ADMIN_EMAIL && (
+                  <>
+                      <Link href="/admin" passHref>
+                          <DropdownMenuItem>
+                          <Shield className="mr-2 h-4 w-4" />
+                          <span>Admin</span>
+                          </DropdownMenuItem>
+                      </Link>
+                      <Link href="/admin/whats-new" passHref>
+                          <DropdownMenuItem>
+                          <Newspaper className="mr-2 h-4 w-4" />
+                          <span>What's New</span>
+                          </DropdownMenuItem>
+                      </Link>
+                  </>
+              )}
+               <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                  <div className="p-0 flex items-center">
+                    <InfoDialog />
+                    <span className="ml-2">How to Use</span>
+                  </div>
+              </DropdownMenuItem>
+               <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                  <div className="p-0 flex items-center w-full">
+                    <span className="mr-2">Theme</span>
+                    <div className="ml-auto">
+                      <ThemeToggle />
+                    </div>
+                  </div>
+              </DropdownMenuItem>
+              
+              <DropdownMenuSeparator />
+
+              {user && !isAnonymousUser && (
+                <DropdownMenuItem onClick={handleSignOut}>
+                  <LogOut className="mr-2 h-4 w-4" />
+                  <span>Sign Out</span>
+                </DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
     </header>
