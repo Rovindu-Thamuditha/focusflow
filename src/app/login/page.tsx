@@ -82,7 +82,12 @@ export default function LoginPage() {
             hasCompletedOnboarding: false,
           };
           
-          await setDoc(userDocRef, userData, { merge: true });
+          setDoc(userDocRef, userData, { merge: true }).catch(error => {
+              errorEmitter.emit(
+                'permission-error',
+                new FirestorePermissionError({ path: userDocRef.path, operation: 'write', requestResourceData: userData })
+              );
+          });
 
         } else {
           // Regular sign-up
