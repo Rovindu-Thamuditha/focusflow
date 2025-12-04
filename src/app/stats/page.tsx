@@ -64,19 +64,41 @@ export default function StatsPage() {
   const [subjects, setSubjects] = useState<Subject[]>(defaultSubjects);
   const [dataLoaded, setDataLoaded] = useState(false);
 
-  useEffect(() => {
-    if (!isUserLoading && !user) {
-      router.push('/login');
-    }
-  }, [user, isUserLoading, router]);
+  const isAnonymousUser = user?.isAnonymous;
 
   const fetchTimeBlocks = useCallback(async () => {
-      if (!user || !firestore) return;
+      if (!user || !firestore || isAnonymousUser) {
+        if(isAnonymousUser) {
+             const range = parseInt(timeRange);
+             const now = new Date();
+             const startDate = startOfDay(subDays(now, range - 1));
+             const allDates = eachDayOfInterval({ start: startDate, end: now });
+
+             const localBlocksStr = localStorage.getItem('gridFocusTimeBlocks');
+             const localBlocks = localBlocksStr ? JSON.parse(localBlocksStr) : {};
+             
+             let allBlocks: TimeBlockState[] = [];
+             allDates.forEach(date => {
+                 const dateString = format(date, 'yyyy-MM-dd');
+                 if(localBlocks[dateString]) {
+                     allBlocks = [...allBlocks, ...localBlocks[dateString]];
+                 }
+             });
+             setTimeBlocks(allBlocks);
+
+             const settingsStr = localStorage.getItem('gridFocusSettings');
+             const settings = settingsStr ? JSON.parse(settingsStr) : {};
+             setSubjects(settings.subjects || defaultSubjects);
+
+             setDataLoaded(true);
+        }
+        return;
+      };
       
       setDataLoaded(false);
       const now = new Date();
       const range = parseInt(timeRange);
-      const startDate = startOfDay(subDays(now, range - 1)); // -1 because we want to include today
+      const startDate = startOfDay(subDays(now, range - 1));
       const endDate = endOfDay(now);
 
       const q = query(
@@ -102,11 +124,13 @@ export default function StatsPage() {
       } finally {
         setDataLoaded(true);
       }
-  }, [user, firestore, timeRange]);
+  }, [user, firestore, timeRange, isAnonymousUser]);
 
   useEffect(() => {
+    if (isUserLoading) return;
+    // Don't redirect, just handle data fetching based on user type.
     fetchTimeBlocks();
-  }, [fetchTimeBlocks]);
+  }, [isUserLoading, fetchTimeBlocks]);
   
   const chartData = useMemo(() => {
     const dataByDate: { [key: string]: any } = {};
@@ -133,7 +157,6 @@ export default function StatsPage() {
         const dateKey = block.date.split('T')[0];
         const dateLabel = format(parseISO(dateKey), 'MMM dd');
 
-        // This check is important in case of time zone differences
         if (dataByDate[dateLabel]) {
             if (!dataByDate[dateLabel][block.subject]) {
                 dataByDate[dateLabel][block.subject] = 0;
@@ -154,16 +177,20 @@ export default function StatsPage() {
     }, 0) / 60; // convert to hours
   }, [timeBlocks]);
 
-  if (isUserLoading || !dataLoaded || !user) {
+  if (isUserLoading || !dataLoaded) {
     return (
         <div className="flex items-center justify-center min-h-screen bg-background">
           <div className="text-xl">Loading Statistics...</div>
         </div>
     );
   }
+  
+  if (!user) { // Should not happen if isUserLoading is false, but as a safeguard
+      router.push('/login');
+      return null;
+  }
 
   const subjectsToRender = subjects.filter(s => s.id !== 'idle' && s.id !== 'sleep');
-  const isAnonymousUser = user.isAnonymous;
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
@@ -188,7 +215,7 @@ export default function StatsPage() {
                   <CardDescription>Your daily focused time breakdown by subject.</CardDescription>
               </CardHeader>
               <CardContent>
-                  {chartData.length > 0 ? (
+                  {chartData.length > 0 && timeBlocks.length > 0 ? (
                       <ResponsiveContainer width="100%" height={400}>
                           <BarChart data={chartData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }} className={cn(chartData.length > 0 && "glow-primary")}>
                               <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.2} />
@@ -211,7 +238,7 @@ export default function StatsPage() {
                       </ResponsiveContainer>
                   ) : (
                       <div className="flex items-center justify-center h-[400px] text-muted-foreground">
-                          No focus data available for the selected period.
+                          No focus data available for the selected period. Start logging your time!
                       </div>
                   )}
               </CardContent>

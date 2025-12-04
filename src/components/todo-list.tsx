@@ -24,17 +24,53 @@ export function TodoList() {
   const firestore = useFirestore();
   const [newTodo, setNewTodo] = useState('');
   const { toast } = useToast();
+  const [localTodos, setLocalTodos] = useState<Todo[]>([]);
+  const isAnonymousUser = user?.isAnonymous;
 
   const todosCollectionRef = useMemoFirebase(() => {
-    if (!user || !firestore) return null;
+    if (!user || !firestore || isAnonymousUser) return null;
     return collection(firestore, 'users', user.uid, 'todos');
-  }, [user, firestore]);
+  }, [user, firestore, isAnonymousUser]);
 
-  const { data: todos, isLoading } = useCollection<Todo>(todosCollectionRef);
+  const { data: cloudTodos, isLoading: cloudLoading } = useCollection<Todo>(todosCollectionRef);
+
+  // Load local todos on mount if anonymous
+  useEffect(() => {
+    if (isAnonymousUser) {
+      const savedTodos = localStorage.getItem('gridFocusTodos');
+      if (savedTodos) {
+        setLocalTodos(JSON.parse(savedTodos));
+      }
+    }
+  }, [isAnonymousUser]);
+
+  // Save local todos to localStorage
+  useEffect(() => {
+    if (isAnonymousUser) {
+      localStorage.setItem('gridFocusTodos', JSON.stringify(localTodos));
+    }
+  }, [localTodos, isAnonymousUser]);
+  
+  const todos = isAnonymousUser ? localTodos : cloudTodos;
+  const isLoading = isAnonymousUser ? false : cloudLoading;
 
   const addTodo = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newTodo.trim() || !todosCollectionRef) return;
+    if (!newTodo.trim()) return;
+
+    if (isAnonymousUser) {
+        const newLocalTodo: Todo = {
+            id: `local-${Date.now()}`,
+            text: newTodo,
+            completed: false,
+            createdAt: new Date().toISOString(),
+        };
+        setLocalTodos(prev => [newLocalTodo, ...prev]);
+        setNewTodo('');
+        return;
+    }
+
+    if (!todosCollectionRef) return;
     try {
         await addDoc(todosCollectionRef, {
             text: newTodo,
@@ -52,13 +88,23 @@ export function TodoList() {
     }
   };
 
-  const toggleTodo = async (todo: Todo) => {
+  const toggleTodo = async (todoToToggle: Todo) => {
+    if (isAnonymousUser) {
+        setLocalTodos(prev => prev.map(t => t.id === todoToToggle.id ? { ...t, completed: !t.completed } : t));
+        return;
+    }
+    
     if (!user || !firestore) return;
-    const todoDocRef = doc(firestore, 'users', user.uid, 'todos', todo.id);
-    await updateDoc(todoDocRef, { completed: !todo.completed });
+    const todoDocRef = doc(firestore, 'users', user.uid, 'todos', todoToToggle.id);
+    await updateDoc(todoDocRef, { completed: !todoToToggle.completed });
   };
 
   const deleteTodo = async (id: string) => {
+    if (isAnonymousUser) {
+        setLocalTodos(prev => prev.filter(t => t.id !== id));
+        return;
+    }
+
     if (!user || !firestore) return;
     const todoDocRef = doc(firestore, 'users', user.uid, 'todos', id);
     await deleteDoc(todoDocRef);
@@ -68,9 +114,9 @@ export function TodoList() {
     if (a.completed !== b.completed) {
       return a.completed ? 1 : -1;
     }
-    if (a.createdAt?.seconds > b.createdAt?.seconds) {
-      return -1;
-    }
+    const dateA = a.createdAt?.seconds ? a.createdAt.seconds : Date.parse(a.createdAt);
+    const dateB = b.createdAt?.seconds ? b.createdAt.seconds : Date.parse(b.createdAt);
+    if (dateA > dateB) return -1;
     return 1;
   }) : [];
 
