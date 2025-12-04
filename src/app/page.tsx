@@ -16,7 +16,7 @@ import { useRouter } from 'next/navigation';
 import { doc, setDoc, getDoc, getDocs, collection, query, where, writeBatch, arrayUnion, updateDoc } from 'firebase/firestore';
 import { signInAnonymously } from 'firebase/auth';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, ChevronRight, RotateCcw } from 'lucide-react';
+import { ChevronLeft, ChevronRight, RotateCcw, MessageSquarePlus } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -35,6 +35,7 @@ import { TodoList } from '@/components/todo-list';
 import { FloatingTimer } from '@/components/floating-timer';
 import { WhatsNewDialog } from '@/components/whats-new-dialog';
 import { OnboardingDialog } from '@/components/onboarding-dialog';
+import { useToast } from '@/hooks/use-toast';
 
 const createInitialState = (sleepHours: number[], date: Date): TimeBlockState[] => {
   const dateString = format(date, 'yyyy-MM-dd');
@@ -55,6 +56,7 @@ export default function Home() {
   const auth = useAuth();
   const firestore = useFirestore();
   const router = useRouter();
+  const { toast } = useToast();
   const [currentDate, setCurrentDate] = useState(startOfDay(new Date()));
   const [liveTime, setLiveTime] = useState(new Date());
   const [timeBlocks, setTimeBlocks] = useState<TimeBlockState[]>(createInitialState([], new Date()));
@@ -68,6 +70,8 @@ export default function Home() {
   const [seenWhatsNewVersions, setSeenWhatsNewVersions] = useState<string[]>([]);
   const [questionIndex, setQuestionIndex] = useState(0);
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [isFeedbackDialogOpen, setIsFeedbackDialogOpen] = useState(false);
+  const [hasBeenPromptedForFeedback, setHasBeenPromptedForFeedback] = useState(false);
 
   // Feature toggles
   const [enableTimer, setEnableTimer] = useState(true);
@@ -172,6 +176,7 @@ export default function Home() {
             setEnableDailyChallenge(settings.enableDailyChallenge !== false);
             setEnableTodoList(settings.enableTodoList !== false);
             setSeenWhatsNewVersions(data.seenWhatsNewVersions || []);
+            setHasBeenPromptedForFeedback(data.hasBeenPromptedForFeedback || false);
           } else {
              setUserName(user.displayName || (user.isAnonymous ? '' : 'User'));
              if (!user.isAnonymous) {
@@ -378,6 +383,27 @@ export default function Home() {
     }, 0);
   }, [timeBlocks]);
 
+  // Periodic feedback prompt effect
+  useEffect(() => {
+    if (totalFocusedTime > 5 && !hasBeenPromptedForFeedback && userDocRef) {
+      const feedbackToast = toast({
+        title: "Enjoying GridFocus?",
+        description: "Your feedback helps us improve. Would you like to share your thoughts?",
+        action: (
+          <Button size="sm" onClick={() => setIsFeedbackDialogOpen(true)}>
+            Give Feedback
+          </Button>
+        ),
+        duration: 15000, // Show for 15 seconds
+      });
+
+      // Mark as prompted in Firestore and local state
+      updateDoc(userDocRef, { hasBeenPromptedForFeedback: true });
+      setHasBeenPromptedForFeedback(true);
+    }
+  }, [totalFocusedTime, hasBeenPromptedForFeedback, userDocRef, toast]);
+
+
   const currentQuestion = useMemo(() => {
     if (!isClient) return dailyQuestions[0];
     const dayIndex = getDayOfYear(new Date());
@@ -490,7 +516,7 @@ export default function Home() {
             setElapsedSeconds={setElapsedSeconds}
         />
       )}
-      <FeedbackDialog />
+      <FeedbackDialog isOpen={isFeedbackDialogOpen} onOpenChange={setIsFeedbackDialogOpen} />
       <WhatsNewDialog 
         seenVersions={seenWhatsNewVersions}
         onMarkAsSeen={markWhatsNewAsSeen}
@@ -510,13 +536,11 @@ export default function Home() {
         />
       )}
 
-      <footer className="text-center py-4 text-muted-foreground text-sm">
-        <p>Made with ♥ for focused minds by <a href="https://github.com/Rovindu-Thamuditha/" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Tipiz</a></p>
+      <footer className="text-center py-4 text-muted-foreground text-sm space-x-4">
+        <span>Made with ♥ by <a href="https://github.com/Rovindu-Thamuditha/" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Tipiz</a></span>
+        <span>|</span>
+        <button onClick={() => setIsFeedbackDialogOpen(true)} className="text-primary hover:underline">Send Feedback</button>
       </footer>
     </div>
   );
 }
-
-    
-
-    

@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { Settings, Trash2, PlusCircle, Languages, Sparkles, SlidersHorizontal, Bed } from 'lucide-react';
+import { Settings, Trash2, PlusCircle, Languages, Sparkles, SlidersHorizontal, Bed, MessageSquarePlus } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -13,6 +13,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import type { Subject } from '@/lib/types';
 import { ALL_ICONS } from '@/lib/icons';
 import { Switch } from '@/components/ui/switch';
+import { FeedbackDialog } from './feedback-dialog';
 
 interface SettingsDialogProps {
   subjects: Subject[];
@@ -43,6 +44,7 @@ export function SettingsDialog({
   onSave,
 }: SettingsDialogProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
   
   // Local state for editing
   const [subjects, setSubjects] = useState(initialSubjects);
@@ -99,6 +101,7 @@ export function SettingsDialog({
 
 
   return (
+    <>
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
         <Button variant="ghost" size="icon">
@@ -114,11 +117,12 @@ export function SettingsDialog({
           </DialogDescription>
         </DialogHeader>
         <Tabs defaultValue="general">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="general">General</TabsTrigger>
             <TabsTrigger value="subjects">Subjects</TabsTrigger>
             <TabsTrigger value="sleep">Sleep</TabsTrigger>
             <TabsTrigger value="features">Features</TabsTrigger>
+            <TabsTrigger value="feedback">Feedback</TabsTrigger>
           </TabsList>
           <TabsContent value="general" className="py-4">
              <div className="space-y-4">
@@ -222,6 +226,18 @@ export function SettingsDialog({
                 </div>
              </div>
           </TabsContent>
+          <TabsContent value="feedback" className="py-4">
+             <div className="space-y-4 text-center">
+                <h4 className="font-semibold">Help Us Improve</h4>
+                <p className="text-sm text-muted-foreground">
+                    Your feedback is invaluable. Have a suggestion or found a bug? Let us know!
+                </p>
+                <Button onClick={() => { setIsOpen(false); setIsFeedbackOpen(true); }}>
+                    <MessageSquarePlus className="mr-2" />
+                    Submit Feedback
+                </Button>
+             </div>
+          </TabsContent>
         </Tabs>
         <DialogFooter>
             <Button variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
@@ -229,7 +245,7 @@ export function SettingsDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+    <FeedbackDialog isOpen={isFeedbackOpen} onOpenChange={setIsFeedbackOpen} />
+    </>
   );
 }
-
-    

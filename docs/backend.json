@@ -30,6 +30,10 @@
           "items": {
             "type": "string"
           }
+        },
+        "hasBeenPromptedForFeedback": {
+            "type": "boolean",
+            "description": "Indicates whether the user has already been prompted to give feedback."
         }
       },
       "required": [

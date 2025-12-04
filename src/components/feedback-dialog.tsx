@@ -3,7 +3,7 @@
 
 import { useState } from 'react';
 import { MessageSquarePlus } from 'lucide-react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -12,8 +12,12 @@ import { sendFeedback } from '@/ai/flows/send-feedback-flow';
 import { useUser } from '@/firebase';
 import { Icons } from './icons';
 
-export function FeedbackDialog() {
-  const [isOpen, setIsOpen] = useState(false);
+interface FeedbackDialogProps {
+    isOpen: boolean;
+    onOpenChange: (isOpen: boolean) => void;
+}
+
+export function FeedbackDialog({ isOpen, onOpenChange }: FeedbackDialogProps) {
   const [feedback, setFeedback] = useState("");
   const [isSending, setIsSending] = useState(false);
   const { toast } = useToast();
@@ -37,7 +41,7 @@ export function FeedbackDialog() {
                 title: "Feedback Sent!",
                 description: "Thank you for helping us improve GridFocus.",
             });
-            setIsOpen(false);
+            onOpenChange(false);
             setFeedback("");
         } else {
              throw new Error("Flow returned success: false");
@@ -55,17 +59,7 @@ export function FeedbackDialog() {
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogTrigger asChild>
-        <Button
-          variant="outline"
-          size="icon"
-          className="fixed bottom-4 right-4 h-14 w-14 rounded-full shadow-lg z-50 bg-primary text-primary-foreground hover:bg-primary/90"
-          title="Send Feedback"
-        >
-            <MessageSquarePlus className="h-6 w-6" />
-        </Button>
-      </DialogTrigger>
+    <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Submit Feedback</DialogTitle>
@@ -87,7 +81,7 @@ export function FeedbackDialog() {
             </div>
         </div>
         <DialogFooter>
-            <Button variant="outline" onClick={() => setIsOpen(false)} disabled={isSending}>Cancel</Button>
+            <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSending}>Cancel</Button>
             <Button onClick={handleSendFeedback} disabled={isSending}>
                 {isSending && <Icons.logo className="mr-2 h-4 w-4 animate-spin" />}
                 {isSending ? 'Sending...' : 'Send Feedback'}
