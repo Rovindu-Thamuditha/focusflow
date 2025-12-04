@@ -19,6 +19,8 @@ import { Icons } from '@/components/icons';
 import { useAuth, useUser, useFirestore, errorEmitter, FirestorePermissionError } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import type { TimeBlockState } from '@/lib/types';
+import Link from 'next/link';
+import { ArrowLeft } from 'lucide-react';
 
 function generateInviteCode() {
   const chars = 'ABCDEFGHIJKLMNPQRSTUVWXYZ123456789';
@@ -44,43 +46,6 @@ export default function LoginPage() {
 
   const isAnonymousUser = currentUser?.isAnonymous;
   
-  const showToggle = true;
-
-  const getPageContent = () => {
-    if (isAnonymousUser) {
-      if (isSignUp) {
-         return {
-            title: "Create Account to Save",
-            description: "Create an account to permanently save your progress.",
-            buttonText: "Create Account & Save",
-            isSignUpFlow: true,
-        };
-      }
-      return {
-        title: "Sign In to Save",
-        description: "Sign in to an existing account to sync your progress.",
-        buttonText: "Sign In & Save",
-        isSignUpFlow: false,
-      };
-    }
-    if (isSignUp) {
-      return {
-        title: "Create an Account",
-        description: "Enter your details to get started.",
-        buttonText: "Sign Up",
-        isSignUpFlow: true,
-      };
-    }
-    return {
-      title: "Welcome Back",
-      description: "Sign in to access your dashboard.",
-      buttonText: "Sign In",
-      isSignUpFlow: false,
-    };
-  };
-
-  const { title, description, buttonText, isSignUpFlow } = getPageContent();
-  
   const migrateLocalDataToFirebase = async (userId: string) => {
     if (!firestore) return;
   
@@ -90,8 +55,8 @@ export default function LoginPage() {
       const settingsStr = localStorage.getItem('gridFocusSettings');
       if (settingsStr) {
         const settings = JSON.parse(settingsStr);
-        const userDocRef = doc(firestore, 'users', userId);
-        batch.set(userDocRef, { settings }, { merge: true });
+        // Note: We don't migrate settings directly, as user may have different preferences.
+        // Onboarding flow will handle setting initial data for new accounts.
       }
   
       const timeBlocksStr = localStorage.getItem('gridFocusTimeBlocks');
@@ -129,7 +94,7 @@ export default function LoginPage() {
       toast({
         variant: "destructive",
         title: "Data Sync Failed",
-        description: "Could not save your local progress to your new account. Your data is still safe on this device.",
+        description: "Could not save your local progress to the account. Your data is still safe on this device.",
       });
     }
   };
@@ -147,7 +112,8 @@ export default function LoginPage() {
     setLoading(true);
     
     try {
-      if (isSignUpFlow) { // This covers both new sign-ups and anonymous linking
+      // --- SIGN UP ---
+      if (isSignUp) {
         if (!name) {
             toast({ variant: "destructive", title: "Name is required" });
             setLoading(false);
@@ -156,22 +122,19 @@ export default function LoginPage() {
         
         let user;
 
-        if (isAnonymousUser) {
+        if (isAnonymousUser) { // Linking anonymous account to a new email account
           const credential = EmailAuthProvider.credential(email, password);
           const userCredential = await linkWithCredential(currentUser, credential);
           user = userCredential.user;
 
           await updateProfile(user, { displayName: name });
           const userDocRef = doc(firestore, 'users', user.uid);
-          const userData = {
-            username: name,
-            email: user.email,
-          };
+          const userData = { username: name, email: user.email, };
           
           await setDoc(userDocRef, userData, { merge: true });
           await migrateLocalDataToFirebase(user.uid);
 
-        } else {
+        } else { // Fresh sign-up
           const userCredential = await createUserWithEmailAndPassword(auth, email, password);
           user = userCredential.user;
           
@@ -193,7 +156,8 @@ export default function LoginPage() {
               throw error;
           });
           
-          await migrateLocalDataToFirebase(user.uid);
+          // Only migrate data if it was an anonymous user before.
+          if(isAnonymousUser) await migrateLocalDataToFirebase(user.uid);
           
           const privacySettingsRef = doc(firestore, 'users', user.uid, 'privacy', 'settings');
           const privacyData = {
@@ -207,7 +171,7 @@ export default function LoginPage() {
         toast({ title: "Account Created!", description: "Welcome to GridFocus!" });
         router.push('/');
 
-      } else {
+      } else { // --- SIGN IN ---
         const userCredential = await signInWithEmailAndPassword(auth, email, password);
         if (isAnonymousUser) {
             await migrateLocalDataToFirebase(userCredential.user.uid);
@@ -222,7 +186,7 @@ export default function LoginPage() {
         return;
       }
 
-      let description = `Could not ${isSignUpFlow ? 'sign up' : 'sign in'}. Please try again.`;
+      let description = `Could not ${isSignUp ? 'sign up' : 'sign in'}. Please try again.`;
       if (error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password' || error.code === 'auth/user-not-found') {
         description = "Invalid email or password. Please check your credentials and try again.";
       } else if (error.code === 'auth/email-already-in-use') {
@@ -240,17 +204,26 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-background">
-      <Card className="w-full max-w-md mx-4">
+    <div className="relative flex items-center justify-center min-h-screen bg-background p-4">
+      <div className="absolute top-4 left-4">
+        <Link href="/" passHref>
+          <Button variant="ghost">
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back to Home
+          </Button>
+        </Link>
+      </div>
+
+      <Card className="w-full max-w-md">
         <CardHeader className="text-center">
             <div className="flex justify-center items-center mb-4">
                 <Icons.logo className="h-12 w-12 text-primary"/>
             </div>
-          <CardTitle className="text-3xl font-bold">{title}</CardTitle>
-          <CardDescription>{description}</CardDescription>
+          <CardTitle className="text-3xl font-bold">{isSignUp ? 'Create an Account' : 'Welcome Back'}</CardTitle>
+          <CardDescription>{isSignUp ? 'Enter your details to get started.' : 'Sign in to access your dashboard.'}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-            {isSignUpFlow && (
+            {isSignUp && (
                 <div className="space-y-2">
                     <Label htmlFor="name">Name</Label>
                     <Input 
@@ -292,19 +265,12 @@ export default function LoginPage() {
         <CardFooter className="flex flex-col gap-4">
             <Button onClick={handleAuthAction} className="w-full" disabled={loading}>
                 {loading && <Icons.logo className="mr-2 h-4 w-4 animate-spin" />}
-                {buttonText}
+                {isSignUp ? 'Create Account' : 'Sign In'}
             </Button>
             
-            {showToggle && (
-              <Button variant="link" onClick={() => setIsSignUp(!isSignUp)} disabled={loading}>
-                  {isSignUp ? 'Already have an account? Sign In' : "Don't have an account? Create one"}
-              </Button>
-            )}
-             {isAnonymousUser && (
-                <Button variant="link" onClick={() => router.push('/')} disabled={loading}>
-                    Decide later
-                </Button>
-            )}
+            <Button variant="link" onClick={() => setIsSignUp(!isSignUp)} disabled={loading}>
+                {isSignUp ? 'Already have an account? Sign In' : "Don't have an account? Create one"}
+            </Button>
         </CardFooter>
       </Card>
     </div>
