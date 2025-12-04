@@ -13,11 +13,11 @@ service cloud.firestore {
     }
     
     function isAdmin() {
+      // In a real app, use custom claims for roles: request.auth.token.admin == true
       return isSignedIn() && request.auth.token.email == 'rovinduthamu@gmail.com';
     }
 
-    // Function to check if two users are friends.
-    // This checks for a document where the user IDs array contains both the requesting user and the target user.
+    // Function to check if two users are friends by checking for an 'accepted' friendship document.
     function areFriends(userId1, userId2) {
       return exists(/databases/$(database)/documents/friendships) &&
              get(/databases/$(database)/documents/friendships).data.userIds.hasAll([userId1, userId2]) &&
@@ -28,45 +28,29 @@ service cloud.firestore {
      * @description
      *   The User document contains public profile information and acts as the root for a user's private data.
      *   A user can create their own document and manage it, but cannot see other users unless they are an admin,
-     *   or they are friends and have sharing enabled.
+     *   or they are friends.
      * @path /users/{userId}
      */
     match /users/{userId} {
+      // Allow owners, admins, or friends to view the main user profile.
       allow get: if isOwner(userId) || isAdmin() || (areFriends(request.auth.uid, userId));
-      allow list: if isAdmin(); // Prevent general user enumeration.
-      allow create: if isOwner(userId) && request.resource.data.id == userId;
-      allow update: if isOwner(userId) || isAdmin();
-      allow delete: if isOwner(userId) || isAdmin();
-
-      /**
-       * @description
-       *   A user's private subcollections. Access is granted to the owner, admin, or friends with appropriate privacy settings.
-       */
-      match /time_blocks/{blockId} {
-        allow read: if isOwner(userId) || isAdmin() || 
-                     (areFriends(request.auth.uid, userId) && 
-                      get(/databases/$(database)/documents/users/$(userId)/privacy/settings).data.shareTotalFocusTime == true);
-        allow write: if isOwner(userId) || isAdmin();
-      }
-      
-      match /privacy/{privacyId} {
-        allow read, write: if isOwner(userId) || isAdmin();
-      }
-
-      match /notifications/{notificationId} {
-        allow read, write: if isOwner(userId) || isAdmin();
-      }
-      
-      // Keep other subcollections private to the user and admin
-      match /settings/{settingsId} {
-        allow read, write: if isOwner(userId) || isAdmin();
-      }
-      match /dailyQuestionStates/{stateId} {
-        allow read, write: if isOwner(userId) || isAdmin();
-      }
-      match /todos/{todoId} {
-        allow read, write: if isOwner(userId) || isAdmin();
-      }
+      // Only admins can list all users to prevent user enumeration.
+      allow list: if isAdmin();
+      // A user can create their own document.
+      allow create: if isOwner(userId);
+      // Only the owner or an admin can update or delete the main user document.
+      allow update, delete: if isOwner(userId) || isAdmin();
+    }
+    
+    /**
+     * @description
+     *  Rules for all subcollections within a user's document.
+     *  This single block secures /time_blocks, /todos, /settings, /privacy, etc.
+     *  It ensures only the owner of the parent user document can read or write to any nested document.
+     * @path /users/{userId}/{document=**}
+     */
+    match /users/{userId}/{document=**} {
+      allow read, write: if isOwner(userId) || isAdmin();
     }
     
     /**
@@ -105,5 +89,3 @@ service cloud.firestore {
     }
   }
 }
-
-    
