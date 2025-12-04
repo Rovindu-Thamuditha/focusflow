@@ -76,7 +76,7 @@ export function OnboardingDialog({ isOpen, onFinish, initialSettings }: Onboardi
 
   return (
     <Dialog open={isOpen} onOpenChange={() => {}}>
-      <DialogContent className="sm:max-w-2xl" hideCloseButton>
+      <DialogContent className="sm:max-w-lg" hideCloseButton>
         <DialogHeader>
           <div className="flex justify-center items-center mb-4">
             <Icons.logo className="h-12 w-12 text-primary glow-primary"/>
@@ -88,7 +88,7 @@ export function OnboardingDialog({ isOpen, onFinish, initialSettings }: Onboardi
         </DialogHeader>
 
         <Progress value={(step / TOTAL_STEPS) * 100} className="w-full my-4" />
-        <ScrollArea className="h-[40vh] pr-6">
+        <ScrollArea className="max-h-[60vh] pr-6">
             <div className="min-h-[250px]">
                 {step === 1 && (
                     <div className="text-center space-y-4 py-8">
@@ -125,7 +125,7 @@ export function OnboardingDialog({ isOpen, onFinish, initialSettings }: Onboardi
                     <div>
                         <h4 className="font-semibold mb-2 text-lg flex items-center gap-2"><Moon /> Set Your Sleep Hours</h4>
                         <p className="text-sm text-muted-foreground mb-4">Mark the hours you're typically asleep. This helps set up your daily grid.</p>
-                        <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
+                        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
                             {allHours.map(hour => (
                                 <div key={hour} className="flex items-center space-x-2">
                                     <Checkbox id={`onboarding-sleep-${hour}`} checked={sleepHours.includes(hour)} onCheckedChange={(checked) => handleSleepCheckboxChange(hour, !!checked)} />
