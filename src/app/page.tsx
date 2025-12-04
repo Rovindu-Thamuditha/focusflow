@@ -13,7 +13,7 @@ import { SettingsDialog } from '@/components/settings-dialog';
 import { defaultSubjects } from '@/lib/subjects';
 import { useUser, useAuth, useFirestore, useMemoFirebase, FirestorePermissionError, errorEmitter } from '@/firebase';
 import { useRouter } from 'next/navigation';
-import { doc, setDoc, getDoc, getDocs, collection, query, where, writeBatch, arrayUnion, updateDoc } from 'firebase/firestore';
+import { doc, setDoc, getDoc, getDocs, collection, query, where, writeBatch, arrayUnion } from 'firebase/firestore';
 import { signInAnonymously } from 'firebase/auth';
 import { Button } from '@/components/ui/button';
 import { ChevronLeft, ChevronRight, RotateCcw } from 'lucide-react';
@@ -413,7 +413,7 @@ export default function Home() {
     handleSettingsSave(newSettings);
     if(userDocRef) {
       try {
-        await updateDoc(userDocRef, { hasCompletedOnboarding: true });
+        await setDoc(userDocRef, { hasCompletedOnboarding: true }, { merge: true });
       } catch (e) {
         console.error("Error finalizing onboarding:", e);
       }
@@ -425,9 +425,7 @@ export default function Home() {
   const markWhatsNewAsSeen = async (version: string) => {
     if (!userDocRef) return;
     try {
-        await updateDoc(userDocRef, {
-            seenWhatsNewVersions: arrayUnion(version)
-        });
+        await setDoc(userDocRef, { seenWhatsNewVersions: arrayUnion(version) }, { merge: true });
         setSeenWhatsNewVersions(prev => [...prev, version]);
     } catch (e) {
         console.error("Error marking What's New as seen:", e);
@@ -458,7 +456,7 @@ export default function Home() {
         duration: 15000,
       });
 
-      updateDoc(userDocRef, { hasBeenPromptedForFeedback: true });
+      setDoc(userDocRef, { hasBeenPromptedForFeedback: true }, { merge: true });
       setHasBeenPromptedForFeedback(true);
     }
   }, [totalFocusedTime, hasBeenPromptedForFeedback, user, userDocRef, toast]);
@@ -605,3 +603,5 @@ export default function Home() {
     </div>
   );
 }
+
+    
