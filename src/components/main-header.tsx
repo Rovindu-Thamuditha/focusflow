@@ -46,10 +46,28 @@ export function MainHeader({ totalFocusedTime, children }: MainHeaderProps) {
             <h1 className="text-xl sm:text-2xl font-bold text-primary">GridFocus</h1>
           </Link>
         </div>
-        <div className="flex flex-1 items-center justify-end space-x-2">
-          <div className="hidden sm:flex items-center space-x-2">
-              <TotalFocusTime totalHours={totalFocusedTime} />
-              {children}
+        <div className="flex flex-1 items-center justify-end space-x-1 sm:space-x-2">
+          {/* Always visible on all screen sizes */}
+          <TotalFocusTime totalHours={totalFocusedTime} />
+          
+          <div className="hidden sm:flex items-center space-x-1">
+             {children}
+          </div>
+
+          <Link href="/stats" passHref>
+            <Button variant="ghost" size="icon" title="Statistics">
+                <BarChart2 className="h-5 w-5" />
+            </Button>
+          </Link>
+          
+          <div className="hidden sm:inline-flex">
+            <InfoDialog />
+          </div>
+
+          <ThemeToggle />
+
+          {/* Desktop-only items */}
+          <div className="hidden sm:flex items-center">
               {user && user.email === ADMIN_EMAIL && (
                 <>
                     <Link href="/admin" passHref>
@@ -57,20 +75,8 @@ export function MainHeader({ totalFocusedTime, children }: MainHeaderProps) {
                             <Shield className="h-5 w-5" />
                         </Button>
                     </Link>
-                    <Link href="/admin/whats-new" passHref>
-                        <Button variant="ghost" size="icon" title="What's New Admin">
-                            <Newspaper className="h-5 w-5" />
-                        </Button>
-                    </Link>
                 </>
               )}
-              <Link href="/stats" passHref>
-                <Button variant="ghost" size="icon" title="Statistics">
-                    <BarChart2 className="h-5 w-5" />
-                </Button>
-              </Link>
-              <InfoDialog />
-              <ThemeToggle />
               {isAnonymousUser ? (
                  <Link href="/login" passHref>
                     <Button>
@@ -84,20 +90,9 @@ export function MainHeader({ totalFocusedTime, children }: MainHeaderProps) {
                 </Button>
               ) : null}
           </div>
-          <div className="sm:hidden flex items-center">
-            {isAnonymousUser && (
-                <Link href="/login" passHref>
-                    <Button variant="ghost" size="icon" title="Sign Up">
-                        <UserPlus className="h-5 w-5" />
-                    </Button>
-                </Link>
-            )}
-            <Link href="/stats" passHref>
-              <Button variant="ghost" size="icon" title="Statistics">
-                  <BarChart2 className="h-5 w-5" />
-              </Button>
-            </Link>
-            <ThemeToggle />
+          
+          {/* Mobile-only dropdown menu */}
+          <div className="sm:hidden">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon">
@@ -105,8 +100,14 @@ export function MainHeader({ totalFocusedTime, children }: MainHeaderProps) {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
+                <div className="px-2 py-1.5">{children}</div>
+                <DropdownMenuSeparator />
+                 <DropdownMenuItem asChild>
+                   <InfoDialog />
+                 </DropdownMenuItem>
                 {user && user.email === ADMIN_EMAIL && (
                     <>
+                        <DropdownMenuSeparator />
                         <Link href="/admin" passHref>
                             <DropdownMenuItem>
                             <Shield className="mr-2 h-4 w-4" />
@@ -121,20 +122,20 @@ export function MainHeader({ totalFocusedTime, children }: MainHeaderProps) {
                         </Link>
                     </>
                 )}
-                {/* This is a bit of a hack to get the settings and time in here */}
-                <div className="flex flex-col items-start p-2 gap-2">
-                    {children}
-                </div>
-                <div className="p-2">
-                  <InfoDialog />
-                </div>
                 <DropdownMenuSeparator />
-                 {user && !isAnonymousUser && (
+                 {isAnonymousUser ? (
+                    <Link href="/login" passHref>
+                        <DropdownMenuItem>
+                            <UserPlus className="mr-2 h-4 w-4" />
+                            <span>Sign Up to Save</span>
+                        </DropdownMenuItem>
+                    </Link>
+                 ) : user ? (
                   <DropdownMenuItem onClick={handleSignOut}>
                     <LogOut className="mr-2 h-4 w-4" />
                     <span>Sign Out</span>
                   </DropdownMenuItem>
-                )}
+                ) : null}
               </DropdownMenuContent>
             </DropdownMenu>
           </div>

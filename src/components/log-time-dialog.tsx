@@ -68,10 +68,12 @@ export function LogTimeDialog({ block, subjects, onSave, onClose, onClear }: Log
             />
           </div>
         </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose}>Cancel</Button>
-          <Button variant="destructive" onClick={onClear}>Clear</Button>
-          <Button onClick={handleSave}>Save</Button>
+        <DialogFooter className="flex-col-reverse sm:flex-row sm:justify-end gap-2">
+          <Button variant="outline" onClick={onClose} className="w-full sm:w-auto">Cancel</Button>
+          <div className="flex w-full sm:w-auto gap-2">
+            <Button variant="destructive" onClick={onClear} className="flex-grow">Clear</Button>
+            <Button onClick={handleSave} className="flex-grow">Save</Button>
+          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>
