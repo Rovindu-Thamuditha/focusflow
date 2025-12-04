@@ -174,32 +174,31 @@ export default function Home() {
     }
   }, [user, firestore, userDocRef, sleepHours, userDataLoaded]);
 
+  // Initial data load effect
   useEffect(() => {
-    // Initial data load effect
-    if (!user || !isClient || userDataLoaded) return;
-  
+    if (!user || !isClient) return;
+
     const loadInitialUserData = async () => {
       // ANONYMOUS USER
       if (user.isAnonymous) {
         const settingsStr = localStorage.getItem('gridFocusSettings');
         if (settingsStr) {
           const settings = JSON.parse(settingsStr);
-          setUserName(''); // No name for anonymous users
+          setUserName('');
           setSleepHours(settings.sleepHours || []);
           setSubjects(settings.subjects || defaultSubjects);
           setLanguage(settings.language || 'english');
           setEnableTimer(settings.enableTimer !== false);
           setEnableDailyChallenge(settings.enableDailyChallenge !== false);
           setEnableTodoList(settings.enableTodoList !== false);
-          if (settings.hasCompletedOnboarding === undefined) { // Check if onboarding has been done
+          if (!settings.hasCompletedOnboarding) {
              setShowOnboarding(true);
           }
         } else {
-           // First-time anonymous user
            setUserName('');
            setSleepHours([]);
            setSubjects(defaultSubjects);
-           setShowOnboarding(true); // Show onboarding to set preferences locally
+           setShowOnboarding(true);
         }
         setUserDataLoaded(true);
         return;
@@ -209,13 +208,12 @@ export default function Home() {
       if (userDocRef) {
         try {
           const userDoc = await getDoc(userDocRef);
-        
           if (userDoc.exists()) {
             const data = userDoc.data();
             setUserName(data.username || user.displayName || '');
             const settings = data.settings || {};
             
-            if (!data.hasCompletedOnboarding && !user.isAnonymous) {
+            if (!data.hasCompletedOnboarding) {
               setShowOnboarding(true);
             }
 
@@ -228,11 +226,8 @@ export default function Home() {
             setSeenWhatsNewVersions(data.seenWhatsNewVersions || []);
             setHasBeenPromptedForFeedback(data.hasBeenPromptedForFeedback || false);
           } else {
-             // New logged-in user, but doc doesn't exist yet (might happen on first login)
              setUserName(user.displayName || 'User');
-             if (!user.isAnonymous) {
-                setShowOnboarding(true);
-             }
+             setShowOnboarding(true);
           }
         } catch (e) {
             console.error("Error loading user data", e);
@@ -242,7 +237,10 @@ export default function Home() {
         }
       }
     };
-    loadInitialUserData();
+
+    if (!userDataLoaded) {
+      loadInitialUserData();
+    }
   }, [user, isClient, userDocRef, userDataLoaded]);
   
   useEffect(() => {
@@ -260,7 +258,8 @@ export default function Home() {
         if (user?.isAnonymous) {
             const settings = { 
                 sleepHours, subjects, language, enableTimer, 
-                enableDailyChallenge, enableTodoList, hasCompletedOnboarding: true
+                enableDailyChallenge, enableTodoList, 
+                hasCompletedOnboarding: true
             };
             localStorage.setItem('gridFocusSettings', JSON.stringify(settings));
 
@@ -311,8 +310,6 @@ export default function Home() {
             
             batch.commit().catch(error => {
               console.error("Error saving data batch:", error);
-              // This might be too noisy on every save, but good for debugging
-              // errorEmitter.emit('permission-error', new FirestorePermissionError({ path: `users/${user.uid}`, operation: 'write', requestResourceData: { settings: settingsData } }));
             });
         }
     }, 2000);
@@ -418,7 +415,12 @@ export default function Home() {
         console.error("Error finalizing onboarding:", e);
       }
     }
-    // For anonymous users, the settings are already saved locally by handleSettingsSave
+     if (user?.isAnonymous) {
+      const localSettingsStr = localStorage.getItem('gridFocusSettings');
+      const localSettings = localSettingsStr ? JSON.parse(localSettingsStr) : {};
+      localSettings.hasCompletedOnboarding = true;
+      localStorage.setItem('gridFocusSettings', JSON.stringify(localSettings));
+    }
     setShowOnboarding(false);
   }
 
@@ -603,5 +605,3 @@ export default function Home() {
     </div>
   );
 }
-
-    

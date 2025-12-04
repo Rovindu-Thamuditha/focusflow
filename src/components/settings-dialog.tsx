@@ -68,7 +68,7 @@ export function SettingsDialog({
   const [enableTodoList, setEnableTodoList] = useState(initialEnableTodoList);
 
   // Privacy Settings
-  const privacySettingsRef = user ? doc(firestore, 'users', user.uid, 'privacy', 'settings') : null;
+  const privacySettingsRef = user && !user.isAnonymous ? doc(firestore, 'users', user.uid, 'privacy', 'settings') : null;
   const { data: initialPrivacySettings } = useDoc<PrivacySettings>(privacySettingsRef);
   
   const [shareTotalFocusTime, setShareTotalFocusTime] = useState(false);
@@ -132,8 +132,10 @@ export function SettingsDialog({
   const handleSubjectChange = (index: number, field: keyof Subject, value: string) => {
     const newSubjects = [...subjects];
     const actualIndex = subjects.findIndex(s => s.id === subjects.filter(s => s.id !== 'idle' && s.id !== 'sleep')[index].id);
-    (newSubjects[actualIndex] as any)[field] = value;
-    setSubjects(newSubjects);
+    if(actualIndex !== -1) {
+        (newSubjects[actualIndex] as any)[field] = value;
+        setSubjects(newSubjects);
+    }
   };
 
   const addSubject = () => {
@@ -170,7 +172,7 @@ export function SettingsDialog({
             <TabsTrigger value="subjects">Subjects</TabsTrigger>
             <TabsTrigger value="sleep">Sleep</TabsTrigger>
             <TabsTrigger value="features">Features</TabsTrigger>
-            <TabsTrigger value="privacy">Privacy</TabsTrigger>
+            <TabsTrigger value="privacy" disabled={user?.isAnonymous}>Privacy</TabsTrigger>
           </TabsList>
           <TabsContent value="general" className="py-4 px-1">
              <div className="space-y-4">
@@ -189,6 +191,12 @@ export function SettingsDialog({
                             <SelectItem value="sinhala">Sinhala</SelectItem>
                         </SelectContent>
                     </Select>
+                </div>
+                 <div className="flex items-center justify-between rounded-lg border p-3">
+                    <Label htmlFor="feedback" className="flex items-center gap-2"><MessageSquarePlus className="w-5 h-5" /> Submit Feedback</Label>
+                    <Button size="sm" onClick={() => { setIsOpen(false); setIsFeedbackOpen(true); }}>
+                        Give Feedback
+                    </Button>
                 </div>
              </div>
           </TabsContent>
@@ -286,6 +294,7 @@ export function SettingsDialog({
                         id="share-focus-time"
                         checked={shareTotalFocusTime}
                         onCheckedChange={setShareTotalFocusTime}
+                        disabled={user?.isAnonymous}
                     />
                 </div>
                 <div className="flex items-center justify-between rounded-lg border p-3">
@@ -297,6 +306,7 @@ export function SettingsDialog({
                         id="participate-leaderboards"
                         checked={participateInLeaderboards}
                         onCheckedChange={setParticipateInLeaderboards}
+                        disabled={user?.isAnonymous}
                     />
                 </div>
                 <div className="flex items-center justify-between rounded-lg border p-3">
@@ -308,13 +318,8 @@ export function SettingsDialog({
                         id="share-subject-breakdown"
                         checked={shareSubjectBreakdown}
                         onCheckedChange={setShareSubjectBreakdown}
+                        disabled={user?.isAnonymous}
                     />
-                </div>
-                 <div className="flex items-center justify-between rounded-lg border p-3">
-                    <Label htmlFor="feedback" className="flex items-center gap-2"><MessageSquarePlus className="w-5 h-5" /> Submit Feedback</Label>
-                    <Button size="sm" onClick={() => { setIsOpen(false); setIsFeedbackOpen(true); }}>
-                        Give Feedback
-                    </Button>
                 </div>
              </div>
           </TabsContent>
