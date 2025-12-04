@@ -198,11 +198,11 @@ export default function LoginPage() {
                 {isSignUp ? (isAnonymousUser ? 'Link Account & Save' : 'Sign Up') : 'Sign In'}
             </Button>
             
-            {!isAnonymousUser && (
+            {!currentUser || !isAnonymousUser ? (
               <Button variant="link" onClick={() => setIsSignUp(!isSignUp)} disabled={loading}>
                   {isSignUp ? 'Already have an account? Sign In' : "Don't have an account? Sign Up"}
               </Button>
-            )}
+            ) : null}
              {isAnonymousUser && (
                 <Button variant="link" onClick={() => router.push('/')} disabled={loading}>
                     Decide later
