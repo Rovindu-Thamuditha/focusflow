@@ -197,7 +197,7 @@ export function SettingsDialog({
              <div className="space-y-4">
                 <h4 className="font-semibold">Toggle Features</h4>
                  <div className="flex items-center justify-between rounded-lg border p-3">
-                    <Label htmlFor="enable-timer">Enable Focus Timer</Label>
+                    <Label htmlFor="enable-timer" className="flex items-center gap-2"><SlidersHorizontal className="w-5 h-5" /> Enable Focus Timer</Label>
                     <Switch
                         id="enable-timer"
                         checked={enableTimer}
@@ -205,7 +205,7 @@ export function SettingsDialog({
                     />
                 </div>
                  <div className="flex items-center justify-between rounded-lg border p-3">
-                    <Label htmlFor="enable-daily-challenge">Enable Daily Challenge</Label>
+                    <Label htmlFor="enable-daily-challenge" className="flex items-center gap-2"><Sparkles className="w-5 h-5" /> Enable Daily Challenge</Label>
                     <Switch
                         id="enable-daily-challenge"
                         checked={enableDailyChallenge}
@@ -213,7 +213,7 @@ export function SettingsDialog({
                     />
                 </div>
                  <div className="flex items-center justify-between rounded-lg border p-3">
-                    <Label htmlFor="enable-todo-list">Enable Todo List</Label>
+                    <Label htmlFor="enable-todo-list" className="flex items-center gap-2"><Bed className="w-5 h-5" /> Enable Todo List</Label>
                     <Switch
                         id="enable-todo-list"
                         checked={enableTodoList}
@@ -231,3 +231,5 @@ export function SettingsDialog({
     </Dialog>
   );
 }
+
+    

@@ -26,7 +26,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import { GridFocusLoader } from '@/components/grid-focus-loader';
 import { FeedbackDialog } from '@/components/feedback-dialog';
@@ -34,6 +33,7 @@ import { CurrentTime } from '@/components/current-time';
 import { TodoList } from '@/components/todo-list';
 import { FloatingTimer } from '@/components/floating-timer';
 import { WhatsNewDialog } from '@/components/whats-new-dialog';
+import { OnboardingDialog } from '@/components/onboarding-dialog';
 
 const createInitialState = (sleepHours: number[], date: Date): TimeBlockState[] => {
   const dateString = format(date, 'yyyy-MM-dd');
@@ -66,6 +66,7 @@ export default function Home() {
   const [userName, setUserName] = useState('');
   const [seenWhatsNewVersions, setSeenWhatsNewVersions] = useState<string[]>([]);
   const [questionIndex, setQuestionIndex] = useState(0);
+  const [showOnboarding, setShowOnboarding] = useState(false);
 
   // Feature toggles
   const [enableTimer, setEnableTimer] = useState(true);
@@ -158,6 +159,11 @@ export default function Home() {
             const data = userDoc.data();
             setUserName(data.username || user.displayName || '');
             const settings = data.settings || {};
+            
+            if (!data.hasCompletedOnboarding && !user.isAnonymous) {
+              setShowOnboarding(true);
+            }
+
             setSleepHours(settings.sleepHours || []);
             setSubjects(settings.subjects || defaultSubjects);
             setLanguage(settings.language || 'english');
@@ -167,6 +173,9 @@ export default function Home() {
             setSeenWhatsNewVersions(data.seenWhatsNewVersions || []);
           } else {
              setUserName(user.displayName || (user.isAnonymous ? '' : 'User'));
+             if (!user.isAnonymous) {
+                setShowOnboarding(true);
+             }
           }
         } catch (e) {
             console.error("Error loading user data", e);
@@ -186,7 +195,7 @@ export default function Home() {
   }, [currentDate, userDataLoaded, loadDayData]);
   
   useEffect(() => {
-    if (!isClient || !userDataLoaded || !user || !userDocRef ) return;
+    if (!isClient || !userDataLoaded || !user || !userDocRef || showOnboarding) return;
 
     const handler = setTimeout(() => {
         if (!firestore) return;
@@ -235,7 +244,7 @@ export default function Home() {
 
     return () => clearTimeout(handler);
 
-  }, [timeBlocks, solvedChallenges, questionIndex, sleepHours, subjects, language, userName, currentDate, user, userDocRef, firestore, isClient, userDataLoaded, enableTimer, enableDailyChallenge, enableTodoList]);
+  }, [timeBlocks, solvedChallenges, questionIndex, sleepHours, subjects, language, userName, currentDate, user, userDocRef, firestore, isClient, userDataLoaded, enableTimer, enableDailyChallenge, enableTodoList, showOnboarding]);
   
   // Timer effect
   useEffect(() => {
@@ -334,6 +343,18 @@ export default function Home() {
     }
   };
 
+  const handleOnboardingFinish = async (newSettings: any) => {
+    handleSettingsSave(newSettings);
+    if(userDocRef) {
+      try {
+        await setDoc(userDocRef, { hasCompletedOnboarding: true }, { merge: true });
+      } catch (e) {
+        console.error("Error finalizing onboarding:", e);
+      }
+    }
+    setShowOnboarding(false);
+  }
+
   const markWhatsNewAsSeen = async (version: string) => {
     if (!userDocRef) return;
     try {
@@ -374,7 +395,6 @@ export default function Home() {
   }
 
   const activeTimerSubject = timerIsRunning ? subjects.find(s => s.id === timerSubject) : null;
-
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -474,7 +494,20 @@ export default function Home() {
         seenVersions={seenWhatsNewVersions}
         onMarkAsSeen={markWhatsNewAsSeen}
       />
-
+      {showOnboarding && (
+        <OnboardingDialog 
+          isOpen={showOnboarding}
+          onFinish={handleOnboardingFinish}
+          initialSettings={{
+            subjects,
+            sleepHours,
+            language,
+            enableTimer,
+            enableDailyChallenge,
+            enableTodoList,
+          }}
+        />
+      )}
 
       <footer className="text-center py-4 text-muted-foreground text-sm">
         <p>Made with ♥ for focused minds by <a href="https://github.com/Rovindu-Thamuditha/" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Tipiz</a></p>
