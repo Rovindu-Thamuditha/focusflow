@@ -407,7 +407,7 @@ export default function Home() {
     handleSettingsSave(newSettings);
     if(userDocRef) {
       try {
-        await setDoc(userDocRef, { hasCompletedOnboarding: true }, { merge: true });
+        await updateDoc(userDocRef, { hasCompletedOnboarding: true });
       } catch (e) {
         console.error("Error finalizing onboarding:", e);
       }
@@ -570,11 +570,11 @@ export default function Home() {
         />
       )}
       <FeedbackDialog isOpen={isFeedbackDialogOpen} onOpenChange={setIsFeedbackDialogOpen} />
-      {!user.isAnonymous && <WhatsNewDialog 
+      {userDataLoaded && !user.isAnonymous && <WhatsNewDialog 
         seenVersions={seenWhatsNewVersions}
         onMarkAsSeen={markWhatsNewAsSeen}
       />}
-      {showOnboarding && (
+      {userDataLoaded && showOnboarding && (
         <OnboardingDialog 
           isOpen={showOnboarding}
           onFinish={handleOnboardingFinish}

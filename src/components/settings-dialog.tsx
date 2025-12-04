@@ -164,7 +164,7 @@ export function SettingsDialog({
             Customize your GridFocus experience.
           </DialogDescription>
         </DialogHeader>
-        <Tabs defaultValue="general" className="max-h-[70vh] overflow-y-auto">
+        <Tabs defaultValue="general" className="max-h-[70vh] overflow-y-auto pr-2">
           <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="general">General</TabsTrigger>
             <TabsTrigger value="subjects">Subjects</TabsTrigger>
