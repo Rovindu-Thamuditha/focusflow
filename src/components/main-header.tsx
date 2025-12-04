@@ -47,7 +47,7 @@ export function MainHeader({ totalFocusedTime, children }: MainHeaderProps) {
         </div>
         <div className="flex flex-1 items-center justify-end space-x-1 sm:space-x-2">
           {/* Always visible on all screen sizes */}
-          <TotalFocusTime totalHours={totalFocusedTime} />
+          { !isAnonymousUser && <TotalFocusTime totalHours={totalFocusedTime} /> }
           
           <div className="hidden sm:flex items-center space-x-1">
              {children}

@@ -59,7 +59,7 @@ export function DailyChallenge({ question, isSolved, onSolveChange, language, is
             <h3 className={`font-semibold ${subjectColors[question.subject] || 'text-foreground'}`}>{question.subject}</h3>
             <p className="text-sm text-muted-foreground">{question.topic}</p>
           </div>
-          <div className="p-4 bg-background rounded-lg border text-sm prose prose-invert max-w-none overflow-x-auto min-h-[100px]">
+          <div className="p-4 bg-background rounded-lg border text-sm prose dark:prose-invert max-w-none overflow-x-auto min-h-[100px]">
             <BlockMath math={questionText} />
           </div>
         </div>
@@ -85,14 +85,14 @@ export function DailyChallenge({ question, isSolved, onSolveChange, language, is
                     onClick={handlePreviousQuestion}
                     disabled={questionIndex === 0}
                 >
-                    <ArrowLeft className="w-4 h-4 mr-2" /> Prev
+                    Prev
                 </Button>
                 <Button 
                     size="sm"
                     onClick={handleNextQuestion}
                     disabled={questionIndex >= totalQuestions - 1}
                 >
-                    Next <ArrowRight className="w-4 h-4 ml-2" />
+                    Next
                 </Button>
             </div>
           )}

@@ -36,6 +36,9 @@ import { FloatingTimer } from '@/components/floating-timer';
 import { WhatsNewDialog } from '@/components/whats-new-dialog';
 import { OnboardingDialog } from '@/components/onboarding-dialog';
 import { useToast } from '@/hooks/use-toast';
+import { Inter } from 'next/font/google';
+
+const inter = Inter({ subsets: ['latin'], variable: '--font-sans' });
 
 const createInitialState = (sleepHours: number[], date: Date): TimeBlockState[] => {
   const dateString = format(date, 'yyyy-MM-dd');
@@ -188,6 +191,9 @@ export default function Home() {
           setEnableTimer(settings.enableTimer !== false);
           setEnableDailyChallenge(settings.enableDailyChallenge !== false);
           setEnableTodoList(settings.enableTodoList !== false);
+          if (settings.hasCompletedOnboarding === undefined) { // Check if onboarding has been done
+             setShowOnboarding(true);
+          }
         } else {
            // First-time anonymous user
            setUserName('');
@@ -254,7 +260,7 @@ export default function Home() {
         if (user?.isAnonymous) {
             const settings = { 
                 sleepHours, subjects, language, enableTimer, 
-                enableDailyChallenge, enableTodoList 
+                enableDailyChallenge, enableTodoList, hasCompletedOnboarding: true
             };
             localStorage.setItem('gridFocusSettings', JSON.stringify(settings));
 
@@ -477,7 +483,7 @@ export default function Home() {
   const activeTimerSubject = timerIsRunning ? subjects.find(s => s.id === timerSubject) : null;
 
   return (
-    <div className="flex flex-col min-h-screen">
+    <div className={`flex flex-col min-h-screen ${inter.variable} font-body`}>
       <MainHeader totalFocusedTime={totalFocusedTime}>
          <CurrentTime time={liveTime} />
          <SettingsDialog
@@ -493,7 +499,9 @@ export default function Home() {
       <main className="flex-grow container mx-auto p-4 sm:p-6 md:p-8">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
             <div>
-              {userName && <h2 className="text-2xl sm:text-3xl font-bold text-foreground">Welcome back, {userName}!</h2>}
+              <h2 className="text-2xl sm:text-3xl font-bold text-foreground">
+                {user.isAnonymous ? "Welcome to GridFocus!" : `Welcome back, ${userName}!`}
+              </h2>
               {user.isAnonymous && <p className="text-sm text-amber-500">Your data is temporary. Sign up to save your progress permanently.</p>}
               <div className="flex items-center gap-2 mt-2">
                 <Button variant="outline" size="icon" onClick={() => changeDay(-1)}>
@@ -535,7 +543,7 @@ export default function Home() {
              {enableTodoList && <TodoList />}
           </div>
         </div>
-         <div className="mt-8 flex justify-center">
+         {!isToday(currentDate) && <div className="mt-8 flex justify-center">
             <AlertDialog>
               <AlertDialogTrigger asChild>
                 <Button variant="destructive" className="w-full sm:w-auto">
@@ -555,7 +563,7 @@ export default function Home() {
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>
-        </div>
+        </div>}
       </main>
 
       {enableTimer && (
