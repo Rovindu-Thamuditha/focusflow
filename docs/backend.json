@@ -20,9 +20,9 @@
           "type": "string",
           "description": "User's username."
         },
-        "settingsId": {
+        "inviteCode": {
           "type": "string",
-          "description": "Reference to UserSettings. (Relationship: User 1:1 UserSettings)"
+          "description": "A unique, short, and secure alphanumeric code for inviting friends."
         },
         "seenWhatsNewVersions": {
           "type": "array",
@@ -39,7 +39,8 @@
       "required": [
         "id",
         "email",
-        "username"
+        "username",
+        "inviteCode"
       ]
     },
     "UserSettings": {
@@ -72,6 +73,31 @@
       "required": [
         "id"
       ]
+    },
+    "PrivacySettings": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "PrivacySettings",
+      "type": "object",
+      "description": "Stores user-specific privacy settings for sharing data with friends.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier, same as the userId."
+        },
+        "shareTotalFocusTime": {
+          "type": "boolean",
+          "description": "If true, the user's total focus time is visible to friends."
+        },
+        "participateInLeaderboards": {
+          "type": "boolean",
+          "description": "If true, the user will appear on friend-only leaderboards."
+        },
+        "shareSubjectBreakdown": {
+          "type": "boolean",
+          "description": "If true, friends can see the breakdown of time per subject."
+        }
+      },
+      "required": ["id", "shareTotalFocusTime", "participateInLeaderboards", "shareSubjectBreakdown"]
     },
     "FocusGridState": {
       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -200,6 +226,50 @@
         "userId"
       ]
     },
+    "Friendship": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Friendship",
+      "type": "object",
+      "description": "Represents a bi-directional connection between two users.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the friendship document."
+        },
+        "userIds": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "An array containing the two user IDs of the friends."
+        },
+        "status": {
+          "type": "string",
+          "enum": ["pending", "accepted", "declined"],
+          "description": "The status of the friendship request."
+        },
+        "requesterId": {
+            "type": "string",
+            "description": "The ID of the user who sent the friend request."
+        }
+      },
+      "required": ["id", "userIds", "status", "requesterId"]
+    },
+    "Notification": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "Notification",
+        "type": "object",
+        "description": "Represents a notification for a user (e.g., friend request, leaderboard change).",
+        "properties": {
+            "id": { "type": "string" },
+            "userId": { "type": "string", "description": "The ID of the user who receives the notification." },
+            "type": { "type": "string", "enum": ["friend_request", "friend_accept", "leaderboard_change"]},
+            "title": { "type": "string" },
+            "message": { "type": "string" },
+            "isRead": { "type": "boolean" },
+            "createdAt": { "type": "string", "format": "date-time" },
+            "fromUserId": { "type": "string", "description": "ID of the user who triggered the notification." }
+        },
+        "required": ["id", "userId", "type", "title", "message", "isRead", "createdAt"]
+    },
     "WhatsNew": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "WhatsNew",
@@ -282,6 +352,24 @@
         }
       },
       {
+        "path": "/users/{userId}/privacy/{privacyId}",
+        "definition": {
+          "entityName": "PrivacySettings",
+          "schema": { "$ref": "#/backend/entities/PrivacySettings" },
+          "description": "Stores user-specific privacy settings for data sharing.",
+          "params": [{"name": "userId"}, {"name": "privacyId"}]
+        }
+      },
+      {
+        "path": "/users/{userId}/notifications/{notificationId}",
+        "definition": {
+          "entityName": "Notification",
+          "schema": { "$ref": "#/backend/entities/Notification" },
+          "description": "Stores notifications for the user.",
+          "params": [{"name": "userId"}, {"name": "notificationId"}]
+        }
+      },
+      {
         "path": "/users/{userId}/focusGridStates/{focusGridStateId}",
         "definition": {
           "entityName": "FocusGridState",
@@ -357,6 +445,15 @@
           ]
         }
       },
+      {
+        "path": "/friendships/{friendshipId}",
+        "definition": {
+          "entityName": "Friendship",
+          "schema": { "$ref": "#/backend/entities/Friendship" },
+          "description": "Manages connections between users.",
+          "params": [{"name": "friendshipId"}]
+        }
+      },
        {
         "path": "/whatsnew/{whatsNewId}",
         "definition": {
@@ -377,3 +474,5 @@
     "reasoning": "The Firestore structure is designed to address the 'auth/configuration-not-found' error and support the GridFocus application's features while adhering to the principles of Authorization Independence, Structural Segregation, Access Modeling, and Data Clarity.  The error indicates a misconfiguration of the Firebase Authentication setup in the Next.js application. The structure is organized to facilitate straightforward and secure data access rules.  User-specific data is stored under `/users/{userId}` paths to ensure clear ownership and simplified security rules. Denormalization is employed for authorization, specifically within the `FocusGridState` and `UserDailyQuestionState` collections, where the `userId` is included to allow for direct querying and secure `list` operations without relying on parent document reads. This also supports atomic operations. The structure also supports secure `list` operations by segregating data based on ownership.  The use of path-based ownership for user data (`/users/{userId}/...`) simplifies security rules and ensures that users can only access their own data. Collaborative data is not a requirement for this application, thus no membership maps are needed."
   }
 }
+
+    

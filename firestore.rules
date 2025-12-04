@@ -1,40 +1,4 @@
 
-/**
- * This ruleset enforces a strict user-ownership security model for the GridFocus application.
- * It is designed for rapid prototyping, prioritizing strong authorization controls while maintaining
- * flexibility in data schemas.
- *
- * Core Philosophy:
- * Users have complete control over their own data. All user-specific information, including settings,
- * focus grids, and question states, is stored within a private data tree accessible only to the
- * authenticated owner. Publicly listing users is explicitly forbidden to protect privacy, with the
- * exception of a designated admin user.
- *
- * Data Structure:
- * All user-specific data is nested hierarchically under the `/users/{userId}` path. This path-based
- * ownership model simplifies security logic. A top-level `/dailyQuestions` collection holds public
- * data that is readable by all users but not writable by clients.
- *
- * Key Security Decisions:
- * - Default Deny: All access is denied unless explicitly granted by a rule.
- * - Strict Ownership: A user can only access documents within their own `/users/{userId}` path.
- * - Admin Override: A specific admin user (identified by email) is allowed to list all users for monitoring.
- * - Public Data is Read-Only: The `/dailyQuestions` collection is world-readable but client writes are
- *   disabled, assuming this data is managed by a trusted backend process or admin.
- * - Relational Integrity: On document creation, rules validate that internal ID fields (like `userId`)
- *   match the document's path to ensure data consistency. These fields are immutable on update.
- *
- * Denormalization for Authorization:
- * To ensure performant and simple security rules, entities like `FocusGridState` and `UserDailyQuestionState`
- * contain a denormalized `userId` field. This allows rules to authorize access without needing costly
- * `get()` calls to parent documents, making security checks fast and efficient.
- *
- * Structural Segregation:
- * The application separates private and public data into distinct collections. Private, user-owned
- * data resides in subcollections under `/users/{userId}`, while public, read-only data is stored in
- * the top-level `/dailyQuestions` collection. This segregation simplifies rules for list operations
- * and enhances security and performance.
- */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -52,28 +16,69 @@ service cloud.firestore {
       return isSignedIn() && request.auth.token.email == 'rovinduthamu@gmail.com';
     }
 
+    // Function to check if two users are friends.
+    // This checks for a document where the user IDs array contains both the requesting user and the target user.
+    function areFriends(userId1, userId2) {
+      return exists(/databases/$(database)/documents/friendships) &&
+             get(/databases/$(database)/documents/friendships).data.userIds.hasAll([userId1, userId2]) &&
+             get(/databases/$(database)/documents/friendships).data.status == 'accepted';
+    }
+
     /**
      * @description
      *   The User document contains public profile information and acts as the root for a user's private data.
-     *   A user can create their own document and manage it, but cannot see other users unless they are an admin.
+     *   A user can create their own document and manage it, but cannot see other users unless they are an admin,
+     *   or they are friends and have sharing enabled.
      * @path /users/{userId}
-     * @allow A signed-in user (create)s their own user document: `auth.uid === 'user_abc'`, path is `/users/user_abc`.
-     * @deny An anonymous user tries to (create) a user document: `auth.uid === null`.
-     * @allow The admin user can (list) all users.
-     * @deny A non-admin user tries to (list) all users in the `/users` collection.
-     * @principle Enforces self-creation and ownership, while allowing admin oversight and preventing general user enumeration.
      */
     match /users/{userId} {
-      allow get: if isOwner(userId) || isAdmin();
-      allow list: if isAdmin(); // CRITICAL: Prevent listing and discovery of all users, except for admin.
+      allow get: if isOwner(userId) || isAdmin() || (areFriends(request.auth.uid, userId));
+      allow list: if isAdmin(); // Prevent general user enumeration.
       allow create: if isOwner(userId) && request.resource.data.id == userId;
       allow update: if isOwner(userId) || isAdmin();
       allow delete: if isOwner(userId) || isAdmin();
 
-      // Allow reads and writes to subcollections for the owner or an admin.
-      match /{allPaths=**} {
+      /**
+       * @description
+       *   A user's private subcollections. Access is granted to the owner, admin, or friends with appropriate privacy settings.
+       */
+      match /time_blocks/{blockId} {
+        allow read: if isOwner(userId) || isAdmin() || 
+                     (areFriends(request.auth.uid, userId) && 
+                      get(/databases/$(database)/documents/users/$(userId)/privacy/settings).data.shareTotalFocusTime == true);
+        allow write: if isOwner(userId) || isAdmin();
+      }
+      
+      match /privacy/{privacyId} {
         allow read, write: if isOwner(userId) || isAdmin();
       }
+
+      match /notifications/{notificationId} {
+        allow read, write: if isOwner(userId) || isAdmin();
+      }
+      
+      // Keep other subcollections private to the user and admin
+      match /settings/{settingsId} {
+        allow read, write: if isOwner(userId) || isAdmin();
+      }
+      match /dailyQuestionStates/{stateId} {
+        allow read, write: if isOwner(userId) || isAdmin();
+      }
+      match /todos/{todoId} {
+        allow read, write: if isOwner(userId) || isAdmin();
+      }
+    }
+    
+    /**
+     * @description
+     *   Manages friendship connections. Users can send requests, and recipients can accept/decline.
+     * @path /friendships/{friendshipId}
+     */
+    match /friendships/{friendshipId} {
+      allow read: if isSignedIn() && request.auth.uid in resource.data.userIds;
+      allow create: if isSignedIn() && request.resource.data.requesterId == request.auth.uid && request.resource.data.status == 'pending';
+      allow update: if isSignedIn() && resource.data.status == 'pending' && request.auth.uid != resource.data.requesterId && request.auth.uid in resource.data.userIds;
+      allow delete: if isSignedIn() && request.auth.uid in resource.data.userIds;
     }
 
     /**
@@ -81,9 +86,6 @@ service cloud.firestore {
      *   Stores daily questions that are available for all users to see. This data is considered public and is readable
      *   by anyone, including unauthenticated users. Writes are disabled for all clients.
      * @path /dailyQuestions/{dailyQuestionId}
-     * @allow Any user, signed-in or not, (get)s a daily question.
-     * @deny Any client, authenticated or not, tries to (create), (update), or (delete) a daily question.
-     * @principle Secures public data by making it read-only for clients, assuming writes are handled by a trusted server environment.
      */
     match /dailyQuestions/{dailyQuestionId} {
       allow get: if true;
@@ -96,10 +98,6 @@ service cloud.firestore {
      *   Stores 'What's New' announcements. This data is public and readable by any authenticated user.
      *   Only admins are allowed to create, update, or delete these announcements.
      * @path /whatsnew/{whatsNewId}
-     * @allow Any signed-in user can (get) or (list) announcements.
-     * @allow An admin user can (create), (update), and (delete) announcements.
-     * @deny Unauthenticated users cannot access this data.
-     * @principle Makes announcements visible to all users while securing content management to admins.
      */
     match /whatsnew/{whatsNewId} {
       allow get, list: if isSignedIn();
@@ -107,3 +105,5 @@ service cloud.firestore {
     }
   }
 }
+
+    
