@@ -39,22 +39,28 @@ export default function LoginPage() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [isSignUp, setIsSignUp] = useState(false); // Default to Sign In view
+  const [isSignUp, setIsSignUp] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const isAnonymousUser = currentUser?.isAnonymous;
   
-  // The toggle should be visible unless an anonymous user is linking their account.
-  const showToggle = !isAnonymousUser;
+  const showToggle = true;
 
-  // Determine page content based on isSignUp state and whether user is anonymous
   const getPageContent = () => {
     if (isAnonymousUser) {
+      if (isSignUp) {
+         return {
+            title: "Create Account to Save",
+            description: "Create an account to permanently save your progress.",
+            buttonText: "Create Account & Save",
+            isSignUpFlow: true,
+        };
+      }
       return {
-        title: "Save Your Progress",
-        description: "Create an account to permanently save your data.",
-        buttonText: "Create Account & Save",
-        isSignUpFlow: true,
+        title: "Sign In to Save",
+        description: "Sign in to an existing account to sync your progress.",
+        buttonText: "Sign In & Save",
+        isSignUpFlow: false,
       };
     }
     if (isSignUp) {
@@ -81,16 +87,13 @@ export default function LoginPage() {
     try {
       const batch = writeBatch(firestore);
   
-      // 1. Migrate Settings
       const settingsStr = localStorage.getItem('gridFocusSettings');
       if (settingsStr) {
         const settings = JSON.parse(settingsStr);
         const userDocRef = doc(firestore, 'users', userId);
-        // We will merge this with potentially existing user data from the linking process
         batch.set(userDocRef, { settings }, { merge: true });
       }
   
-      // 2. Migrate Time Blocks
       const timeBlocksStr = localStorage.getItem('gridFocusTimeBlocks');
       if (timeBlocksStr) {
         const localTimeBlocks: { [date: string]: TimeBlockState[] } = JSON.parse(timeBlocksStr);
@@ -102,21 +105,18 @@ export default function LoginPage() {
         });
       }
   
-      // 3. Migrate Todos
       const todosStr = localStorage.getItem('gridFocusTodos');
       if (todosStr) {
         const localTodos = JSON.parse(todosStr);
         localTodos.forEach((todo: any) => {
-          // Create a new doc ref for each todo to get a new ID
           const todoDocRef = doc(collection(firestore, 'users', userId, 'todos'));
-          const { id, ...todoData } = todo; // exclude old local id
+          const { id, ...todoData } = todo; 
           batch.set(todoDocRef, todoData);
         });
       }
   
       await batch.commit();
   
-      // 4. Clean up local storage
       localStorage.removeItem('gridFocusTimeBlocks');
       localStorage.removeItem('gridFocusSettings');
       localStorage.removeItem('gridFocusTodos');
@@ -157,7 +157,6 @@ export default function LoginPage() {
         let user;
 
         if (isAnonymousUser) {
-          // Link anonymous account to new email/password account
           const credential = EmailAuthProvider.credential(email, password);
           const userCredential = await linkWithCredential(currentUser, credential);
           user = userCredential.user;
@@ -169,14 +168,10 @@ export default function LoginPage() {
             email: user.email,
           };
           
-          // Use merge: true because some user data might already exist from anonymous session if we stored it
           await setDoc(userDocRef, userData, { merge: true });
-          
           await migrateLocalDataToFirebase(user.uid);
 
-
         } else {
-          // Regular sign-up
           const userCredential = await createUserWithEmailAndPassword(auth, email, password);
           user = userCredential.user;
           
@@ -190,19 +185,16 @@ export default function LoginPage() {
             hasCompletedOnboarding: false,
           };
 
-          // Use non-blocking write with error emitter
           setDoc(userDocRef, userData).catch(error => {
               errorEmitter.emit(
                 'permission-error',
                 new FirestorePermissionError({ path: userDocRef.path, operation: 'create', requestResourceData: userData })
               );
-              // Re-throw to be caught by the outer catch block
               throw error;
           });
           
           await migrateLocalDataToFirebase(user.uid);
           
-          // Set default privacy settings
           const privacySettingsRef = doc(firestore, 'users', user.uid, 'privacy', 'settings');
           const privacyData = {
             id: 'settings',
@@ -211,20 +203,20 @@ export default function LoginPage() {
             shareSubjectBreakdown: false,
           }
           await setDoc(privacySettingsRef, privacyData);
-
         }
         toast({ title: "Account Created!", description: "Welcome to GridFocus!" });
         router.push('/');
 
       } else {
-        // Regular sign-in
-        await signInWithEmailAndPassword(auth, email, password);
+        const userCredential = await signInWithEmailAndPassword(auth, email, password);
+        if (isAnonymousUser) {
+            await migrateLocalDataToFirebase(userCredential.user.uid);
+        }
         router.push('/');
       }
     } catch (error: any) {
       console.error(`Error during authentication:`, error);
       
-      // Don't show generic error if it was a permission error (already handled by emitter)
       if(error.name === 'FirebaseError' && error.message.includes('denied')){
         setLoading(false);
         return;
@@ -305,7 +297,7 @@ export default function LoginPage() {
             
             {showToggle && (
               <Button variant="link" onClick={() => setIsSignUp(!isSignUp)} disabled={loading}>
-                  {isSignUp ? 'Already have an account? Sign In' : "Don't have an account? Sign Up"}
+                  {isSignUp ? 'Already have an account? Sign In' : "Don't have an account? Create one"}
               </Button>
             )}
              {isAnonymousUser && (
