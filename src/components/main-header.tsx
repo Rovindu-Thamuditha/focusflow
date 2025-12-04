@@ -1,5 +1,4 @@
-
-import { LogOut, Shield, MoreVertical, BarChart2, Info, Newspaper, UserPlus } from "lucide-react";
+import { LogOut, Shield, MoreVertical, BarChart2, Info, UserPlus, Users } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Icons } from "@/components/icons";
@@ -53,6 +52,14 @@ export function MainHeader({ totalFocusedTime, children }: MainHeaderProps) {
           <div className="hidden sm:flex items-center space-x-1">
              {children}
           </div>
+          
+          {!isAnonymousUser && (
+            <Link href="/friends" passHref>
+              <Button variant="ghost" size="icon" title="Friends">
+                  <Users className="h-5 w-5" />
+              </Button>
+            </Link>
+          )}
 
           <Link href="/stats" passHref>
             <Button variant="ghost" size="icon" title="Statistics">
@@ -105,6 +112,14 @@ export function MainHeader({ totalFocusedTime, children }: MainHeaderProps) {
                  <DropdownMenuItem asChild>
                    <InfoDialog />
                  </DropdownMenuItem>
+                 {!isAnonymousUser && (
+                   <Link href="/friends" passHref>
+                    <DropdownMenuItem>
+                      <Users className="mr-2 h-4 w-4" />
+                      <span>Friends</span>
+                    </DropdownMenuItem>
+                   </Link>
+                 )}
                 {user && user.email === ADMIN_EMAIL && (
                     <>
                         <DropdownMenuSeparator />
@@ -112,12 +127,6 @@ export function MainHeader({ totalFocusedTime, children }: MainHeaderProps) {
                             <DropdownMenuItem>
                             <Shield className="mr-2 h-4 w-4" />
                             <span>Admin</span>
-                            </DropdownMenuItem>
-                        </Link>
-                        <Link href="/admin/whats-new" passHref>
-                            <DropdownMenuItem>
-                            <Newspaper className="mr-2 h-4 w-4" />
-                            <span>What's New</span>
                             </DropdownMenuItem>
                         </Link>
                     </>

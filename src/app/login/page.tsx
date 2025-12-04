@@ -19,6 +19,16 @@ import { Icons } from '@/components/icons';
 import { useAuth, useUser, useFirestore, errorEmitter, FirestorePermissionError } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 
+function generateInviteCode() {
+  const chars = 'ABCDEFGHIJKLMNPQRSTUVWXYZ123456789';
+  let result = 'FOCUS-';
+  for (let i = 0; i < 4; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return result;
+}
+
+
 export default function LoginPage() {
   const router = useRouter();
   const { toast } = useToast();
@@ -64,7 +74,13 @@ export default function LoginPage() {
 
           await updateProfile(user, { displayName: name });
           const userDocRef = doc(firestore, 'users', user.uid);
-          const userData = { id: user.uid, username: name, email: user.email };
+          const userData = {
+            id: user.uid,
+            username: name,
+            email: user.email,
+            inviteCode: generateInviteCode(),
+            hasCompletedOnboarding: false,
+          };
           
           await setDoc(userDocRef, userData, { merge: true });
 
@@ -75,7 +91,13 @@ export default function LoginPage() {
           
           await updateProfile(user, { displayName: name });
           const userDocRef = doc(firestore, 'users', user.uid);
-          const userData = { id: user.uid, username: name, email: user.email };
+          const userData = {
+            id: user.uid,
+            username: name,
+            email: user.email,
+            inviteCode: generateInviteCode(),
+            hasCompletedOnboarding: false,
+          };
 
           setDoc(userDocRef, userData).catch(error => {
               errorEmitter.emit(
@@ -83,6 +105,17 @@ export default function LoginPage() {
                 new FirestorePermissionError({ path: userDocRef.path, operation: 'create', requestResourceData: userData })
               );
           });
+          
+          // Set default privacy settings
+          const privacySettingsRef = doc(firestore, 'users', user.uid, 'privacy', 'settings');
+          const privacyData = {
+            id: 'settings',
+            shareTotalFocusTime: false,
+            participateInLeaderboards: false,
+            shareSubjectBreakdown: false,
+          }
+          await setDoc(privacySettingsRef, privacyData);
+
         }
         toast({ title: "Account Secured!", description: "Your data is now saved." });
         router.push('/');

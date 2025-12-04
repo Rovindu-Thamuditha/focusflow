@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { Settings, Trash2, PlusCircle, Languages, Sparkles, SlidersHorizontal, Bed, MessageSquarePlus } from 'lucide-react';
+import { Settings, Trash2, PlusCircle, Languages, Sparkles, SlidersHorizontal, Bed, MessageSquarePlus, Lock } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -14,6 +14,15 @@ import type { Subject } from '@/lib/types';
 import { ALL_ICONS } from '@/lib/icons';
 import { Switch } from '@/components/ui/switch';
 import { FeedbackDialog } from './feedback-dialog';
+import { useDoc, useFirestore, useUser } from '@/firebase';
+import { doc, setDoc } from 'firebase/firestore';
+import { useToast } from '@/hooks/use-toast';
+
+interface PrivacySettings {
+    shareTotalFocusTime: boolean;
+    participateInLeaderboards: boolean;
+    shareSubjectBreakdown: boolean;
+}
 
 interface SettingsDialogProps {
   subjects: Subject[];
@@ -43,6 +52,10 @@ export function SettingsDialog({
   enableTodoList: initialEnableTodoList,
   onSave,
 }: SettingsDialogProps) {
+  const { user } = useUser();
+  const firestore = useFirestore();
+  const { toast } = useToast();
+
   const [isOpen, setIsOpen] = useState(false);
   const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
   
@@ -53,6 +66,15 @@ export function SettingsDialog({
   const [enableTimer, setEnableTimer] = useState(initialEnableTimer);
   const [enableDailyChallenge, setEnableDailyChallenge] = useState(initialEnableDailyChallenge);
   const [enableTodoList, setEnableTodoList] = useState(initialEnableTodoList);
+
+  // Privacy Settings
+  const privacySettingsRef = user ? doc(firestore, 'users', user.uid, 'privacy', 'settings') : null;
+  const { data: initialPrivacySettings } = useDoc<PrivacySettings>(privacySettingsRef);
+  
+  const [shareTotalFocusTime, setShareTotalFocusTime] = useState(false);
+  const [participateInLeaderboards, setParticipateInLeaderboards] = useState(false);
+  const [shareSubjectBreakdown, setShareSubjectBreakdown] = useState(false);
+
 
   // Sync with props when dialog opens or props change
   useEffect(() => {
@@ -66,8 +88,34 @@ export function SettingsDialog({
     }
   }, [isOpen, initialSubjects, initialSleepHours, initialLanguage, initialEnableTimer, initialEnableDailyChallenge, initialEnableTodoList]);
 
-  const handleSave = () => {
+  useEffect(() => {
+    if (initialPrivacySettings) {
+        setShareTotalFocusTime(initialPrivacySettings.shareTotalFocusTime);
+        setParticipateInLeaderboards(initialPrivacySettings.participateInLeaderboards);
+        setShareSubjectBreakdown(initialPrivacySettings.shareSubjectBreakdown);
+    }
+  }, [initialPrivacySettings]);
+
+
+  const handleSave = async () => {
     onSave({ subjects, sleepHours, language, enableTimer, enableDailyChallenge, enableTodoList });
+    
+    // Save privacy settings
+    if (privacySettingsRef) {
+        try {
+            await setDoc(privacySettingsRef, {
+                id: 'settings',
+                shareTotalFocusTime,
+                participateInLeaderboards,
+                shareSubjectBreakdown
+            }, { merge: true });
+            toast({ title: "Settings Saved", description: "Your preferences have been updated." });
+        } catch (error) {
+            console.error("Error saving privacy settings:", error);
+            toast({ variant: "destructive", title: "Error", description: "Could not save privacy settings." });
+        }
+    }
+    
     setIsOpen(false);
   };
 
@@ -109,22 +157,22 @@ export function SettingsDialog({
           <span className="sr-only">Settings</span>
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-xl">
         <DialogHeader>
           <DialogTitle>Settings</DialogTitle>
           <DialogDescription>
             Customize your GridFocus experience.
           </DialogDescription>
         </DialogHeader>
-        <Tabs defaultValue="general">
+        <Tabs defaultValue="general" className="max-h-[70vh] overflow-y-auto">
           <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="general">General</TabsTrigger>
             <TabsTrigger value="subjects">Subjects</TabsTrigger>
             <TabsTrigger value="sleep">Sleep</TabsTrigger>
             <TabsTrigger value="features">Features</TabsTrigger>
-            <TabsTrigger value="feedback">Feedback</TabsTrigger>
+            <TabsTrigger value="privacy">Privacy</TabsTrigger>
           </TabsList>
-          <TabsContent value="general" className="py-4">
+          <TabsContent value="general" className="py-4 px-1">
              <div className="space-y-4">
                 <h4 className="font-semibold">General Settings</h4>
                 <div className="flex items-center justify-between rounded-lg border p-3">
@@ -144,7 +192,7 @@ export function SettingsDialog({
                 </div>
              </div>
           </TabsContent>
-          <TabsContent value="subjects" className="py-4">
+          <TabsContent value="subjects" className="py-4 px-1">
             <h4 className="font-semibold mb-2">Customize Subjects</h4>
             <p className="text-sm text-muted-foreground mb-4">Add, remove, or edit your focus subjects.</p>
             <div className="space-y-2 max-h-64 overflow-y-auto pr-2">
@@ -179,7 +227,7 @@ export function SettingsDialog({
               <PlusCircle className="mr-2" /> Add Subject
             </Button>
           </TabsContent>
-          <TabsContent value="sleep" className="py-4">
+          <TabsContent value="sleep" className="py-4 px-1">
             <h4 className="font-semibold mb-2">Default Sleep Hours</h4>
             <p className="text-sm text-muted-foreground mb-4">Select hours you're usually asleep. The grid will reset to these sleep hours if you reset a day.</p>
             <div className="grid grid-cols-4 gap-2">
@@ -197,7 +245,7 @@ export function SettingsDialog({
                 ))}
             </div>
           </TabsContent>
-          <TabsContent value="features" className="py-4">
+          <TabsContent value="features" className="py-4 px-1">
              <div className="space-y-4">
                 <h4 className="font-semibold">Toggle Features</h4>
                  <div className="flex items-center justify-between rounded-lg border p-3">
@@ -226,22 +274,54 @@ export function SettingsDialog({
                 </div>
              </div>
           </TabsContent>
-          <TabsContent value="feedback" className="py-4">
-             <div className="space-y-4 text-center">
-                <h4 className="font-semibold">Help Us Improve</h4>
-                <p className="text-sm text-muted-foreground">
-                    Your feedback is invaluable. Have a suggestion or found a bug? Let us know!
-                </p>
-                <Button onClick={() => { setIsOpen(false); setIsFeedbackOpen(true); }}>
-                    <MessageSquarePlus className="mr-2" />
-                    Submit Feedback
-                </Button>
+          <TabsContent value="privacy" className="py-4 px-1">
+             <div className="space-y-4">
+                <h4 className="font-semibold">Friend & Privacy Settings</h4>
+                <div className="flex items-center justify-between rounded-lg border p-3">
+                    <Label htmlFor="share-focus-time" className="flex flex-col gap-1">
+                        <span className="font-medium flex items-center gap-2">Share Total Focus Time</span>
+                        <span className="font-normal text-muted-foreground text-xs">Allow friends to see your total focused hours.</span>
+                    </Label>
+                    <Switch
+                        id="share-focus-time"
+                        checked={shareTotalFocusTime}
+                        onCheckedChange={setShareTotalFocusTime}
+                    />
+                </div>
+                <div className="flex items-center justify-between rounded-lg border p-3">
+                    <Label htmlFor="participate-leaderboards" className="flex flex-col gap-1">
+                        <span className="font-medium flex items-center gap-2">Participate in Leaderboards</span>
+                        <span className="font-normal text-muted-foreground text-xs">Appear on leaderboards visible to your friends.</span>
+                    </Label>
+                    <Switch
+                        id="participate-leaderboards"
+                        checked={participateInLeaderboards}
+                        onCheckedChange={setParticipateInLeaderboards}
+                    />
+                </div>
+                <div className="flex items-center justify-between rounded-lg border p-3">
+                    <Label htmlFor="share-subject-breakdown" className="flex flex-col gap-1">
+                        <span className="font-medium flex items-center gap-2">Share Subject Breakdown</span>
+                        <span className="font-normal text-muted-foreground text-xs">Let friends see how your time is divided by subject.</span>
+                    </Label>
+                    <Switch
+                        id="share-subject-breakdown"
+                        checked={shareSubjectBreakdown}
+                        onCheckedChange={setShareSubjectBreakdown}
+                    />
+                </div>
+                 <div className="flex items-center justify-between rounded-lg border p-3">
+                    <Label htmlFor="feedback" className="flex items-center gap-2"><MessageSquarePlus className="w-5 h-5" /> Submit Feedback</Label>
+                    <Button size="sm" onClick={() => { setIsOpen(false); setIsFeedbackOpen(true); }}>
+                        Give Feedback
+                    </Button>
+                </div>
              </div>
           </TabsContent>
         </Tabs>
-        <DialogFooter>
+        <DialogFooter className="mt-4">
             <Button variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
-            <Button onClick={handleSave}>Save</Button>
+            <Button onClick={handleSave}>Save Changes</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
