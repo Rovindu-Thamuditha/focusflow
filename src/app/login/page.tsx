@@ -9,7 +9,7 @@ import {
   linkWithCredential,
   EmailAuthProvider,
 } from 'firebase/auth';
-import { doc, setDoc, writeBatch } from 'firebase/firestore';
+import { doc, setDoc, writeBatch, collection } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -39,12 +39,12 @@ export default function LoginPage() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [isSignUp, setIsSignUp] = useState(true);
+  const [isSignUp, setIsSignUp] = useState(false); // Default to Sign In view
   const [loading, setLoading] = useState(false);
 
   const isAnonymousUser = currentUser?.isAnonymous;
   
-  // Determine if the toggle button should be visible
+  // The toggle should be visible unless an anonymous user is linking their account.
   const showToggle = !isAnonymousUser;
 
   // Determine page content based on isSignUp state and whether user is anonymous
@@ -190,7 +190,8 @@ export default function LoginPage() {
             hasCompletedOnboarding: false,
           };
 
-          await setDoc(userDocRef, userData).catch(error => {
+          // Use non-blocking write with error emitter
+          setDoc(userDocRef, userData).catch(error => {
               errorEmitter.emit(
                 'permission-error',
                 new FirestorePermissionError({ path: userDocRef.path, operation: 'create', requestResourceData: userData })
@@ -225,6 +226,7 @@ export default function LoginPage() {
       
       // Don't show generic error if it was a permission error (already handled by emitter)
       if(error.name === 'FirebaseError' && error.message.includes('denied')){
+        setLoading(false);
         return;
       }
 
@@ -266,6 +268,7 @@ export default function LoginPage() {
                         value={name}
                         onChange={(e) => setName(e.target.value)}
                         disabled={loading}
+                        required
                     />
                 </div>
             )}
@@ -278,6 +281,7 @@ export default function LoginPage() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     disabled={loading}
+                    required
                 />
             </div>
             <div className="space-y-2">
@@ -289,6 +293,7 @@ export default function LoginPage() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     disabled={loading}
+                    required
                 />
             </div>
         </CardContent>
