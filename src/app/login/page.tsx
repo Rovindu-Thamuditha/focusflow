@@ -42,10 +42,37 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
 
   const isAnonymousUser = currentUser?.isAnonymous;
-  const pageTitle = isAnonymousUser ? "Save Your Progress" : (isSignUp ? "Create an Account" : "Welcome Back");
-  const pageDescription = isAnonymousUser 
-    ? "Create an account to permanently save your data."
-    : (isSignUp ? 'Enter your details to get started.' : 'Sign in to access your dashboard.');
+  
+  // Determine if the toggle button should be visible
+  const showToggle = !isAnonymousUser;
+
+  // Determine page content based on isSignUp state and whether user is anonymous
+  const getPageContent = () => {
+    if (isAnonymousUser) {
+      return {
+        title: "Save Your Progress",
+        description: "Create an account to permanently save your data.",
+        buttonText: "Create Account & Save",
+        isSignUpFlow: true,
+      };
+    }
+    if (isSignUp) {
+      return {
+        title: "Create an Account",
+        description: "Enter your details to get started.",
+        buttonText: "Sign Up",
+        isSignUpFlow: true,
+      };
+    }
+    return {
+      title: "Welcome Back",
+      description: "Sign in to access your dashboard.",
+      buttonText: "Sign In",
+      isSignUpFlow: false,
+    };
+  };
+
+  const { title, description, buttonText, isSignUpFlow } = getPageContent();
 
   const handleAuthAction = async () => {
     if (!auth || !firestore) {
@@ -59,7 +86,7 @@ export default function LoginPage() {
     setLoading(true);
     
     try {
-      if (isSignUp) {
+      if (isSignUpFlow) { // This covers both new sign-ups and anonymous linking
         if (!name) {
             toast({ variant: "destructive", title: "Name is required" });
             setLoading(false);
@@ -122,7 +149,7 @@ export default function LoginPage() {
           await setDoc(privacySettingsRef, privacyData);
 
         }
-        toast({ title: "Account Secured!", description: "Your data is now saved." });
+        toast({ title: "Account Created!", description: "Welcome to GridFocus!" });
         router.push('/');
 
       } else {
@@ -131,9 +158,9 @@ export default function LoginPage() {
         router.push('/');
       }
     } catch (error: any) {
-      console.error(`Error ${isSignUp ? 'signing up' : 'signing in'}:`, error);
+      console.error(`Error during authentication:`, error);
       
-      let description = `Could not ${isSignUp ? 'sign up' : 'sign in'}. Please try again.`;
+      let description = `Could not ${isSignUpFlow ? 'sign up' : 'sign in'}. Please try again.`;
       if (error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password' || error.code === 'auth/user-not-found') {
         description = "Invalid email or password. Please check your credentials and try again.";
       } else if (error.code === 'auth/email-already-in-use') {
@@ -157,11 +184,11 @@ export default function LoginPage() {
             <div className="flex justify-center items-center mb-4">
                 <Icons.logo className="h-12 w-12 text-primary"/>
             </div>
-          <CardTitle className="text-3xl font-bold">{pageTitle}</CardTitle>
-          <CardDescription>{pageDescription}</CardDescription>
+          <CardTitle className="text-3xl font-bold">{title}</CardTitle>
+          <CardDescription>{description}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-            {isSignUp && (
+            {isSignUpFlow && (
                 <div className="space-y-2">
                     <Label htmlFor="name">Name</Label>
                     <Input 
@@ -200,14 +227,14 @@ export default function LoginPage() {
         <CardFooter className="flex flex-col gap-4">
             <Button onClick={handleAuthAction} className="w-full" disabled={loading}>
                 {loading && <Icons.logo className="mr-2 h-4 w-4 animate-spin" />}
-                {isSignUp ? (isAnonymousUser ? 'Link Account & Save' : 'Sign Up') : 'Sign In'}
+                {buttonText}
             </Button>
             
-            {!isAnonymousUser ? (
+            {showToggle && (
               <Button variant="link" onClick={() => setIsSignUp(!isSignUp)} disabled={loading}>
                   {isSignUp ? 'Already have an account? Sign In' : "Don't have an account? Sign Up"}
               </Button>
-            ) : null}
+            )}
              {isAnonymousUser && (
                 <Button variant="link" onClick={() => router.push('/')} disabled={loading}>
                     Decide later
