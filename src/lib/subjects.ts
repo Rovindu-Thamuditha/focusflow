@@ -1,7 +1,7 @@
 import type { Subject } from './types';
 
 export const defaultSubjects: Subject[] = [
-  { id: 'math', name: 'Combined Maths', icon: 'BrainCircuit', color: '#8b5cf6' },
+  { id: 'math', name: 'Mathematics', icon: 'BrainCircuit', color: '#8b5cf6' },
   { id: 'physics', name: 'Physics', icon: 'FlaskConical', color: '#ef4444' },
   { id: 'chemistry', name: 'Chemistry', icon: 'FlaskConical', color: '#3b82f6' },
   { id: 'biology', name: 'Biology', icon: 'Dna', color: '#10b981' },

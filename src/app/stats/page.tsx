@@ -48,7 +48,7 @@ const CustomTooltip = ({ active, payload, label, subjects }: any) => {
               <div key={subject.id} className="flex items-center justify-between">
                 <div className="flex items-center">
                   <span className="w-2 h-2 rounded-full mr-2" style={{ backgroundColor: subject.color }}></span>
-                  <span>{subject.name}:</span>
+                  <span>{subject.name.charAt(0).toUpperCase() + subject.name.slice(1)}:</span>
                 </div>
                 <span className="font-semibold ml-2">{formatHoursAndMinutes(entry.value)}</span>
               </div>
@@ -263,6 +263,7 @@ export default function StatsPage() {
                               key={subject.id}
                               type="monotone"
                               dataKey={subject.id}
+                              name={subject.name.charAt(0).toUpperCase() + subject.name.slice(1)}
                               stackId="1"
                               stroke={subject.color}
                               strokeWidth={2}
