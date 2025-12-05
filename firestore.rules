@@ -19,38 +19,20 @@ service cloud.firestore {
 
     // Function to check if two users are friends by checking for an 'accepted' friendship document.
     function areFriends(userId1, userId2) {
-      return exists(/databases/$(database)/documents/friendships) &&
-             get(/databases/$(database)/documents/friendships).data.userIds.hasAll([userId1, userId2]) &&
-             get(/databases/$(database)/documents/friendships).data.status == 'accepted';
+      // This is a simplified check. A robust implementation would query the friendships collection.
+      // For security rules, you'd typically check a field on a user document or use exists() on a specific path.
+      // This function is illustrative for client-side logic but complex for direct rule use without specific document paths.
+      return false; 
     }
 
-    /**
-     * @description
-     *   The User document contains public profile information and acts as the root for a user's private data.
-     *   A user can create their own document and manage it, but cannot see other users unless they are an admin,
-     *   or they are friends.
-     * @path /users/{userId}
-     */
     match /users/{userId} {
-      // Allow owners, admins, or friends to view the main user profile.
-      allow get: if isOwner(userId) || isAdmin() || (areFriends(request.auth.uid, userId));
-      // Only admins can list all users to prevent user enumeration.
-      allow list: if isAdmin();
-      // A user can create their own document.
-      allow create: if isOwner(userId);
-      // Only the owner or an admin can update or delete the main user document.
-      allow update, delete: if isOwner(userId) || isAdmin();
-    }
-    
-    /**
-     * @description
-     *  Rules for all subcollections within a user's document.
-     *  This single block secures /time_blocks, /todos, /settings, /privacy, etc.
-     *  It ensures only the owner of the parent user document can read or write to any nested document.
-     * @path /users/{userId}/{document=**}
-     */
-    match /users/{userId}/{document=**} {
-      allow read, write: if isOwner(userId) || isAdmin();
+      allow read, write: if isOwner(userId);
+      
+      // Rules for all subcollections within a user's document.
+      // This secures /todos, /settings, /privacy, /focusGridStates, etc.
+      match /{document=**} {
+        allow read, write: if isOwner(userId) || isAdmin();
+      }
     }
     
     /**

@@ -3,7 +3,7 @@
 
 import { useState } from 'react';
 import { useFirestore } from '@/firebase';
-import { collection, query, where, getDocs, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, query, where, getDocs, addDoc, serverTimestamp, writeBatch, doc } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
@@ -33,14 +33,17 @@ export function AddFriendForm({ currentUser }: AddFriendFormProps) {
 
             if (querySnapshot.empty) {
                 toast({ variant: 'destructive', title: 'User Not Found', description: 'No user found with that invite code.' });
+                setIsLoading(false);
                 return;
             }
 
-            const targetUser = querySnapshot.docs[0];
-            const targetUserId = targetUser.id;
+            const targetUserDoc = querySnapshot.docs[0];
+            const targetUserId = targetUserDoc.id;
+            const targetUserData = targetUserDoc.data();
 
             if (targetUserId === currentUser.uid) {
                 toast({ variant: 'destructive', title: 'Cannot Add Yourself', description: 'You cannot send a friend request to yourself.' });
+                setIsLoading(false);
                 return;
             }
 
@@ -48,29 +51,43 @@ export function AddFriendForm({ currentUser }: AddFriendFormProps) {
             const friendshipsRef = collection(firestore, 'friendships');
             const existingFriendshipQuery = query(
                 friendshipsRef,
-                where('userIds', 'array-contains', currentUser.uid)
+                where('userIds', 'in', [[currentUser.uid, targetUserId], [targetUserId, currentUser.uid]])
             );
-            const existingFriendshipSnapshot = await getDocs(existingFriendshipQuery);
             
-            const alreadyExists = existingFriendshipSnapshot.docs.some(doc => {
-                const data = doc.data();
-                return data.userIds.includes(targetUserId);
-            });
+            const existingFriendshipSnapshot = await getDocs(existingFriendshipQuery);
 
-            if (alreadyExists) {
+            if (!existingFriendshipSnapshot.empty) {
                 toast({ variant: 'destructive', title: 'Request Already Exists', description: 'You already have a pending request with this user or are already friends.' });
+                setIsLoading(false);
                 return;
             }
             
-            // 3. Create a new friendship document with 'pending' status
-            await addDoc(friendshipsRef, {
+            // 3. Create a new friendship document and a notification for the target user
+            const batch = writeBatch(firestore);
+
+            const newFriendshipRef = doc(collection(firestore, 'friendships'));
+            batch.set(newFriendshipRef, {
                 userIds: [currentUser.uid, targetUserId],
                 status: 'pending',
                 requesterId: currentUser.uid,
                 createdAt: serverTimestamp()
             });
 
-            toast({ title: 'Friend Request Sent!', description: `Your request to ${targetUser.data().username || 'the user'} has been sent.` });
+            // Create notification for the recipient
+            const notificationRef = doc(collection(firestore, 'users', targetUserId, 'notifications'));
+            batch.set(notificationRef, {
+                type: 'friend_request',
+                fromUserId: currentUser.uid,
+                title: 'New Friend Request',
+                message: `${currentUser.displayName || 'A new user'} wants to be your friend!`,
+                isRead: false,
+                createdAt: serverTimestamp(),
+            });
+
+            await batch.commit();
+
+
+            toast({ title: 'Friend Request Sent!', description: `Your request to ${targetUserData.username || 'the user'} has been sent.` });
             setInviteCode('');
 
         } catch (error) {
@@ -89,7 +106,7 @@ export function AddFriendForm({ currentUser }: AddFriendFormProps) {
                     <Input
                         placeholder="Enter an invite code (e.g. FOCUS-4B8T)"
                         value={inviteCode}
-                        onChange={(e) => setInviteCode(e.target.value)}
+                        onChange={(e) => setInviteCode(e.target.value.toUpperCase())}
                         disabled={isLoading}
                     />
                     <Button type="submit" disabled={isLoading || !inviteCode.trim()}>
