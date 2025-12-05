@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react';
 import { MainHeader } from '@/components/main-header';
 import { useUser, useFirestore } from '@/firebase';
 import { useRouter } from 'next/navigation';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -21,6 +21,15 @@ interface AppUser {
     username?: string;
     email?: string;
     inviteCode?: string;
+}
+
+function generateInviteCode() {
+  const chars = 'ABCDEFGHIJKLMNPQRSTUVWXYZ123456789';
+  let result = 'FOCUS-';
+  for (let i = 0; i < 4; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return result;
 }
 
 export default function FriendsPage() {
@@ -47,12 +56,37 @@ export default function FriendsPage() {
             if (!firestore || !user) return;
             const userDocRef = doc(firestore, 'users', user.uid);
             const userDoc = await getDoc(userDocRef);
+            
             if (userDoc.exists()) {
                 const userData = userDoc.data() as AppUser;
-                if (userData.inviteCode) {
-                    const origin = 'https://gridfocus.vercel.app';
-                    setInviteLink(`${origin}/invite/${userData.inviteCode}`);
+                let code = userData.inviteCode;
+
+                if (!code) {
+                    // If the user doesn't have an invite code, generate and save one.
+                    code = generateInviteCode();
+                    try {
+                        await setDoc(userDocRef, { inviteCode: code }, { merge: true });
+                    } catch (error) {
+                        console.error("Failed to save new invite code:", error);
+                        toast({
+                            title: "Error",
+                            description: "Could not generate your invite link. Please refresh.",
+                            variant: "destructive"
+                        });
+                        return;
+                    }
                 }
+                
+                const origin = 'https://gridfocus.vercel.app';
+                setInviteLink(`${origin}/invite/${code}`);
+
+            } else {
+                 console.error("User document not found for UID:", user.uid);
+                 toast({
+                    title: "Error",
+                    description: "Could not load your user data. Please try logging in again.",
+                    variant: "destructive"
+                });
             }
         };
 
@@ -60,6 +94,7 @@ export default function FriendsPage() {
     }, [user, isUserLoading, firestore, router, toast]);
 
     const handleCopy = () => {
+        if (!inviteLink) return;
         navigator.clipboard.writeText(inviteLink);
         setCopied(true);
         toast({ title: "Copied!", description: "Your invite link has been copied to the clipboard." });
@@ -87,7 +122,7 @@ export default function FriendsPage() {
                         <div className="p-4 border rounded-lg bg-secondary/50">
                             <h3 className="font-semibold mb-2 flex items-center gap-2"><LinkIcon className="w-5 h-5"/>Your Invite Link</h3>
                             <div className="flex items-center gap-2">
-                                <Input value={inviteLink} readOnly className="font-mono text-base" />
+                                <Input value={inviteLink} readOnly className="font-mono text-base" placeholder="Generating your link..."/>
                                 <Button onClick={handleCopy} size="icon" variant="outline" disabled={!inviteLink}>
                                     {copied ? <Check className="w-5 h-5 text-green-500" /> : <Copy className="w-5 h-5" />}
                                 </Button>
