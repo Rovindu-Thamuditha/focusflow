@@ -17,6 +17,22 @@ import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { UserPlus } from 'lucide-react';
 
+const formatHoursAndMinutes = (decimalHours: number): string => {
+    if (decimalHours === 0) return '0m';
+    const totalMinutes = Math.round(decimalHours * 60);
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+    
+    let result = '';
+    if (hours > 0) {
+        result += `${hours}h `;
+    }
+    if (minutes > 0 || hours === 0) {
+        result += `${minutes}m`;
+    }
+    return result.trim();
+};
+
 const CustomTooltip = ({ active, payload, label, subjects }: any) => {
   if (active && payload && payload.length) {
     const totalHours = payload.reduce((acc: number, entry: any) => acc + entry.value, 0);
@@ -34,7 +50,7 @@ const CustomTooltip = ({ active, payload, label, subjects }: any) => {
                   <span className="w-2 h-2 rounded-full mr-2" style={{ backgroundColor: subject.color }}></span>
                   <span>{subject.name}:</span>
                 </div>
-                <span className="font-semibold ml-2">{(entry.value).toFixed(2)} hrs</span>
+                <span className="font-semibold ml-2">{formatHoursAndMinutes(entry.value)}</span>
               </div>
             );
           })}
@@ -44,7 +60,7 @@ const CustomTooltip = ({ active, payload, label, subjects }: any) => {
             <div className="border-t my-1"></div>
             <div className="flex items-center justify-between font-bold">
                 <span>Total:</span>
-                <span>{totalHours.toFixed(2)} hrs</span>
+                <span>{formatHoursAndMinutes(totalHours)}</span>
             </div>
           </>
         )}
