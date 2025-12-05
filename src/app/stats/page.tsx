@@ -223,17 +223,21 @@ export default function StatsPage() {
                               <YAxis tickLine={false} axisLine={false} label={{ value: 'Hours', angle: -90, position: 'insideLeft', offset: 10 }} />
                               <Tooltip content={<CustomTooltip subjects={subjects} />} cursor={{fill: 'hsl(var(--accent))', fillOpacity: 0.1}} />
                               <Legend iconType="circle" />
-                              {subjectsToRender.map((subject, index) => (
-                                <Bar 
-                                  key={subject.id} 
-                                  dataKey={subject.id} 
-                                  stackId="a" 
-                                  fill={subject.color} 
-                                  name={subject.name} 
-                                  radius={[6, 6, 0, 0]}
-                                  maxBarSize={30}
-                                />
-                              ))}
+                              {subjectsToRender.map((subject, index) => {
+                                const isTopBar = index === subjectsToRender.length - 1;
+                                const radius: [number, number, number, number] = isTopBar ? [8, 8, 0, 0] : [0, 0, 0, 0];
+                                return (
+                                  <Bar 
+                                    key={subject.id} 
+                                    dataKey={subject.id} 
+                                    stackId="a" 
+                                    fill={subject.color} 
+                                    name={subject.name} 
+                                    radius={radius}
+                                    maxBarSize={12}
+                                  />
+                                );
+                              })}
                           </BarChart>
                       </ResponsiveContainer>
                   ) : (
