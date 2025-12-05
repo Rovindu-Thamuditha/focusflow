@@ -56,11 +56,13 @@ export function TimeBlock({ hour, subjectId, duration, subjects, onClick, onStat
 
   const sleepStyles = "dark:bg-gray-800 dark:text-gray-500 bg-slate-700 text-slate-300";
   const idleStyles = "dark:text-gray-500 text-slate-500";
-  const finalIsEditable = isEditable && !isFuture && !isCurrent;
+  const finalIsEditable = isEditable && !isFuture;
 
-  const glowStyle = activeTimerSubject ? {
-    '--glow-color-start': `${activeTimerSubject.color}99`,
-    '--glow-color-end': `${activeTimerSubject.color}ff`,
+  const isBeingTimed = isCurrent && activeTimerSubject;
+  
+  const glowStyle = isBeingTimed ? {
+    '--glow-color-start': `${activeTimerSubject?.color}99`,
+    '--glow-color-end': `${activeTimerSubject?.color}ff`,
   } as React.CSSProperties : {};
 
   const handleBlockClick = () => {
@@ -79,7 +81,7 @@ export function TimeBlock({ hour, subjectId, duration, subjects, onClick, onStat
             isSleep ? sleepStyles : (subject.id === 'idle' ? idleStyles : getBrightness()),
             !finalIsEditable && 'cursor-not-allowed',
             isFuture && 'opacity-50',
-            isCurrent && activeTimerSubject && 'pulsing-glow',
+            isBeingTimed && 'pulsing-glow',
             'border-border'
         )}
         style={{ 
@@ -127,7 +129,7 @@ export function TimeBlock({ hour, subjectId, duration, subjects, onClick, onStat
                 <p className="font-semibold">{subject.name}</p>
                 <p className="text-sm text-muted-foreground">{isSleep ? "Right-click for options" : `Duration: ${duration} minutes`}</p>
                 <p className="text-xs text-muted-foreground">{timeSlot}</p>
-                 {isCurrent && <p className="text-xs text-red-500 font-semibold">In Progress</p>}
+                 {isBeingTimed && <p className="text-xs text-red-500 font-semibold">In Progress</p>}
             </TooltipContent>
         </Tooltip>
     </TooltipProvider>

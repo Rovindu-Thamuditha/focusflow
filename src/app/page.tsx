@@ -320,34 +320,53 @@ export default function Home() {
   
   // Timer effect
   useEffect(() => {
+    let timerHour = new Date().getHours();
+
     if (timerIsRunning) {
-        const currentHour = new Date().getHours();
+        const interval = setInterval(() => {
+            const now = new Date();
+            const currentHour = now.getHours();
+
+            setElapsedSeconds(prev => prev + 1);
+
+            // If the hour has changed, allocate remaining time of previous hour
+            if (currentHour !== timerHour) {
+                const minutesInPreviousHour = 60 - now.getMinutes();
+                setTimeBlocks(currentBlocks =>
+                    currentBlocks.map(block => {
+                        if (block.hour === timerHour) {
+                             const newDuration = Math.min(block.duration + minutesInPreviousHour, 60);
+                             return { ...block, duration: newDuration, subject: timerSubject };
+                        }
+                        return block;
+                    })
+                );
+                // Update the timer's hour to the new current hour
+                timerHour = currentHour;
+            }
+
+            // Update current hour's block every minute
+            if (now.getSeconds() === 0) {
+                 setTimeBlocks(currentBlocks =>
+                    currentBlocks.map(block => {
+                        if (block.hour === currentHour) {
+                             const newDuration = Math.min(block.duration + 1, 60);
+                             return { ...block, duration: newDuration, subject: timerSubject };
+                        }
+                        return block;
+                    })
+                );
+            }
+        }, 1000);
+        setTimerIntervalId(interval);
         
+        // Set initial subject on start
         setTimeBlocks(currentBlocks =>
             currentBlocks.map(block =>
-                block.hour === currentHour ? { ...block, subject: timerSubject } : block
+                block.hour === timerHour ? { ...block, subject: timerSubject } : block
             )
         );
 
-        const interval = setInterval(() => {
-            setElapsedSeconds(prev => {
-                const newElapsed = prev + 1;
-                if (newElapsed > 0 && newElapsed % 60 === 0) {
-                    const minutesToAdd = 1;
-                    setTimeBlocks(currentBlocks =>
-                        currentBlocks.map(block => {
-                            if (block.hour === currentHour) {
-                                const newDuration = Math.min(block.duration + minutesToAdd, 60);
-                                return { ...block, duration: newDuration };
-                            }
-                            return block;
-                        })
-                    );
-                }
-                return newElapsed;
-            });
-        }, 1000);
-        setTimerIntervalId(interval);
         return () => clearInterval(interval);
     } else if (timerIntervalId) {
         clearInterval(timerIntervalId);
@@ -480,7 +499,7 @@ export default function Home() {
     );
   }
 
-  const activeTimerSubject = timerIsRunning ? subjects.find(s => s.id === timerSubject) : null;
+  const activeTimerSubjectInfo = timerIsRunning ? subjects.find(s => s.id === timerSubject) : null;
 
   return (
     <div className={`flex flex-col min-h-screen ${inter.variable} font-body`}>
@@ -523,7 +542,7 @@ export default function Home() {
                 onBlockUpdate={handleBlockUpdate}
                 viewingDate={currentDate}
                 liveTime={liveTime}
-                activeTimerSubject={activeTimerSubject}
+                activeTimerSubject={activeTimerSubjectInfo}
               />
             </CardContent>
           </Card>
