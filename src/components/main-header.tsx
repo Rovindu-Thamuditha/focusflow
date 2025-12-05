@@ -11,9 +11,11 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu"
 import { useUser, useAuth } from "@/firebase";
 import { InfoDialog } from "./info-dialog";
+import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 
 const ADMIN_EMAIL = 'rovinduthamu@gmail.com';
 
@@ -35,6 +37,15 @@ export function MainHeader({ totalFocusedTime, children }: MainHeaderProps) {
   }
 
   const isAnonymousUser = user?.isAnonymous;
+  const getInitials = (name: string | null | undefined, email: string | null | undefined) => {
+    if (name) {
+      return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+    }
+    if (email) {
+      return email.substring(0, 2).toUpperCase();
+    }
+    return '??';
+  }
 
   return (
     <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur-sm">
@@ -46,7 +57,6 @@ export function MainHeader({ totalFocusedTime, children }: MainHeaderProps) {
           </Link>
         </div>
         <div className="flex flex-1 items-center justify-end space-x-1 sm:space-x-2">
-          {/* Always visible on all screen sizes */}
           { !isAnonymousUser && <TotalFocusTime totalHours={totalFocusedTime} /> }
           
           <div className="hidden sm:flex items-center space-x-1">
@@ -75,15 +85,6 @@ export function MainHeader({ totalFocusedTime, children }: MainHeaderProps) {
 
           {/* Desktop-only items */}
           <div className="hidden sm:flex items-center">
-              {user && user.email === ADMIN_EMAIL && (
-                <>
-                    <Link href="/admin" passHref>
-                        <Button variant="ghost" size="icon" title="Admin Panel">
-                            <Shield className="h-5 w-5" />
-                        </Button>
-                    </Link>
-                </>
-              )}
               {isAnonymousUser ? (
                  <Link href="/login" passHref>
                     <Button>
@@ -92,9 +93,39 @@ export function MainHeader({ totalFocusedTime, children }: MainHeaderProps) {
                     </Button>
                  </Link>
               ) : user ? (
-                <Button variant="ghost" size="icon" onClick={handleSignOut} title="Sign Out">
-                  <LogOut className="h-5 w-5" />
-                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+                       <Avatar className="h-8 w-8">
+                        <AvatarImage src={user.photoURL || ''} alt={user.displayName || 'User'} />
+                        <AvatarFallback>{getInitials(user.displayName, user.email)}</AvatarFallback>
+                      </Avatar>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="w-56" align="end" forceMount>
+                    <DropdownMenuLabel className="font-normal">
+                      <div className="flex flex-col space-y-1">
+                        <p className="text-sm font-medium leading-none">{user.displayName}</p>
+                        <p className="text-xs leading-none text-muted-foreground">
+                          {user.email}
+                        </p>
+                      </div>
+                    </DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                     {user.email === ADMIN_EMAIL && (
+                        <Link href="/admin" passHref>
+                            <DropdownMenuItem>
+                            <Shield className="mr-2 h-4 w-4" />
+                            <span>Admin</span>
+                            </DropdownMenuItem>
+                        </Link>
+                     )}
+                    <DropdownMenuItem onClick={handleSignOut}>
+                      <LogOut className="mr-2 h-4 w-4" />
+                      <span>Log out</span>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               ) : null}
           </div>
           
@@ -120,17 +151,6 @@ export function MainHeader({ totalFocusedTime, children }: MainHeaderProps) {
                     </DropdownMenuItem>
                    </Link>
                  )}
-                {user && user.email === ADMIN_EMAIL && (
-                    <>
-                        <DropdownMenuSeparator />
-                        <Link href="/admin" passHref>
-                            <DropdownMenuItem>
-                            <Shield className="mr-2 h-4 w-4" />
-                            <span>Admin</span>
-                            </DropdownMenuItem>
-                        </Link>
-                    </>
-                )}
                 <DropdownMenuSeparator />
                  {isAnonymousUser ? (
                     <Link href="/login" passHref>
@@ -140,10 +160,20 @@ export function MainHeader({ totalFocusedTime, children }: MainHeaderProps) {
                         </DropdownMenuItem>
                     </Link>
                  ) : user ? (
+                  <>
+                  {user.email === ADMIN_EMAIL && (
+                        <Link href="/admin" passHref>
+                            <DropdownMenuItem>
+                            <Shield className="mr-2 h-4 w-4" />
+                            <span>Admin</span>
+                            </DropdownMenuItem>
+                        </Link>
+                   )}
                   <DropdownMenuItem onClick={handleSignOut}>
                     <LogOut className="mr-2 h-4 w-4" />
                     <span>Sign Out</span>
                   </DropdownMenuItem>
+                  </>
                 ) : null}
               </DropdownMenuContent>
             </DropdownMenu>
