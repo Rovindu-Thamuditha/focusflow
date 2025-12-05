@@ -2,7 +2,7 @@
 'use client';
 
 import { useEffect, useState, useMemo, useCallback } from 'react';
-import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+import { Area, AreaChart, CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { MainHeader } from '@/components/main-header';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -217,28 +217,45 @@ export default function StatsPage() {
               <CardContent>
                   {chartData.length > 0 && timeBlocks.length > 0 ? (
                       <ResponsiveContainer width="100%" height={400}>
-                          <BarChart data={chartData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
-                              <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.2} />
-                              <XAxis dataKey="date" tickLine={false} axisLine={false} />
-                              <YAxis tickLine={false} axisLine={false} label={{ value: 'Hours', angle: -90, position: 'insideLeft', offset: 10 }} />
-                              <Tooltip content={<CustomTooltip subjects={subjects} />} cursor={{fill: 'hsl(var(--accent))', fillOpacity: 0.1}} />
-                              <Legend iconType="circle" />
-                              {subjectsToRender.map((subject, index) => {
-                                const isTopBar = index === subjectsToRender.length - 1;
-                                const radius: [number, number, number, number] = isTopBar ? [8, 8, 0, 0] : [0, 0, 0, 0];
-                                return (
-                                  <Bar 
-                                    key={subject.id} 
-                                    dataKey={subject.id} 
-                                    stackId="a" 
-                                    fill={subject.color} 
-                                    name={subject.name} 
-                                    radius={radius}
-                                    maxBarSize={12}
-                                  />
-                                );
-                              })}
-                          </BarChart>
+                        <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                          <defs>
+                            {subjectsToRender.map((subject) => (
+                              <linearGradient key={subject.id} id={`color${subject.id}`} x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor={subject.color} stopOpacity={0.8}/>
+                                <stop offset="95%" stopColor={subject.color} stopOpacity={0.1}/>
+                              </linearGradient>
+                            ))}
+                          </defs>
+                          <CartesianGrid vertical={false} strokeDasharray="3 3" strokeOpacity={0.1} />
+                          <XAxis 
+                            dataKey="date" 
+                            axisLine={false} 
+                            tickLine={false} 
+                            tick={{fontSize: 12, fill: 'hsl(var(--muted-foreground))'}} 
+                            dy={10}
+                          />
+                          <YAxis 
+                            axisLine={false} 
+                            tickLine={false} 
+                            tick={{fontSize: 12, fill: 'hsl(var(--muted-foreground))'}} 
+                            label={{ value: 'Hours', angle: -90, position: 'insideLeft', offset: 0, style: { fill: 'hsl(var(--muted-foreground))' } }} 
+                          />
+                          <Tooltip content={<CustomTooltip subjects={subjects} />} />
+                          <Legend iconType="circle" />
+                          {subjectsToRender.map((subject) => (
+                            <Area
+                              key={subject.id}
+                              type="monotone"
+                              dataKey={subject.id}
+                              stackId="1"
+                              stroke={subject.color}
+                              strokeWidth={2}
+                              fill={`url(#color${subject.id})`}
+                              fillOpacity={1}
+                              animationDuration={1000}
+                            />
+                          ))}
+                        </AreaChart>
                       </ResponsiveContainer>
                   ) : (
                       <div className="flex items-center justify-center h-[400px] text-muted-foreground">
