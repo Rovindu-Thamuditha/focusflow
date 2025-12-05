@@ -14,7 +14,7 @@ import 'katex/dist/katex.min.css';
 const inter = Inter({ subsets: ['latin'], variable: '--font-sans' });
 
 export const metadata: Metadata = {
-  title: 'FocusFlow',
+  title: 'GridFocus',
   description: 'Track your focus and conquer your day.',
 };
 
