@@ -17,16 +17,9 @@ service cloud.firestore {
       return isSignedIn() && request.auth.token.email == 'rovinduthamu@gmail.com';
     }
 
-    // Function to check if two users are friends by checking for an 'accepted' friendship document.
-    function areFriends(userId1, userId2) {
-      // This is a simplified check. A robust implementation would query the friendships collection.
-      // For security rules, you'd typically check a field on a user document or use exists() on a specific path.
-      // This function is illustrative for client-side logic but complex for direct rule use without specific document paths.
-      return false; 
-    }
-
     match /users/{userId} {
-      allow read, write: if isOwner(userId);
+      allow read: if isSignedIn(); // Allow any signed-in user to read user profiles (for invites)
+      allow write: if isOwner(userId);
       
       // Allow authenticated users to write to another user's notifications ONLY for friend requests
       match /notifications/{notificationId} {

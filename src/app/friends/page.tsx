@@ -10,8 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { Copy, Check } from 'lucide-react';
-import { AddFriendForm } from '@/components/friends/add-friend-form';
+import { Copy, Check, Link as LinkIcon } from 'lucide-react';
 import { FriendRequests } from '@/components/friends/friend-requests';
 import { FriendsList } from '@/components/friends/friends-list';
 import { GridFocusLoader } from '@/components/grid-focus-loader';
@@ -29,7 +28,7 @@ export default function FriendsPage() {
     const firestore = useFirestore();
     const router = useRouter();
     const { toast } = useToast();
-    const [inviteCode, setInviteCode] = useState('');
+    const [inviteLink, setInviteLink] = useState('');
     const [copied, setCopied] = useState(false);
     
     useEffect(() => {
@@ -51,12 +50,9 @@ export default function FriendsPage() {
             if (userDoc.exists()) {
                 const userData = userDoc.data() as AppUser;
                 if (userData.inviteCode) {
-                    setInviteCode(userData.inviteCode);
-                } else {
-                    // This should have been created on sign-up, but as a fallback:
-                    const newInviteCode = `FOCUS-${user.uid.substring(0, 6).toUpperCase()}`;
-                    setInviteCode(newInviteCode);
-                    // Consider writing this back to the user doc.
+                    // Construct the full URL for the invite link
+                    const origin = window.location.origin;
+                    setInviteLink(`${origin}/invite/${userData.inviteCode}`);
                 }
             }
         };
@@ -65,9 +61,9 @@ export default function FriendsPage() {
     }, [user, isUserLoading, firestore, router, toast]);
 
     const handleCopy = () => {
-        navigator.clipboard.writeText(inviteCode);
+        navigator.clipboard.writeText(inviteLink);
         setCopied(true);
-        toast({ title: "Copied!", description: "Your invite code has been copied to the clipboard." });
+        toast({ title: "Copied!", description: "Your invite link has been copied to the clipboard." });
         setTimeout(() => setCopied(false), 2000);
     };
 
@@ -85,22 +81,19 @@ export default function FriendsPage() {
             <main className="flex-grow container mx-auto p-4 sm:p-6 md:p-8">
                 <Card>
                     <CardHeader>
-                        <CardTitle>Manage Your Connections</CardTitle>
-                        <CardDescription>Share your code to add friends and build your accountability circle.</CardDescription>
+                        <CardTitle>Invite Your Friends</CardTitle>
+                        <CardDescription>Share your unique link to add friends and build your accountability circle.</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-6">
                         <div className="p-4 border rounded-lg bg-secondary/50">
-                            <h3 className="font-semibold mb-2">Your Invite Code</h3>
+                            <h3 className="font-semibold mb-2 flex items-center gap-2"><LinkIcon className="w-5 h-5"/>Your Invite Link</h3>
                             <div className="flex items-center gap-2">
-                                <Input value={inviteCode} readOnly className="font-mono text-lg" />
-                                <Button onClick={handleCopy} size="icon" variant="outline">
+                                <Input value={inviteLink} readOnly className="font-mono text-base" />
+                                <Button onClick={handleCopy} size="icon" variant="outline" disabled={!inviteLink}>
                                     {copied ? <Check className="w-5 h-5 text-green-500" /> : <Copy className="w-5 h-5" />}
                                 </Button>
                             </div>
                         </div>
-
-                        <AddFriendForm currentUser={user} />
-                        
                     </CardContent>
                 </Card>
 
