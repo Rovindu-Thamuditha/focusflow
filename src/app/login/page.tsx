@@ -129,7 +129,11 @@ export default function LoginPage() {
 
           await updateProfile(user, { displayName: name });
           const userDocRef = doc(firestore, 'users', user.uid);
-          const userData = { username: name, email: user.email, };
+          const userData = { 
+            username: name, 
+            email: user.email, 
+            inviteCode: generateInviteCode(),
+          };
           
           await setDoc(userDocRef, userData, { merge: true });
           await migrateLocalDataToFirebase(user.uid);

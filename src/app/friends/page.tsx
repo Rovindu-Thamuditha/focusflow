@@ -50,9 +50,7 @@ export default function FriendsPage() {
             if (userDoc.exists()) {
                 const userData = userDoc.data() as AppUser;
                 if (userData.inviteCode) {
-                    const origin = process.env.NODE_ENV === 'production' 
-                        ? 'https://gridfocus.vercel.app' 
-                        : window.location.origin;
+                    const origin = 'https://gridfocus.vercel.app';
                     setInviteLink(`${origin}/invite/${userData.inviteCode}`);
                 }
             }
