@@ -22,8 +22,8 @@ const CustomTooltip = ({ active, payload, label, subjects }: any) => {
     const totalHours = payload.reduce((acc: number, entry: any) => acc + entry.value, 0);
 
     return (
-      <div className="p-3 bg-card border rounded-lg shadow-lg text-card-foreground">
-        <p className="font-bold text-lg mb-2">{label}</p>
+      <div className="p-2 bg-card border rounded-md shadow-lg text-card-foreground text-xs">
+        <p className="font-bold mb-1">{label}</p>
         <div className="space-y-1">
           {payload.map((entry: any) => {
             const subject = subjects.find((s: Subject) => s.id === entry.dataKey);
@@ -31,17 +31,17 @@ const CustomTooltip = ({ active, payload, label, subjects }: any) => {
             return (
               <div key={subject.id} className="flex items-center justify-between">
                 <div className="flex items-center">
-                  <span className="w-3 h-3 rounded-full mr-2" style={{ backgroundColor: subject.color }}></span>
+                  <span className="w-2 h-2 rounded-full mr-2" style={{ backgroundColor: subject.color }}></span>
                   <span>{subject.name}:</span>
                 </div>
-                <span className="font-semibold ml-4">{(entry.value).toFixed(2)} hrs</span>
+                <span className="font-semibold ml-2">{(entry.value).toFixed(2)} hrs</span>
               </div>
             );
           })}
         </div>
         {totalHours > 0 && (
           <>
-            <div className="border-t my-2"></div>
+            <div className="border-t my-1"></div>
             <div className="flex items-center justify-between font-bold">
                 <span>Total:</span>
                 <span>{totalHours.toFixed(2)} hrs</span>
@@ -217,7 +217,7 @@ export default function StatsPage() {
               <CardContent>
                   {chartData.length > 0 && timeBlocks.length > 0 ? (
                       <ResponsiveContainer width="100%" height={400}>
-                          <BarChart data={chartData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }} className={cn(chartData.length > 0 && "glow-primary")}>
+                          <BarChart data={chartData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
                               <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.2} />
                               <XAxis dataKey="date" tickLine={false} axisLine={false} />
                               <YAxis tickLine={false} axisLine={false} label={{ value: 'Hours', angle: -90, position: 'insideLeft', offset: 10 }} />
@@ -230,8 +230,9 @@ export default function StatsPage() {
                                   stackId="a" 
                                   fill={subject.color} 
                                   name={subject.name} 
-                                  radius={index === subjectsToRender.length - 1 ? [4, 4, 0, 0] : 0}
-                                  maxBarSize={40}
+                                  radius={[6, 6, 0, 0]}
+                                  maxBarSize={30}
+                                  style={{ filter: `drop-shadow(0 2px 4px ${subject.color}66)` }}
                                 />
                               ))}
                           </BarChart>
