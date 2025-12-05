@@ -3,7 +3,7 @@
 
 import { useState } from 'react';
 import { useFirestore, errorEmitter, FirestorePermissionError } from '@/firebase';
-import { collection, query, where, getDocs, addDoc, serverTimestamp, writeBatch, doc } from 'firebase/firestore';
+import { collection, query, where, getDocs, writeBatch, doc, serverTimestamp } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
@@ -65,31 +65,30 @@ export function AddFriendForm({ currentUser }: AddFriendFormProps) {
             // 3. Create a new friendship document and a notification for the target user
             const batch = writeBatch(firestore);
 
+            // Friendship Doc
             const newFriendshipRef = doc(collection(firestore, 'friendships'));
             const friendshipData = {
-                userIds: [currentUser.uid, targetUserId],
+                userIds: [currentUser.uid, targetUserId].sort(), // Sort for consistent querying
                 status: 'pending',
                 requesterId: currentUser.uid,
                 createdAt: serverTimestamp()
             };
             batch.set(newFriendshipRef, friendshipData);
 
-            // Create notification for the recipient
+            // Notification Doc
             const notificationRef = doc(collection(firestore, 'users', targetUserId, 'notifications'));
             const notificationData = {
                 type: 'friend_request',
                 fromUserId: currentUser.uid,
                 title: 'New Friend Request',
-                message: `${currentUser.displayName || 'A new user'} wants to be your friend!`,
+                message: `${currentUser.displayName || 'A new user'} wants to connect!`,
                 isRead: false,
                 createdAt: serverTimestamp(),
             };
             batch.set(notificationRef, notificationData);
 
             await batch.commit().catch(error => {
-                // This is a batch write, so it's hard to know which `set` failed.
-                // We will report on the potential friendship creation.
-                 errorEmitter.emit(
+                errorEmitter.emit(
                     'permission-error',
                     new FirestorePermissionError({ 
                         path: newFriendshipRef.path, 
@@ -105,19 +104,15 @@ export function AddFriendForm({ currentUser }: AddFriendFormProps) {
                         requestResourceData: notificationData 
                     })
                 );
-                // Re-throw to be caught by outer catch
-                throw error;
+                throw error; // Re-throw to be caught by the outer catch
             });
-
 
             toast({ title: 'Friend Request Sent!', description: `Your request to ${targetUserData.username || 'the user'} has been sent.` });
             setInviteCode('');
 
-        } catch (error) {
+        } catch (error: any) {
             console.error("Error sending friend request:", error);
-            // The contextual error is already emitted, so we can show a generic toast here
-            // or do nothing if the global error handler is sufficient.
-            if (!(error instanceof FirestorePermissionError)) {
+            if (error.name !== 'FirebaseError') {
                  toast({ variant: 'destructive', title: 'Error', description: 'Could not send friend request. Please try again.' });
             }
         } finally {
@@ -137,7 +132,7 @@ export function AddFriendForm({ currentUser }: AddFriendFormProps) {
                         disabled={isLoading}
                     />
                     <Button type="submit" disabled={isLoading || !inviteCode.trim()}>
-                        <Send className="w-5 h-5 mr-2" />
+                        <Send className="w-4 h-4 mr-2" />
                         {isLoading ? 'Sending...' : 'Send Request'}
                     </Button>
                 </div>

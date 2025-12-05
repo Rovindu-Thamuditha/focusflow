@@ -2,7 +2,7 @@
 'use client';
 
 import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, where, doc, getDoc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { collection, query, where, doc, getDoc, deleteDoc } from 'firebase/firestore';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Users, Trash2, Eye } from 'lucide-react';
@@ -20,6 +20,8 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
+import { getInitials } from '@/lib/utils';
 
 interface Friendship {
     id: string;
@@ -30,6 +32,7 @@ interface Friendship {
 interface AppUser {
     id: string;
     username?: string;
+    photoURL?: string;
 }
 
 interface Friend extends AppUser {}
@@ -71,10 +74,10 @@ export function FriendsList({ currentUserId }: { currentUserId: string }) {
     }, [acceptedFriendships, firestore, currentUserId]);
 
     const removeFriend = async (friendId: string) => {
-        if (!acceptedFriendships) return;
+        if (!acceptedFriendships || !firestore) return;
         
         const friendshipDoc = acceptedFriendships.find(f => f.userIds.includes(friendId));
-        if (!friendshipDoc || !firestore) return;
+        if (!friendshipDoc) return;
 
         try {
             await deleteDoc(doc(firestore, 'friendships', friendshipDoc.id));
@@ -92,20 +95,26 @@ export function FriendsList({ currentUserId }: { currentUserId: string }) {
                 <CardDescription>Your accountability circle.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-                {isLoading && <p>Loading friends...</p>}
+                {isLoading && <p className="text-sm text-muted-foreground">Loading friends...</p>}
                 {!isLoading && friends.length === 0 && <p className="text-sm text-muted-foreground">You haven't added any friends yet.</p>}
                 {friends.map(friend => (
-                    <div key={friend.id} className="flex items-center justify-between p-3 bg-secondary/50 rounded-lg">
-                        <span className="font-medium">{friend.username || 'A Friend'}</span>
+                    <div key={friend.id} className="flex items-center justify-between p-2 bg-secondary/50 rounded-lg">
+                        <div className="flex items-center gap-3">
+                            <Avatar className="h-9 w-9">
+                                <AvatarImage src={friend.photoURL} alt={friend.username} />
+                                <AvatarFallback>{getInitials(friend.username)}</AvatarFallback>
+                            </Avatar>
+                            <span className="font-medium">{friend.username || 'A Friend'}</span>
+                        </div>
                         <div className="flex gap-2">
                              <Link href={`/compare/${friend.id}`}>
-                                <Button size="icon" className="h-8 w-8" variant="outline">
+                                <Button size="icon" className="h-8 w-8" variant="outline" title="Compare Stats">
                                     <Eye className="w-4 h-4" />
                                 </Button>
                             </Link>
                             <AlertDialog>
                                 <AlertDialogTrigger asChild>
-                                    <Button size="icon" className="h-8 w-8" variant="destructive">
+                                    <Button size="icon" className="h-8 w-8" variant="destructive" title="Remove Friend">
                                         <Trash2 className="w-4 h-4" />
                                     </Button>
                                 </AlertDialogTrigger>

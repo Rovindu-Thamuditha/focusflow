@@ -3,17 +3,19 @@
 
 import { useState, useEffect } from 'react';
 import { MainHeader } from '@/components/main-header';
-import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { useUser, useFirestore } from '@/firebase';
 import { useRouter } from 'next/navigation';
-import { doc, getDoc, collection, query, where, writeBatch } from 'firebase/firestore';
+import { doc, getDoc } from 'firebase/firestore';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { Copy, Check, UserPlus, Send, X, CheckCircle, Clock } from 'lucide-react';
+import { Copy, Check } from 'lucide-react';
 import { AddFriendForm } from '@/components/friends/add-friend-form';
 import { FriendRequests } from '@/components/friends/friend-requests';
 import { FriendsList } from '@/components/friends/friends-list';
+import { GridFocusLoader } from '@/components/grid-focus-loader';
+
 
 interface AppUser {
     id: string;
@@ -33,6 +35,11 @@ export default function FriendsPage() {
     useEffect(() => {
         if (isUserLoading) return;
         if (!user || user.isAnonymous) {
+            toast({
+                title: "Login Required",
+                description: "You must have an account to add friends.",
+                variant: "destructive"
+            });
             router.push('/login');
             return;
         }
@@ -55,18 +62,19 @@ export default function FriendsPage() {
         };
 
         fetchUserData();
-    }, [user, isUserLoading, firestore, router]);
+    }, [user, isUserLoading, firestore, router, toast]);
 
     const handleCopy = () => {
         navigator.clipboard.writeText(inviteCode);
         setCopied(true);
+        toast({ title: "Copied!", description: "Your invite code has been copied to the clipboard." });
         setTimeout(() => setCopied(false), 2000);
     };
 
     if (isUserLoading || !user) {
         return (
             <div className="flex items-center justify-center min-h-screen">
-                <div className="text-xl">Loading Friends...</div>
+                <GridFocusLoader />
             </div>
         );
     }
