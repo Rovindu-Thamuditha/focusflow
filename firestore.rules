@@ -28,10 +28,23 @@ service cloud.firestore {
     match /users/{userId} {
       allow read, write: if isOwner(userId);
       
-      // Rules for all subcollections within a user's document.
-      // This secures /todos, /settings, /privacy, /focusGridStates, etc.
-      match /{document=**} {
-        allow read, write: if isOwner(userId) || isAdmin();
+      // Allow authenticated users to write to another user's notifications ONLY for friend requests
+      match /notifications/{notificationId} {
+        // Allow the recipient (userId) to read and delete their own notifications
+        allow read, update, delete: if isOwner(userId);
+
+        allow create: if isSignedIn()
+                      // 1. The document type must be 'friend_request'
+                      && request.resource.data.type == 'friend_request'
+                      // 2. The recipient (path variable {userId}) is NOT the sender (request.auth.uid)
+                      && userId != request.auth.uid 
+                      // 3. The authenticated user must be the 'fromUserId' defined in the request data
+                      && request.resource.data.fromUserId == request.auth.uid; 
+      }
+      
+      // This secures all OTHER subcollections like /todos, /settings, /privacy, etc.
+      match /{subcollection}/{docId} {
+         allow read, write: if isOwner(userId);
       }
     }
     
@@ -42,7 +55,19 @@ service cloud.firestore {
      */
     match /friendships/{friendshipId} {
       allow read: if isSignedIn() && request.auth.uid in resource.data.userIds;
-      allow create: if isSignedIn() && request.resource.data.requesterId == request.auth.uid && request.resource.data.status == 'pending';
+      
+      allow create: if isSignedIn() 
+                // 1. Must be a pending status for creation
+                && request.resource.data.status == 'pending' 
+                // 2. The authenticated user must be listed as one of the two user IDs
+                && request.auth.uid in request.resource.data.userIds 
+                // 3. The authenticated user must be the explicit requester
+                && request.auth.uid == request.resource.data.requesterId
+                // 4. Validate the userIds array structure
+                && request.resource.data.userIds.size() == 2
+                // 5. User cannot send a request to themselves
+                && request.resource.data.userIds[0] != request.resource.data.userIds[1];
+
       allow update: if isSignedIn() && resource.data.status == 'pending' && request.auth.uid != resource.data.requesterId && request.auth.uid in resource.data.userIds;
       allow delete: if isSignedIn() && request.auth.uid in resource.data.userIds;
     }
