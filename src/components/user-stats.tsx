@@ -185,7 +185,6 @@ export function UserStats({ userId }: UserStatsProps) {
                                 name={subject.name} 
                                 radius={[6, 6, 0, 0]}
                                 maxBarSize={30}
-                                style={{ filter: `drop-shadow(0 2px 4px ${subject.color}66)` }}
                             />
                         ))}
                     </BarChart>
