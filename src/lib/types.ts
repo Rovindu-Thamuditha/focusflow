@@ -12,3 +12,13 @@ export interface Subject {
   icon: string;
   color: string;
 }
+
+export interface Todo {
+  id: string;
+  text: string;
+  completed: boolean;
+  createdAt: any;
+  userId: string;
+  order: number;
+  parentId: string | null;
+}
