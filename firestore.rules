@@ -21,18 +21,18 @@ service cloud.firestore {
       allow read: if isSignedIn(); // Allow any signed-in user to read user profiles (for invites)
       allow write: if isOwner(userId);
       
-      // Allow authenticated users to write to another user's notifications ONLY for friend requests
+      // Allow authenticated users to write to another user's notifications for specific types
       match /notifications/{notificationId} {
         // Allow the recipient (userId) to read and delete their own notifications
         allow read, update, delete: if isOwner(userId);
 
         allow create: if isSignedIn()
-                      // 1. The document type must be 'friend_request'
-                      && request.resource.data.type == 'friend_request'
-                      // 2. The recipient (path variable {userId}) is NOT the sender (request.auth.uid)
+                      // The recipient ({userId}) must not be the sender (request.auth.uid)
                       && userId != request.auth.uid 
-                      // 3. The authenticated user must be the 'fromUserId' defined in the request data
-                      && request.resource.data.fromUserId == request.auth.uid; 
+                      // The authenticated user must be the 'fromUserId' defined in the request data
+                      && request.resource.data.fromUserId == request.auth.uid
+                      // The type of notification must be one of the allowed cross-user types
+                      && (request.resource.data.type == 'friend_request' || request.resource.data.type == 'friend_accept');
       }
       
       // This secures all OTHER subcollections like /todos, /settings, /privacy, etc.
@@ -61,7 +61,13 @@ service cloud.firestore {
                 // 5. User cannot send a request to themselves
                 && request.resource.data.userIds[0] != request.resource.data.userIds[1];
 
-      allow update: if isSignedIn() && resource.data.status == 'pending' && request.auth.uid != resource.data.requesterId && request.auth.uid in resource.data.userIds;
+      // Allow the recipient of a pending request to update it (to 'accepted').
+      allow update: if isSignedIn() 
+                && resource.data.status == 'pending' 
+                && request.auth.uid in resource.data.userIds
+                && request.auth.uid != resource.data.requesterId
+                && request.resource.data.status == 'accepted';
+
       allow delete: if isSignedIn() && request.auth.uid in resource.data.userIds;
     }
 
