@@ -1,4 +1,4 @@
-import { LogOut, Shield, MoreVertical, BarChart2, Info, UserPlus, Users } from "lucide-react";
+import { LogOut, Shield, MoreVertical, BarChart2, Info, UserPlus, Users, User } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Icons } from "@/components/icons";
@@ -112,6 +112,12 @@ export function MainHeader({ totalFocusedTime, children }: MainHeaderProps) {
                       </div>
                     </DropdownMenuLabel>
                     <DropdownMenuSeparator />
+                     <Link href="/profile" passHref>
+                        <DropdownMenuItem>
+                            <User className="mr-2 h-4 w-4" />
+                            <span>Profile</span>
+                        </DropdownMenuItem>
+                    </Link>
                      {user.email === ADMIN_EMAIL && (
                         <Link href="/admin" passHref>
                             <DropdownMenuItem>
@@ -120,6 +126,7 @@ export function MainHeader({ totalFocusedTime, children }: MainHeaderProps) {
                             </DropdownMenuItem>
                         </Link>
                      )}
+                    <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={handleSignOut}>
                       <LogOut className="mr-2 h-4 w-4" />
                       <span>Log out</span>
@@ -144,12 +151,20 @@ export function MainHeader({ totalFocusedTime, children }: MainHeaderProps) {
                    <InfoDialog />
                  </DropdownMenuItem>
                  {!isAnonymousUser && (
-                   <Link href="/friends" passHref>
-                    <DropdownMenuItem>
-                      <Users className="mr-2 h-4 w-4" />
-                      <span>Friends</span>
-                    </DropdownMenuItem>
-                   </Link>
+                   <>
+                    <Link href="/profile" passHref>
+                        <DropdownMenuItem>
+                            <User className="mr-2 h-4 w-4" />
+                            <span>Profile</span>
+                        </DropdownMenuItem>
+                    </Link>
+                    <Link href="/friends" passHref>
+                      <DropdownMenuItem>
+                        <Users className="mr-2 h-4 w-4" />
+                        <span>Friends</span>
+                      </DropdownMenuItem>
+                    </Link>
+                   </>
                  )}
                 <DropdownMenuSeparator />
                  {isAnonymousUser ? (
