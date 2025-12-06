@@ -1,5 +1,5 @@
 
-import { LogOut, Shield, MoreVertical, BarChart2, Info, UserPlus, Users, User } from "lucide-react";
+import { LogOut, Shield, MoreVertical, BarChart2, Info, UserPlus, Users, User, BrainCircuit } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import dynamic from 'next/dynamic';
@@ -67,11 +67,18 @@ export function MainHeader({ totalFocusedTime }: MainHeaderProps) {
           </div>
           
           {!isAnonymousUser && (
-            <Link href="/friends" passHref>
-              <Button variant="ghost" size="icon" title="Friends">
-                  <Users className="h-5 w-5" />
-              </Button>
-            </Link>
+            <>
+              <Link href="/friends" passHref>
+                <Button variant="ghost" size="icon" title="Friends">
+                    <Users className="h-5 w-5" />
+                </Button>
+              </Link>
+              <Link href="/insights" passHref>
+                <Button variant="ghost" size="icon" title="AI Insights">
+                    <BrainCircuit className="h-5 w-5" />
+                </Button>
+              </Link>
+            </>
           )}
 
           <Link href="/stats" passHref>
@@ -121,6 +128,12 @@ export function MainHeader({ totalFocusedTime }: MainHeaderProps) {
                             <span>Profile</span>
                         </DropdownMenuItem>
                     </Link>
+                     <Link href="/insights" passHref>
+                        <DropdownMenuItem>
+                            <BrainCircuit className="mr-2 h-4 w-4" />
+                            <span>AI Insights</span>
+                        </DropdownMenuItem>
+                    </Link>
                      {user.email === ADMIN_EMAIL && (
                         <Link href="/admin" passHref>
                             <DropdownMenuItem>
@@ -166,6 +179,12 @@ export function MainHeader({ totalFocusedTime }: MainHeaderProps) {
                         <Users className="mr-2 h-4 w-4" />
                         <span>Friends</span>
                       </DropdownMenuItem>
+                    </Link>
+                    <Link href="/insights" passHref>
+                        <DropdownMenuItem>
+                            <BrainCircuit className="mr-2 h-4 w-4" />
+                            <span>AI Insights</span>
+                        </DropdownMenuItem>
                     </Link>
                    </>
                  )}

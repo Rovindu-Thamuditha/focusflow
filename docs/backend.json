@@ -314,6 +314,30 @@
         "content",
         "publishedAt"
       ]
+    },
+    "StudyInsight": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "StudyInsight",
+        "type": "object",
+        "description": "Stores a cached AI-generated analysis of a user's study data.",
+        "properties": {
+            "id": { "type": "string", "description": "Unique ID for the insight, typically the generation date (YYYY-MM-DD)." },
+            "userId": { "type": "string", "description": "The ID of the user this insight belongs to." },
+            "generatedAt": { "type": "string", "format": "date-time", "description": "Timestamp of when the insight was generated." },
+            "analysis": {
+                "type": "object",
+                "properties": {
+                    "focusStreak": { "type": "number", "description": "Current number of consecutive days with focused time." },
+                    "keyInsight": { "type": "string", "description": "The main insight or trend identified by the AI." },
+                    "suggestions": {
+                        "type": "array",
+                        "items": { "type": "string" },
+                        "description": "A list of actionable suggestions from the AI."
+                    }
+                }
+            }
+        },
+        "required": ["id", "userId", "generatedAt", "analysis"]
     }
   },
   "auth": {
@@ -476,6 +500,20 @@
               "name": "whatsNewId",
               "description": "The unique identifier of the announcement."
             }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/insights/{insightId}",
+        "definition": {
+          "entityName": "StudyInsight",
+          "schema": {
+            "$ref": "#/backend/entities/StudyInsight"
+          },
+          "description": "Stores cached AI-generated study insights for a user. Path-based ownership ensures privacy.",
+          "params": [
+            { "name": "userId" },
+            { "name": "insightId", "description": "Typically the date of generation in YYYY-MM-DD format." }
           ]
         }
       }
