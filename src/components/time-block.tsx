@@ -97,20 +97,6 @@ export function TimeBlock({
     }
   }
 
-  const dailySummary = React.useMemo(() => {
-    const summary = {
-      totalMinutes: 0,
-      subjectMinutes: {} as { [subjectId: string]: number }
-    };
-    allDayBlocks.forEach(block => {
-        if (block.subject !== 'idle' && block.subject !== 'sleep' && block.duration > 0) {
-            summary.totalMinutes += block.duration;
-            summary.subjectMinutes[block.subject] = (summary.subjectMinutes[block.subject] || 0) + block.duration;
-        }
-    });
-    return summary;
-  }, [allDayBlocks]);
-
   const blockButton = (
       <button
         onClick={handleBlockClick}
@@ -145,62 +131,36 @@ export function TimeBlock({
   );
 
   return (
-    <TooltipProvider delayDuration={100}>
-        <ContextMenu>
-            <Tooltip>
-                <TooltipTrigger asChild>
-                    <ContextMenuTrigger className="aspect-square w-full h-full">{blockButton}</ContextMenuTrigger>
-                </TooltipTrigger>
-                <TooltipContent className="p-2 text-xs">
-                    <div className="flex items-center gap-2 mb-2 pb-2 border-b">
-                    <Icon className="w-4 h-4" style={{color: subject.color}} />
-                    <div className="flex-grow">
-                        <p className="font-semibold">{isBeingTimed ? activeTimerSubject?.name : subject.name}</p>
-                        <p className="text-muted-foreground">{`Duration: ${duration} minutes`}</p>
-                    </div>
-                    {isBeingTimed && <p className="text-xs text-red-500 font-semibold animate-pulse">Live</p>}
-                    </div>
-                    
-                    <div className="font-semibold mb-1 text-foreground">Daily Summary</div>
-                    <div className="space-y-1">
-                        {Object.entries(dailySummary.subjectMinutes).map(([subjectId, minutes]) => {
-                            const subj = subjects.find(s => s.id === subjectId);
-                            if (!subj) return null;
-                            return (
-                                <div key={subjectId} className="flex items-center justify-between">
-                                    <div className="flex items-center gap-1.5">
-                                        <span className="w-2 h-2 rounded-full" style={{ backgroundColor: subj.color }}></span>
-                                        <span>{subj.name}:</span>
-                                    </div>
-                                    <span className="font-medium ml-2">{formatHoursAndMinutes(minutes)}</span>
-                                </div>
-                            )
-                        })}
-                    </div>
-
-                    <div className="border-t my-2"></div>
-                    <div className="flex items-center justify-between font-bold text-foreground">
-                        <span className="flex items-center gap-1.5"><Timer className="w-3.5 h-3.5" />Total Focus:</span>
-                        <span>{formatHoursAndMinutes(dailySummary.totalMinutes)}</span>
-                    </div>
-
-                </TooltipContent>
-            </Tooltip>
-            <ContextMenuContent>
-                {finalIsEditable && isSleep && (
-                        <ContextMenuItem onClick={() => onStateChange('idle', 0)}>
-                            <Sun className="mr-2 h-4 w-4" />
-                            <span>Wake Up</span>
-                        </ContextMenuItem>
-                )}
-                {finalIsEditable && !isSleep && (
-                    <ContextMenuItem onClick={() => onStateChange('sleep', 0)}>
-                        <Bed className="mr-2 h-4 w-4" />
-                        <span>Mark as Sleep</span>
+      <ContextMenu>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <ContextMenuTrigger className="aspect-square w-full h-full">{blockButton}</ContextMenuTrigger>
+          </TooltipTrigger>
+          <TooltipContent className="p-2 text-xs">
+              <div className="flex items-center gap-2">
+              <Icon className="w-4 h-4" style={{color: subject.color}} />
+              <div className="flex-grow">
+                  <p className="font-semibold">{isBeingTimed ? activeTimerSubject?.name : subject.name}</p>
+                  <p className="text-muted-foreground">{`Duration: ${duration} minutes`}</p>
+              </div>
+              {isBeingTimed && <p className="text-xs text-red-500 font-semibold animate-pulse">Live</p>}
+              </div>
+          </TooltipContent>
+        </Tooltip>
+        <ContextMenuContent>
+            {finalIsEditable && isSleep && (
+                    <ContextMenuItem onClick={() => onStateChange('idle', 0)}>
+                        <Sun className="mr-2 h-4 w-4" />
+                        <span>Wake Up</span>
                     </ContextMenuItem>
-                )}
-            </ContextMenuContent>
-        </ContextMenu>
-    </TooltipProvider>
+            )}
+            {finalIsEditable && !isSleep && (
+                <ContextMenuItem onClick={() => onStateChange('sleep', 0)}>
+                    <Bed className="mr-2 h-4 w-4" />
+                    <span>Mark as Sleep</span>
+                </ContextMenuItem>
+            )}
+        </ContextMenuContent>
+    </ContextMenu>
   );
 }
