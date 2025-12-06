@@ -1,6 +1,8 @@
+
 import { LogOut, Shield, MoreVertical, BarChart2, Info, UserPlus, Users, User } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import dynamic from 'next/dynamic';
 import { Icons } from "@/components/icons";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { TotalFocusTime } from "@/components/total-focus-time";
@@ -16,7 +18,8 @@ import {
 import { useUser, useAuth } from "@/firebase";
 import { InfoDialog } from "./info-dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
-import { CurrentTime } from "./current-time";
+
+const CurrentTime = dynamic(() => import('./current-time').then(mod => mod.CurrentTime), { ssr: false });
 
 const ADMIN_EMAIL = 'rovinduthamu@gmail.com';
 
