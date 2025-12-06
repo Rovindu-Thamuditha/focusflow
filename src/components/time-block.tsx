@@ -6,6 +6,22 @@ import { Book, Zap, Coffee, Bed, Sparkles, BrainCircuit, FlaskConical, Dna, Code
 import type { Subject, TimeBlockState } from "@/lib/types";
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger } from "@/components/ui/context-menu";
+import { TooltipProvider } from '@/components/ui/tooltip'
+
+export default function Page() {
+  return (
+    <TooltipProvider>
+      <AccountabilityGrid
+        blocks={blocks}
+        subjects={subjects}
+        onBlockUpdate={handleBlockUpdate}
+        viewingDate={viewingDate}
+        liveTime={liveTime}
+      />
+    </TooltipProvider>
+  )
+}
+
 
 interface TimeBlockProps {
   hour: number;
