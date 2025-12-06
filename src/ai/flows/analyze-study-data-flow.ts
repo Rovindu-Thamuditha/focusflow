@@ -9,9 +9,7 @@
 
 import { ai } from '@/ai/genkit';
 import { z } from 'zod';
-import { firestoreAdmin } from '@/firebase/server-init';
 import type { DailySummary, Subject } from '@/lib/types';
-import { defaultSubjects } from '@/lib/subjects';
 import { format } from 'date-fns';
 
 // Define the structured output we expect from the AI model.
@@ -24,7 +22,9 @@ export type StudyAnalysisOutput = z.infer<typeof StudyAnalysisOutputSchema>;
 
 // Define the input for the flow.
 const StudyAnalysisInputSchema = z.object({
-  userId: z.string().describe("The ID of the user to analyze."),
+  summaries: z.string().describe("A JSON string of the user's daily study summaries for the last 30 days."),
+  subjects: z.string().describe("A JSON string of the user's custom subject configuration."),
+  currentDate: z.string().describe("The current date in YYYY-MM-DD format."),
 });
 export type StudyAnalysisInput = z.infer<typeof StudyAnalysisInputSchema>;
 
@@ -32,13 +32,7 @@ export type StudyAnalysisInput = z.infer<typeof StudyAnalysisInputSchema>;
 // The main prompt for the AI model.
 const analysisPrompt = ai.definePrompt({
   name: 'studyAnalysisPrompt',
-  input: {
-    schema: z.object({
-      summaries: z.string().describe("A JSON string of the user's daily study summaries for the last 30 days."),
-      subjects: z.string().describe("A JSON string of the user's custom subject configuration."),
-      currentDate: z.string().describe("The current date in YYYY-MM-DD format."),
-    }),
-  },
+  input: { schema: StudyAnalysisInputSchema },
   output: { schema: StudyAnalysisOutputSchema },
   prompt: `You are an expert study coach named 'FocusFlow AI'. Your goal is to analyze a student's study data to provide encouraging, actionable insights.
 
@@ -67,19 +61,8 @@ const analyzeStudyDataFlow = ai.defineFlow(
     outputSchema: StudyAnalysisOutputSchema,
   },
   async (input) => {
-    // 1. Fetch user's custom subjects
-    const userDocRef = firestoreAdmin.doc(`users/${input.userId}`);
-    const userDoc = await userDocRef.get();
-    const userSubjects: Subject[] = userDoc.exists ? (userDoc.data()?.settings?.subjects || defaultSubjects) : defaultSubjects;
-
-    // 2. Fetch last 30 days of daily summaries
-    const summariesRef = firestoreAdmin.collection(`users/${input.userId}/daily_summaries`);
-    const q = summariesRef.orderBy('date', 'desc').limit(30);
-    const summarySnapshot = await q.get();
-    const summaries: DailySummary[] = summarySnapshot.docs.map(d => d.data() as DailySummary);
-
-    if (summaries.length === 0) {
-      // Handle case with no data to analyze
+    // If there's no data, provide a welcome/initial message.
+    if (JSON.parse(input.summaries).length === 0) {
       return {
         focusStreak: 0,
         keyInsight: "Welcome! I'm ready to analyze your study habits.",
@@ -87,12 +70,8 @@ const analyzeStudyDataFlow = ai.defineFlow(
       };
     }
     
-    // 3. Call the AI model with the prepared data
-    const { output } = await analysisPrompt({
-        summaries: JSON.stringify(summaries),
-        subjects: JSON.stringify(userSubjects.filter(s => s.id !== 'idle' && s.id !== 'sleep')),
-        currentDate: format(new Date(), 'yyyy-MM-dd')
-    });
+    // Call the AI model with the prepared data
+    const { output } = await analysisPrompt(input);
 
     if (!output) {
       throw new Error('The AI model did not return a valid analysis.');

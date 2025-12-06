@@ -1,18 +1,18 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
-import { doc, setDoc, serverTimestamp, getDoc } from 'firebase/firestore';
+import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { doc, setDoc, serverTimestamp, getDoc, getDocs, collection, query, orderBy, limit } from 'firebase/firestore';
 import { MainHeader } from '@/components/main-header';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { GridFocusLoader } from '@/components/grid-focus-loader';
 import { StudyInsights } from '@/components/study-insights';
 import { analyzeStudyData, type StudyAnalysisOutput } from '@/ai/flows/analyze-study-data-flow';
-import type { TimeBlockState } from '@/lib/types';
+import type { DailySummary, Subject } from '@/lib/types';
 import { format, subDays } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
+import { defaultSubjects } from '@/lib/subjects';
 
 interface StudyInsightCache {
     id: string;
@@ -38,15 +38,33 @@ export default function InsightsPage() {
         return doc(firestore, 'users', user.uid, 'insights', todayStr);
     }, [user, firestore, todayStr]);
 
+    // Fetch last 30 days of daily summaries
+    const summariesQuery = useMemoFirebase(() => {
+        if (!user || user.isAnonymous || !firestore) return null;
+        const startDate = subDays(new Date(), 30);
+        return query(
+            collection(firestore, 'users', user.uid, 'daily_summaries'),
+            where('date', '>=', format(startDate, 'yyyy-MM-dd')),
+            orderBy('date', 'desc'),
+            limit(30)
+        );
+    }, [user, firestore]);
+    const { data: dailySummaries, isLoading: summariesLoading } = useCollection<DailySummary>(summariesQuery, { realtime: false });
+
     useEffect(() => {
         if (isUserLoading) return;
         if (!user || user.isAnonymous) {
             router.push('/login');
             return;
         }
+        
+        // Wait until summaries are loaded before proceeding
+        if (summariesLoading) {
+            return;
+        }
 
         const getInsights = async () => {
-            if (!user || !insightDocRef) return;
+            if (!user || !insightDocRef || !firestore) return;
             
             setIsLoading(true);
             try {
@@ -59,7 +77,17 @@ export default function InsightsPage() {
                 } else {
                     // No cache found, generate a new one
                     toast({ title: "Generating your analysis...", description: "This may take a moment. Please wait." });
-                    const newAnalysis = await analyzeStudyData({ userId: user.uid });
+                    
+                    // Fetch user settings to get custom subjects
+                    const userDocRef = doc(firestore, 'users', user.uid);
+                    const userDoc = await getDoc(userDocRef);
+                    const userSubjects = userDoc.exists() ? (userDoc.data().settings?.subjects || defaultSubjects) : defaultSubjects;
+
+                    const newAnalysis = await analyzeStudyData({ 
+                        subjects: JSON.stringify(userSubjects.filter(s => s.id !== 'idle' && s.id !== 'sleep')),
+                        summaries: JSON.stringify(dailySummaries || []),
+                        currentDate: format(new Date(), 'yyyy-MM-dd')
+                    });
                     
                     // Cache the new analysis in Firestore
                     await setDoc(insightDocRef, {
@@ -84,9 +112,9 @@ export default function InsightsPage() {
         };
 
         getInsights();
-    }, [user, isUserLoading, router, insightDocRef, todayStr, toast]);
+    }, [user, isUserLoading, router, insightDocRef, todayStr, toast, dailySummaries, summariesLoading, firestore]);
 
-    if (isUserLoading || isLoading) {
+    if (isUserLoading || isLoading || summariesLoading) {
         return (
             <div className="flex flex-col items-center justify-center min-h-screen">
                 <GridFocusLoader />
