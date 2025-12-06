@@ -6,6 +6,7 @@ import { TimeBlock } from './time-block';
 import { LogTimeDialog } from './log-time-dialog';
 import type { TimeBlockState, Subject } from '@/lib/types';
 import { differenceInHours, format, isToday } from 'date-fns';
+import { useTimer } from '@/context/timer-context';
 
 interface AccountabilityGridProps {
   blocks: TimeBlockState[];
@@ -13,11 +14,13 @@ interface AccountabilityGridProps {
   onBlockUpdate: (hour: number, subject: string, duration: number) => void;
   viewingDate: Date;
   liveTime: Date;
-  activeTimerSubject: Subject | null;
 }
 
-export function AccountabilityGrid({ blocks, subjects, onBlockUpdate, viewingDate, liveTime, activeTimerSubject }: AccountabilityGridProps) {
+export function AccountabilityGrid({ blocks, subjects, onBlockUpdate, viewingDate, liveTime }: AccountabilityGridProps) {
   const [selectedBlock, setSelectedBlock] = useState<TimeBlockState | null>(null);
+  const { timerIsRunning, timerSubject } = useTimer();
+  const activeTimerSubjectInfo = timerIsRunning ? subjects.find(s => s.id === timerSubject) : null;
+
 
   const isEditableDate = differenceInHours(new Date(), viewingDate) <= 36;
   const isViewingToday = isToday(viewingDate);
@@ -73,7 +76,7 @@ export function AccountabilityGrid({ blocks, subjects, onBlockUpdate, viewingDat
                 isFuture={isFutureBlock}
                 isCurrent={isCurrentBlock}
                 liveTime={liveTime}
-                activeTimerSubject={isCurrentBlock && activeTimerSubject ? activeTimerSubject : null}
+                activeTimerSubject={isCurrentBlock && activeTimerSubjectInfo ? activeTimerSubjectInfo : null}
               />
             );
         })}

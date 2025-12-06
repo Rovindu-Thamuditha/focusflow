@@ -36,6 +36,7 @@ import { FloatingTimer } from '@/components/floating-timer';
 import { WhatsNewDialog } from '@/components/whats-new-dialog';
 import { OnboardingDialog } from '@/components/onboarding-dialog';
 import { useToast } from '@/hooks/use-toast';
+import { useTimer } from '@/context/timer-context';
 import { Inter } from 'next/font/google';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-sans' });
@@ -60,6 +61,8 @@ export default function Home() {
   const firestore = useFirestore();
   const router = useRouter();
   const { toast } = useToast();
+  const { timerSubject, elapsedSeconds, lastStopTime, timerIsRunning, stopTimer } = useTimer();
+
   const [currentDate, setCurrentDate] = useState(startOfDay(new Date()));
   const [liveTime, setLiveTime] = useState(new Date());
   const [timeBlocks, setTimeBlocks] = useState<TimeBlockState[]>([]);
@@ -80,12 +83,6 @@ export default function Home() {
   const [enableTimer, setEnableTimer] = useState(true);
   const [enableDailyChallenge, setEnableDailyChallenge] = useState(true);
   const [enableTodoList, setEnableTodoList] = useState(true);
-
-  // Timer State
-  const [timerIsRunning, setTimerIsRunning] = useState(false);
-  const [timerSubject, setTimerSubject] = useState<string>(defaultSubjects[0]?.id || 'math');
-  const [elapsedSeconds, setElapsedSeconds] = useState(0);
-  const [timerIntervalId, setTimerIntervalId] = useState<NodeJS.Timeout | null>(null);
   
   const userDocRef = useMemoFirebase(() => user && !user.isAnonymous ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
 
@@ -318,61 +315,43 @@ export default function Home() {
 
   }, [timeBlocks, solvedChallenges, questionIndex, sleepHours, subjects, language, userName, currentDate, user, userDocRef, firestore, isClient, userDataLoaded, enableTimer, enableDailyChallenge, enableTodoList, showOnboarding]);
   
-  // Timer effect
+  // Effect to save timer data when it stops
   useEffect(() => {
-    let timerHour = new Date().getHours();
+    if (!timerIsRunning && lastStopTime) {
+        const stoppedAt = new Date(lastStopTime);
+        const totalMinutes = Math.floor(elapsedSeconds / 60);
 
-    if (timerIsRunning) {
-        const interval = setInterval(() => {
-            const now = new Date();
-            const currentHour = now.getHours();
+        // Distribute minutes across relevant hour blocks
+        setTimeBlocks(currentBlocks => {
+            let newBlocks = [...currentBlocks];
+            let minutesToDistribute = totalMinutes;
+            let currentTime = new Date(stoppedAt);
 
-            setElapsedSeconds(prev => prev + 1);
+            while (minutesToDistribute > 0) {
+                const currentHour = currentTime.getHours();
+                const currentBlockIndex = newBlocks.findIndex(b => b.hour === currentHour && format(new Date(b.date), 'yyyy-MM-dd') === format(currentTime, 'yyyy-MM-dd'));
+                
+                if (currentBlockIndex !== -1) {
+                    const block = newBlocks[currentBlockIndex];
+                    const minutesInThisHour = currentTime.getMinutes();
+                    const distributable = Math.min(minutesToDistribute, minutesInThisHour);
+                    
+                    const newDuration = Math.min(block.duration + distributable, 60);
+                    newBlocks[currentBlockIndex] = { ...block, duration: newDuration, subject: timerSubject };
 
-            // If the hour has changed, allocate remaining time of previous hour
-            if (currentHour !== timerHour) {
-                const minutesInPreviousHour = 60 - now.getMinutes();
-                setTimeBlocks(currentBlocks =>
-                    currentBlocks.map(block => {
-                        if (block.hour === timerHour) {
-                             const newDuration = Math.min(block.duration + minutesInPreviousHour, 60);
-                             return { ...block, duration: newDuration, subject: timerSubject };
-                        }
-                        return block;
-                    })
-                );
-                // Update the timer's hour to the new current hour
-                timerHour = currentHour;
+                    minutesToDistribute -= distributable;
+                }
+                // Move back one hour
+                currentTime.setHours(currentTime.getHours() - 1);
             }
+            return newBlocks;
+        });
 
-            // Update current hour's block every minute
-            if (now.getSeconds() === 0) {
-                 setTimeBlocks(currentBlocks =>
-                    currentBlocks.map(block => {
-                        if (block.hour === currentHour) {
-                             const newDuration = Math.min(block.duration + 1, 60);
-                             return { ...block, duration: newDuration, subject: timerSubject };
-                        }
-                        return block;
-                    })
-                );
-            }
-        }, 1000);
-        setTimerIntervalId(interval);
-        
-        // Set initial subject on start
-        setTimeBlocks(currentBlocks =>
-            currentBlocks.map(block =>
-                block.hour === timerHour ? { ...block, subject: timerSubject } : block
-            )
-        );
-
-        return () => clearInterval(interval);
-    } else if (timerIntervalId) {
-        clearInterval(timerIntervalId);
-        setTimerIntervalId(null);
+        // Potentially trigger a refresh if the day changed
+        loadDayData(currentDate);
     }
-  }, [timerIsRunning, timerSubject]);
+  }, [timerIsRunning, lastStopTime, elapsedSeconds, timerSubject, loadDayData, currentDate]);
+
 
   const handleBlockUpdate = (hour: number, subject: string, duration: number) => {
     setTimeBlocks(currentBlocks =>
@@ -499,8 +478,6 @@ export default function Home() {
     );
   }
 
-  const activeTimerSubjectInfo = timerIsRunning ? subjects.find(s => s.id === timerSubject) : null;
-
   return (
     <div className={`flex flex-col min-h-screen ${inter.variable} font-body`}>
       <MainHeader totalFocusedTime={totalFocusedTime}>
@@ -542,7 +519,6 @@ export default function Home() {
                 onBlockUpdate={handleBlockUpdate}
                 viewingDate={currentDate}
                 liveTime={liveTime}
-                activeTimerSubject={activeTimerSubjectInfo}
               />
             </CardContent>
           </Card>
@@ -588,12 +564,6 @@ export default function Home() {
       {enableTimer && (
         <FloatingTimer
             subjects={subjects}
-            isRunning={timerIsRunning}
-            setIsRunning={setTimerIsRunning}
-            subject={timerSubject}
-            setSubject={setTimerSubject}
-            elapsedSeconds={elapsedSeconds}
-            setElapsedSeconds={setElapsedSeconds}
         />
       )}
       <FeedbackDialog isOpen={isFeedbackDialogOpen} onOpenChange={setIsFeedbackDialogOpen} />

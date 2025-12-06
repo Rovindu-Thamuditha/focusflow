@@ -27,37 +27,34 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import type { Subject } from '@/lib/types';
 import { cn } from '@/lib/utils';
+import { useTimer } from '@/context/timer-context';
 
 interface FloatingTimerProps {
   subjects: Subject[];
-  isRunning: boolean;
-  setIsRunning: (isRunning: boolean) => void;
-  subject: string;
-  setSubject: (subjectId: string) => void;
-  elapsedSeconds: number;
-  setElapsedSeconds: (seconds: number) => void;
 }
 
 export function FloatingTimer({
   subjects,
-  isRunning,
-  setIsRunning,
-  subject,
-  setSubject,
-  elapsedSeconds,
-  setElapsedSeconds,
 }: FloatingTimerProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isAlertOpen, setIsAlertOpen] = useState(false);
+  
+  const { 
+    timerIsRunning, 
+    elapsedSeconds, 
+    timerSubject, 
+    setTimerSubject,
+    startTimer,
+    stopTimer 
+  } = useTimer();
 
   const handleStart = () => {
-    setElapsedSeconds(0); // Reset on new start
-    setIsRunning(true);
+    startTimer();
     setIsDialogOpen(false);
   };
   
   const handleStopConfirm = () => {
-    setIsRunning(false);
+    stopTimer();
     setIsAlertOpen(false);
     setIsDialogOpen(false);
   };
@@ -70,7 +67,7 @@ export function FloatingTimer({
   };
   
   const filteredSubjects = subjects.filter(s => s.id !== 'idle' && s.id !== 'sleep');
-  const activeSubject = subjects.find(s => s.id === subject);
+  const activeSubject = subjects.find(s => s.id === timerSubject);
 
   return (
     <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
@@ -79,18 +76,18 @@ export function FloatingTimer({
             variant="default"
             className={cn(
                 "fixed bottom-4 right-4 h-14 w-14 rounded-full shadow-lg z-50 text-white",
-                isRunning ? 'bg-red-500 hover:bg-red-600 animate-pulse' : 'bg-primary hover:bg-primary/90'
+                timerIsRunning ? 'bg-red-500 hover:bg-red-600 animate-pulse' : 'bg-primary hover:bg-primary/90'
             )}
-            title={isRunning ? 'View Focus Timer' : 'Start Focus Timer'}
+            title={timerIsRunning ? 'View Focus Timer' : 'Start Focus Timer'}
         >
           <Timer className="h-6 w-6" />
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>{isRunning ? 'Focus Session In Progress' : 'Start New Focus Session'}</DialogTitle>
+          <DialogTitle>{timerIsRunning ? 'Focus Session In Progress' : 'Start New Focus Session'}</DialogTitle>
           <DialogDescription>
-            {isRunning 
+            {timerIsRunning 
                 ? `Tracking time for: ${activeSubject?.name || '...'}`
                 : 'Select a subject to begin tracking your focus time.'
             }
@@ -98,7 +95,7 @@ export function FloatingTimer({
         </DialogHeader>
         
         <div className="grid gap-4 py-4">
-          <Select onValueChange={setSubject} defaultValue={subject} disabled={isRunning}>
+          <Select onValueChange={setTimerSubject} defaultValue={timerSubject} disabled={timerIsRunning}>
             <SelectTrigger>
               <SelectValue placeholder="Select a subject" />
             </SelectTrigger>
@@ -117,7 +114,7 @@ export function FloatingTimer({
         </div>
         
         <DialogFooter>
-          {isRunning ? (
+          {timerIsRunning ? (
              <AlertDialog open={isAlertOpen} onOpenChange={setIsAlertOpen}>
                 <AlertDialogTrigger asChild>
                     <Button className="w-full bg-red-500 hover:bg-red-600">

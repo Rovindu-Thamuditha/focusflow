@@ -7,6 +7,7 @@ import { ThemeProvider } from '@/components/providers';
 import { Toaster } from "@/components/ui/toaster"
 import { FirebaseClientProvider } from '@/firebase/client-provider';
 import { SpeedInsights } from '@vercel/speed-insights/next';
+import { TimerProvider } from '@/context/timer-context';
 
 import 'katex/dist/katex.min.css';
 
@@ -43,8 +44,10 @@ export default function RootLayout({
                 enableSystem
                 disableTransitionOnChange
             >
+              <TimerProvider>
                 {children}
-                <Toaster />
+              </TimerProvider>
+              <Toaster />
             </ThemeProvider>
         </FirebaseClientProvider>
         <SpeedInsights />
