@@ -14,7 +14,7 @@ import type { Subject } from '@/lib/types';
 import { ALL_ICONS } from '@/lib/icons';
 import { Switch } from '@/components/ui/switch';
 import { FeedbackDialog } from './feedback-dialog';
-import { useDoc, useFirestore, useUser } from '@/firebase';
+import { useDoc, useFirestore, useUser, useMemoFirebase } from '@/firebase';
 import { doc, setDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 
@@ -68,7 +68,11 @@ export function SettingsDialog({
   const [enableTodoList, setEnableTodoList] = useState(initialEnableTodoList);
 
   // Privacy Settings
-  const privacySettingsRef = user && !user.isAnonymous ? doc(firestore, 'users', user.uid, 'privacy', 'settings') : null;
+  const privacySettingsRef = useMemoFirebase(() => {
+    if (!user || user.isAnonymous || !firestore) return null;
+    return doc(firestore, 'users', user.uid, 'privacy', 'settings');
+  }, [user, firestore]);
+
   const { data: initialPrivacySettings } = useDoc<PrivacySettings>(privacySettingsRef);
   
   const [shareTotalFocusTime, setShareTotalFocusTime] = useState(false);
