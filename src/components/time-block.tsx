@@ -131,36 +131,39 @@ export function TimeBlock({
   );
 
   return (
-      <ContextMenu>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <ContextMenuTrigger className="aspect-square w-full h-full">{blockButton}</ContextMenuTrigger>
-          </TooltipTrigger>
-          <TooltipContent className="p-2 text-xs">
-              <div className="flex items-center gap-2">
-              <Icon className="w-4 h-4" style={{color: subject.color}} />
-              <div className="flex-grow">
-                  <p className="font-semibold">{isBeingTimed ? activeTimerSubject?.name : subject.name}</p>
-                  <p className="text-muted-foreground">{`Duration: ${duration} minutes`}</p>
-              </div>
-              {isBeingTimed && <p className="text-xs text-red-500 font-semibold animate-pulse">Live</p>}
-              </div>
-          </TooltipContent>
-        </Tooltip>
-        <ContextMenuContent>
-            {finalIsEditable && isSleep && (
-                    <ContextMenuItem onClick={() => onStateChange('idle', 0)}>
-                        <Sun className="mr-2 h-4 w-4" />
-                        <span>Wake Up</span>
-                    </ContextMenuItem>
-            )}
-            {finalIsEditable && !isSleep && (
-                <ContextMenuItem onClick={() => onStateChange('sleep', 0)}>
-                    <Bed className="mr-2 h-4 w-4" />
-                    <span>Mark as Sleep</span>
-                </ContextMenuItem>
-            )}
-        </ContextMenuContent>
+    <ContextMenu>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <ContextMenuTrigger asChild>
+            {blockButton}
+          </ContextMenuTrigger>
+        </TooltipTrigger>
+        <TooltipContent className="p-2 text-xs">
+          <div className="flex items-center gap-2">
+            <Icon className="w-4 h-4" style={{color: subject.color}} />
+            <div className="flex-grow">
+              <p className="font-semibold">{isBeingTimed ? activeTimerSubject?.name : subject.name}</p>
+              {!isSleep && <p className="text-muted-foreground">{`Duration: ${duration} minutes`}</p>}
+            </div>
+            {isBeingTimed && <p className="text-xs text-red-500 font-semibold animate-pulse">Live</p>}
+          </div>
+        </TooltipContent>
+      </Tooltip>
+      <ContextMenuContent>
+          {finalIsEditable && isSleep && (
+                  <ContextMenuItem onClick={() => onStateChange('idle', 0)}>
+                      <Sun className="mr-2 h-4 w-4" />
+                      <span>Wake Up</span>
+                  </ContextMenuItem>
+          )}
+          {finalIsEditable && !isSleep && (
+              <ContextMenuItem onClick={() => onStateChange('sleep', 0)}>
+                  <Bed className="mr-2 h-4 w-4" />
+                  <span>Mark as Sleep</span>
+              </ContextMenuItem>
+          )}
+      </ContextMenuContent>
     </ContextMenu>
   );
 }
+
