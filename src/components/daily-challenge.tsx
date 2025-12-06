@@ -1,7 +1,7 @@
 
 "use client"
 
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { Trophy, ArrowRight, ArrowLeft } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -28,7 +28,7 @@ const subjectColors: Record<string, string> = {
   'Biology': 'text-green-400',
 };
 
-export function DailyChallenge({ question, isSolved, onSolveChange, language, isToday, questionIndex, setQuestionIndex, totalQuestions }: DailyChallengeProps) {
+const DailyChallengeMemo = ({ question, isSolved, onSolveChange, language, isToday, questionIndex, setQuestionIndex, totalQuestions }: DailyChallengeProps) => {
     
   const questionText = language === 'sinhala' && question.question_sinhala ? question.question_sinhala : question.question;
 
@@ -101,3 +101,5 @@ export function DailyChallenge({ question, isSolved, onSolveChange, language, is
     </Card>
   );
 }
+
+export const DailyChallenge = React.memo(DailyChallengeMemo);

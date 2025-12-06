@@ -381,15 +381,15 @@ export default function Home() {
   }, [timerIsRunning, lastStopTime, elapsedSeconds, timerSubject, loadDayData, currentDate]);
 
 
-  const handleBlockUpdate = (hour: number, subject: string, duration: number) => {
+  const handleBlockUpdate = useCallback((hour: number, subject: string, duration: number) => {
     setTimeBlocks(currentBlocks =>
       currentBlocks.map(block =>
         block.hour === hour ? { ...block, subject, duration, date: format(currentDate, 'yyyy-MM-dd') } : block
       )
     );
-  };
+  }, [currentDate]);
 
-  const handleGridReset = (newSleepHours: number[]) => {
+  const handleGridReset = useCallback((newSleepHours: number[]) => {
     setTimeBlocks(currentBlocks => {
         const newGrid = createInitialState(newSleepHours, currentDate);
         return newGrid.map(newBlock => {
@@ -399,25 +399,25 @@ export default function Home() {
             return newBlock;
         });
     });
-  };
+  }, [currentDate]);
 
-  const handleResetDay = () => {
+  const handleResetDay = useCallback(() => {
     setTimeBlocks(createInitialState(sleepHours, currentDate));
-  };
+  }, [sleepHours, currentDate]);
 
-  const changeDay = (offset: number) => {
+  const changeDay = useCallback((offset: number) => {
     const newDate = startOfDay(offset > 0 ? addDays(currentDate, offset) : subDays(currentDate, -offset));
     if (isFuture(newDate)) return;
     setCurrentDate(newDate);
-  };
+  }, [currentDate]);
 
-  const handleSolveChange = (solved: boolean) => {
+  const handleSolveChange = useCallback((solved: boolean) => {
     const newSolvedChallenges = [...solvedChallenges];
     newSolvedChallenges[questionIndex] = solved;
     setSolvedChallenges(newSolvedChallenges);
-  };
+  }, [solvedChallenges, questionIndex]);
   
-  const handleSettingsSave = (newSettings: any) => {
+  const handleSettingsSave = useCallback((newSettings: any) => {
     const oldSleepHours = [...sleepHours];
     
     setSubjects(newSettings.subjects);
@@ -430,9 +430,9 @@ export default function Home() {
     if (JSON.stringify(oldSleepHours.sort()) !== JSON.stringify([...newSettings.sleepHours].sort())) {
       handleGridReset(newSettings.sleepHours);
     }
-  };
+  }, [sleepHours, handleGridReset]);
 
-  const handleOnboardingFinish = async (newSettings: any) => {
+  const handleOnboardingFinish = useCallback(async (newSettings: any) => {
     handleSettingsSave(newSettings);
     if(userDocRef) {
       try {
@@ -448,9 +448,9 @@ export default function Home() {
       localStorage.setItem('gridFocusSettings', JSON.stringify(localSettings));
     }
     setShowOnboarding(false);
-  }
+  }, [userDocRef, user, handleSettingsSave]);
 
-  const markWhatsNewAsSeen = async (version: string) => {
+  const markWhatsNewAsSeen = useCallback(async (version: string) => {
     if (!userDocRef) return;
     try {
         await setDoc(userDocRef, { seenWhatsNewVersions: arrayUnion(version) }, { merge: true });
@@ -458,7 +458,7 @@ export default function Home() {
     } catch (e) {
         console.error("Error marking What's New as seen:", e);
     }
-  };
+  }, [userDocRef]);
 
   const totalFocusedTime = useMemo(() => {
     if (!timeBlocks) return 0;

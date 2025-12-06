@@ -1,7 +1,7 @@
 
 "use client"
 
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { TimeBlock } from './time-block';
 import { LogTimeDialog } from './log-time-dialog';
 import type { TimeBlockState, Subject } from '@/lib/types';
@@ -16,7 +16,7 @@ interface AccountabilityGridProps {
   liveTime: Date;
 }
 
-export function AccountabilityGrid({ blocks, subjects, onBlockUpdate, viewingDate, liveTime }: AccountabilityGridProps) {
+const AccountabilityGridMemo = ({ blocks, subjects, onBlockUpdate, viewingDate, liveTime }: AccountabilityGridProps) => {
   const [selectedBlock, setSelectedBlock] = useState<TimeBlockState | null>(null);
   const { timerIsRunning, timerSubject } = useTimer();
   const activeTimerSubjectInfo = timerIsRunning ? subjects.find(s => s.id === timerSubject) : null;
@@ -93,3 +93,5 @@ export function AccountabilityGrid({ blocks, subjects, onBlockUpdate, viewingDat
     </div>
   );
 }
+
+export const AccountabilityGrid = React.memo(AccountabilityGridMemo);
