@@ -9,36 +9,40 @@ interface TotalFocusTimeProps {
 }
 
 export function TotalFocusTime({ totalHours }: TotalFocusTimeProps) {
-  const [displayHours, setDisplayHours] = useState(0);
-  const prevHoursRef = useRef(0);
-  const animationFrameRef = useRef<number>();
+  const [displayHours, setDisplayHours] = useState(totalHours);
+  const prevHoursRef = useRef(totalHours);
+  const animationFrameId = useRef<number>();
 
   useEffect(() => {
-    const start = prevHoursRef.current;
-    const end = totalHours;
+    const startValue = prevHoursRef.current;
+    const endValue = totalHours;
     const duration = 1000;
-    let startTime: number | null = null;
+    let startTime: number;
 
     const animate = (timestamp: number) => {
       if (!startTime) startTime = timestamp;
       const progress = Math.min((timestamp - startTime) / duration, 1);
-      const current = start + (end - start) * progress;
-      setDisplayHours(current);
+      
+      const newDisplayValue = startValue + (endValue - startValue) * progress;
+      setDisplayHours(newDisplayValue);
 
       if (progress < 1) {
-        animationFrameRef.current = requestAnimationFrame(animate);
+        animationFrameId.current = requestAnimationFrame(animate);
       } else {
-        prevHoursRef.current = totalHours;
+        // Ensure the final value is precise
+        setDisplayHours(endValue);
+        prevHoursRef.current = endValue;
       }
     };
 
-    animationFrameRef.current = requestAnimationFrame(animate);
+    animationFrameId.current = requestAnimationFrame(animate);
 
     return () => {
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current);
+      if (animationFrameId.current) {
+        cancelAnimationFrame(animationFrameId.current);
       }
-      prevHoursRef.current = totalHours;
+      // Update ref in case of interruption
+      prevHoursRef.current = totalHours; 
     };
   }, [totalHours]);
 
