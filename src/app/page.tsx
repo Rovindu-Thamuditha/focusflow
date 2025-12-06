@@ -61,7 +61,7 @@ export default function Home() {
   const firestore = useFirestore();
   const router = useRouter();
   const { toast } = useToast();
-  const { timerSubject, elapsedSeconds, lastStopTime, timerIsRunning, stopTimer } = useTimer();
+  const { timerSubject, elapsedSeconds, lastStopTime, timerIsRunning } = useTimer();
 
   const [currentDate, setCurrentDate] = useState(startOfDay(new Date()));
   const [timeBlocks, setTimeBlocks] = useState<TimeBlockState[]>([]);
@@ -347,38 +347,29 @@ export default function Home() {
   useEffect(() => {
     if (!timerIsRunning && lastStopTime) {
         const stoppedAt = new Date(lastStopTime);
-        const totalMinutes = Math.floor(elapsedSeconds / 60);
+        // Only apply if the timer stopped on the currently viewed date
+        if (format(stoppedAt, 'yyyy-MM-dd') !== format(currentDate, 'yyyy-MM-dd')) {
+            return;
+        }
 
-        // Distribute minutes across relevant hour blocks
+        const totalMinutes = Math.floor(elapsedSeconds / 60);
+        if (totalMinutes === 0) return;
+
         setTimeBlocks(currentBlocks => {
             let newBlocks = [...currentBlocks];
-            let minutesToDistribute = totalMinutes;
-            let currentTime = new Date(stoppedAt);
-
-            while (minutesToDistribute > 0) {
-                const currentHour = currentTime.getHours();
-                const currentBlockIndex = newBlocks.findIndex(b => b.hour === currentHour && format(new Date(b.date), 'yyyy-MM-dd') === format(currentTime, 'yyyy-MM-dd'));
-                
-                if (currentBlockIndex !== -1) {
-                    const block = newBlocks[currentBlockIndex];
-                    const minutesInThisHour = currentTime.getMinutes();
-                    const distributable = Math.min(minutesToDistribute, minutesInThisHour);
-                    
-                    const newDuration = Math.min(block.duration + distributable, 60);
-                    newBlocks[currentBlockIndex] = { ...block, duration: newDuration, subject: timerSubject };
-
-                    minutesToDistribute -= distributable;
-                }
-                // Move back one hour
-                currentTime.setHours(currentTime.getHours() - 1);
+            const stopHour = stoppedAt.getHours();
+            const blockIndex = newBlocks.findIndex(b => b.hour === stopHour);
+            
+            if (blockIndex !== -1) {
+                const block = newBlocks[blockIndex];
+                const newDuration = Math.min(block.duration + totalMinutes, 60);
+                newBlocks[blockIndex] = { ...block, duration: newDuration, subject: timerSubject };
             }
             return newBlocks;
         });
-
-        // Potentially trigger a refresh if the day changed
-        loadDayData(currentDate);
     }
-  }, [timerIsRunning, lastStopTime, elapsedSeconds, timerSubject, loadDayData, currentDate]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [timerIsRunning, lastStopTime, elapsedSeconds, timerSubject]);
 
 
   const handleBlockUpdate = useCallback((hour: number, subject: string, duration: number) => {
@@ -427,6 +418,7 @@ export default function Home() {
     setEnableDailyChallenge(newSettings.enableDailyChallenge);
     setEnableTodoList(newSettings.enableTodoList);
 
+    // Only reset grid if sleep hours actually changed
     if (JSON.stringify(oldSleepHours.sort()) !== JSON.stringify([...newSettings.sleepHours].sort())) {
       handleGridReset(newSettings.sleepHours);
     }
@@ -507,7 +499,7 @@ export default function Home() {
   }
 
   return (
-    <div className={`flex flex-col min-h-screen ${inter.variable} font-body`}>
+    <div className={cn('flex flex-col min-h-screen font-sans', inter.variable)}>
       <MainHeader totalFocusedTime={totalFocusedTime}>
          <SettingsDialog
             subjects={subjects}
@@ -552,7 +544,7 @@ export default function Home() {
           <div className="space-y-6">
              {enableDailyChallenge && (
                 <DailyChallenge
-                    question={dailyQuestions[questionIndex]}
+                    question={currentQuestion}
                     isSolved={solvedChallenges[questionIndex]}
                     onSolveChange={handleSolveChange}
                     language={language}

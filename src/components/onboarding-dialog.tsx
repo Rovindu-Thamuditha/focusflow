@@ -53,25 +53,18 @@ export function OnboardingDialog({ isOpen, onFinish, initialSettings }: Onboardi
     setSleepHours(prev => checked ? [...prev, hour] : prev.filter(h => h !== hour));
   };
 
-  const handleSubjectChange = (index: number, field: keyof Subject, value: string) => {
-    const newSubjects = [...subjects];
-    const subjectToChange = subjects.filter(s => s.id !== 'idle' && s.id !== 'sleep')[index];
-    const actualIndex = subjects.findIndex(s => s.id === subjectToChange.id);
-    if(actualIndex !== -1) {
-        (newSubjects[actualIndex] as any)[field] = value;
-        setSubjects(newSubjects);
-    }
+  const handleSubjectChange = (id: string, field: keyof Subject, value: string) => {
+    setSubjects(prevSubjects =>
+      prevSubjects.map(s => (s.id === id ? { ...s, [field]: value } : s))
+    );
   };
 
   const addSubject = () => {
     setSubjects([...subjects, { id: `custom-${Date.now()}`, name: 'New Subject', icon: 'Sparkles', color: '#888888' }]);
   };
 
-  const removeSubject = (indexToRemove: number) => {
-    const subjectToRemove = subjects.filter(s => s.id !== 'idle' && s.id !== 'sleep')[indexToRemove];
-    if (subjectToRemove) {
-      setSubjects(subjects.filter(s => s.id !== subjectToRemove.id));
-    }
+  const removeSubject = (idToRemove: string) => {
+    setSubjects(subjects.filter(s => s.id !== idToRemove));
   };
 
   return (
@@ -104,17 +97,17 @@ export function OnboardingDialog({ isOpen, onFinish, initialSettings }: Onboardi
                         <h4 className="font-semibold mb-2 text-lg flex items-center gap-2"><Palette /> Customize Your Subjects</h4>
                         <p className="text-sm text-muted-foreground mb-4">What will you be focusing on? Add your subjects and pick a color and icon for each.</p>
                         <div className="space-y-2">
-                        {subjects.filter(s => s.id !== 'idle' && s.id !== 'sleep').map((subject, index) => (
+                        {subjects.filter(s => s.id !== 'idle' && s.id !== 'sleep').map((subject) => (
                             <div key={subject.id} className="flex items-center gap-2 p-2 border rounded-lg">
-                            <Input type="color" value={subject.color} onChange={(e) => handleSubjectChange(index, 'color', e.target.value)} className="w-10 h-10 p-1" />
-                            <Input value={subject.name} onChange={(e) => handleSubjectChange(index, 'name', e.target.value)} className="flex-grow" />
-                            <Select onValueChange={(value) => handleSubjectChange(index, 'icon', value)} defaultValue={subject.icon}>
+                            <Input type="color" value={subject.color} onChange={(e) => handleSubjectChange(subject.id, 'color', e.target.value)} className="w-10 h-10 p-1" />
+                            <Input value={subject.name} onChange={(e) => handleSubjectChange(subject.id, 'name', e.target.value)} className="flex-grow" />
+                            <Select onValueChange={(value) => handleSubjectChange(subject.id, 'icon', value)} defaultValue={subject.icon}>
                                 <SelectTrigger className="w-24"><SelectValue placeholder="Icon"/></SelectTrigger>
                                 <SelectContent>
                                     {ALL_ICONS.map(Icon => <SelectItem key={Icon.displayName} value={Icon.displayName!}><Icon className="w-4 h-4 inline-block mr-2"/>{Icon.displayName}</SelectItem>)}
                                 </SelectContent>
                             </Select>
-                            <Button variant="ghost" size="icon" onClick={() => removeSubject(index)}><Trash2 className="w-4 h-4 text-destructive" /></Button>
+                            <Button variant="ghost" size="icon" onClick={() => removeSubject(subject.id)}><Trash2 className="w-4 h-4 text-destructive" /></Button>
                             </div>
                         ))}
                         </div>

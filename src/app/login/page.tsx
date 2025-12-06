@@ -52,12 +52,7 @@ export default function LoginPage() {
     try {
       const batch = writeBatch(firestore);
   
-      const settingsStr = localStorage.getItem('gridFocusSettings');
-      if (settingsStr) {
-        const settings = JSON.parse(settingsStr);
-        // Note: We don't migrate settings directly, as user may have different preferences.
-        // Onboarding flow will handle setting initial data for new accounts.
-      }
+      // Note: We're not migrating settings as new users go through onboarding.
   
       const timeBlocksStr = localStorage.getItem('gridFocusTimeBlocks');
       if (timeBlocksStr) {
@@ -82,6 +77,7 @@ export default function LoginPage() {
   
       await batch.commit();
   
+      // Clear local storage after successful migration
       localStorage.removeItem('gridFocusTimeBlocks');
       localStorage.removeItem('gridFocusSettings');
       localStorage.removeItem('gridFocusTodos');
@@ -132,7 +128,6 @@ export default function LoginPage() {
           const userData = { 
             username: name, 
             email: user.email, 
-            inviteCode: generateInviteCode(),
           };
           
           await setDoc(userDocRef, userData, { merge: true });
@@ -143,6 +138,9 @@ export default function LoginPage() {
           user = userCredential.user;
           
           await updateProfile(user, { displayName: name });
+          
+          const batch = writeBatch(firestore);
+
           const userDocRef = doc(firestore, 'users', user.uid);
           const userData = {
             id: user.uid,
@@ -151,17 +149,7 @@ export default function LoginPage() {
             inviteCode: generateInviteCode(),
             hasCompletedOnboarding: false,
           };
-
-          setDoc(userDocRef, userData).catch(error => {
-              errorEmitter.emit(
-                'permission-error',
-                new FirestorePermissionError({ path: userDocRef.path, operation: 'create', requestResourceData: userData })
-              );
-              throw error;
-          });
-          
-          // Only migrate data if it was an anonymous user before.
-          if(isAnonymousUser) await migrateLocalDataToFirebase(user.uid);
+          batch.set(userDocRef, userData);
           
           const privacySettingsRef = doc(firestore, 'users', user.uid, 'privacy', 'settings');
           const privacyData = {
@@ -170,8 +158,11 @@ export default function LoginPage() {
             participateInLeaderboards: false,
             shareSubjectBreakdown: false,
           }
-          await setDoc(privacySettingsRef, privacyData);
+          batch.set(privacySettingsRef, privacyData);
+
+          await batch.commit();
         }
+
         toast({ title: "Account Created!", description: "Welcome to GridFocus!" });
         router.push('/');
 
@@ -185,11 +176,6 @@ export default function LoginPage() {
     } catch (error: any) {
       console.error(`Error during authentication:`, error);
       
-      if(error.name === 'FirebaseError' && error.message.includes('denied')){
-        setLoading(false);
-        return;
-      }
-
       let description = `Could not ${isSignUp ? 'sign up' : 'sign in'}. Please try again.`;
       if (error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password' || error.code === 'auth/user-not-found') {
         description = "Invalid email or password. Please check your credentials and try again.";

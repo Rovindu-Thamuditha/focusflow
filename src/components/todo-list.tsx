@@ -23,13 +23,14 @@ type HierarchicalTodo = Todo & {
 };
 
 // Sub-component for a single Todo item
-function TodoItem({
+const SortableTodoItem = React.memo(({
   todo,
   onToggle,
   onDelete,
   onAddSubtask,
   isCollapsed,
   onToggleCollapse,
+  renderSubtasks
 }: {
   todo: HierarchicalTodo;
   onToggle: (todo: Todo) => void;
@@ -37,7 +38,8 @@ function TodoItem({
   onAddSubtask: (parentId: string) => void;
   isCollapsed: boolean;
   onToggleCollapse: (id: string) => void;
-}) {
+  renderSubtasks: (tasks: HierarchicalTodo[], parentId: string) => React.ReactNode;
+}) => {
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: todo.id });
 
   const style = {
@@ -79,9 +81,15 @@ function TodoItem({
           <Trash2 className="w-4 h-4 text-muted-foreground hover:text-destructive" />
         </Button>
       </div>
+      {hasSubtasks && !isCollapsed && (
+        <div className="ml-8 pl-4 border-l border-dashed">
+            {renderSubtasks(todo.subtasks, todo.id)}
+        </div>
+      )}
     </div>
   );
-}
+});
+SortableTodoItem.displayName = 'SortableTodoItem';
 
 
 export function TodoList() {
@@ -150,14 +158,14 @@ export function TodoList() {
     })
   );
 
-  const addTodo = async (e: React.FormEvent, parentId: string | null = null) => {
+  const addTodo = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newTodo.trim() && parentId === null) return;
+    if (!newTodo.trim()) return;
     
     const text = newTodo;
     setNewTodo('');
 
-    const maxOrder = allTodos.reduce((max, t) => (t.parentId === parentId ? Math.max(max, t.order) : max), -1);
+    const maxOrder = allTodos.reduce((max, t) => (t.parentId === null ? Math.max(max, t.order) : max), -1);
 
     if (isAnonymousUser) {
       const newLocalTodo: Todo = {
@@ -167,21 +175,21 @@ export function TodoList() {
         createdAt: new Date().toISOString(),
         userId: 'anonymous',
         order: maxOrder + 1,
-        parentId: parentId,
+        parentId: null,
       };
       setLocalTodos(prev => [...prev, newLocalTodo]);
       return;
     }
 
-    if (!todosQuery) return;
+    if (!user || !firestore) return;
     try {
-      await addDoc(collection(firestore!, 'users', user!.uid, 'todos'), {
+      await addDoc(collection(firestore, 'users', user.uid, 'todos'), {
         text,
         completed: false,
         createdAt: serverTimestamp(),
         userId: user!.uid,
         order: maxOrder + 1,
-        parentId: parentId,
+        parentId: null,
       });
     } catch (error) {
       console.error("Error adding todo: ", error);
@@ -209,8 +217,8 @@ export function TodoList() {
         return;
     }
 
-    if (!todosQuery) return;
-    addDoc(collection(firestore!, 'users', user!.uid, 'todos'), {
+    if (!user || !firestore) return;
+    addDoc(collection(firestore, 'users', user.uid, 'todos'), {
         text,
         completed: false,
         createdAt: serverTimestamp(),
@@ -234,7 +242,6 @@ export function TodoList() {
   };
 
   const deleteTodo = async (id: string) => {
-    // Also delete subtasks
     const subtasks = allTodos.filter(t => t.parentId === id);
 
     if (isAnonymousUser) {
@@ -259,19 +266,20 @@ export function TodoList() {
     const { active, over } = event;
     if (!over || active.id === over.id) return;
     
-    const oldIndex = allTodos.findIndex(t => t.id === active.id);
-    const newIndex = allTodos.findIndex(t => t.id === over.id);
-
-    const activeTodo = allTodos[oldIndex];
-    const overTodo = allTodos[newIndex];
+    const activeTodo = allTodos.find(t => t.id === active.id);
+    const overTodo = allTodos.find(t => t.id === over.id);
     
-    // Only allow reordering within the same level (root or same parent)
-    if(activeTodo.parentId !== overTodo.parentId) return;
+    if(!activeTodo || !overTodo || activeTodo.parentId !== overTodo.parentId) return;
 
-    const reorderedItems = arrayMove(allTodos, oldIndex, newIndex);
+    const itemsInSameContext = allTodos.filter(t => t.parentId === activeTodo.parentId);
+    const oldIndex = itemsInSameContext.findIndex(t => t.id === active.id);
+    const newIndex = itemsInSameContext.findIndex(t => t.id === over.id);
+
+    const reorderedItems = arrayMove(itemsInSameContext, oldIndex, newIndex);
 
     if (isAnonymousUser) {
-        setLocalTodos(reorderedItems);
+        const otherItems = allTodos.filter(t => t.parentId !== activeTodo.parentId);
+        setLocalTodos([...otherItems, ...reorderedItems]);
         return;
     }
 
@@ -280,7 +288,6 @@ export function TodoList() {
     const batch = writeBatch(firestore);
     reorderedItems.forEach((todo, index) => {
       const docRef = doc(firestore, 'users', user.uid, 'todos', todo.id);
-      // Only update order if it has changed
       if (todo.order !== index) {
         batch.update(docRef, { order: index });
       }
@@ -307,24 +314,26 @@ export function TodoList() {
     });
   }
 
-  const renderTodoList = (todosToRender: HierarchicalTodo[]) => {
-      return todosToRender.map(todo => (
-          <React.Fragment key={todo.id}>
-            <TodoItem 
-                todo={todo}
-                onToggle={toggleTodo}
-                onDelete={deleteTodo}
-                onAddSubtask={handleAddSubtask}
-                isCollapsed={collapsedTasks.has(todo.id)}
-                onToggleCollapse={toggleCollapse}
-            />
-            {todo.subtasks.length > 0 && !collapsedTasks.has(todo.id) && (
-                <div className="ml-8 pl-4 border-l border-dashed">
-                    {renderTodoList(todo.subtasks)}
-                </div>
-            )}
-          </React.Fragment>
-      ))
+  const renderSortableList = (tasks: HierarchicalTodo[], parentId: string | null) => {
+      const items = tasks.map(t => t.id);
+      return (
+         <SortableContext items={items} strategy={verticalListSortingStrategy}>
+            <div className="space-y-1">
+                {tasks.map(todo => (
+                    <SortableTodoItem
+                        key={todo.id}
+                        todo={todo}
+                        onToggle={toggleTodo}
+                        onDelete={deleteTodo}
+                        onAddSubtask={handleAddSubtask}
+                        isCollapsed={collapsedTasks.has(todo.id)}
+                        onToggleCollapse={toggleCollapse}
+                        renderSubtasks={renderSortableList}
+                    />
+                ))}
+            </div>
+        </SortableContext>
+      );
   }
 
   return (
@@ -351,11 +360,7 @@ export function TodoList() {
             {!cloudLoading && hierarchicalTodos.length === 0 && <p className="text-muted-foreground text-center py-8">No tasks yet. Add one!</p>}
             
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-                <SortableContext items={allTodos.map(t => t.id)} strategy={verticalListSortingStrategy}>
-                    <div className="space-y-1">
-                        {renderTodoList(hierarchicalTodos)}
-                    </div>
-                </SortableContext>
+                {renderSortableList(hierarchicalTodos, null)}
             </DndContext>
 
         </ScrollArea>
