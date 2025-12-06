@@ -37,6 +37,7 @@ import { OnboardingDialog } from '@/components/onboarding-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { useTimer } from '@/context/timer-context';
 import { Inter } from 'next/font/google';
+import { useDebouncedEffect } from '@/hooks/useDebouncedEffect';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-sans' });
 
@@ -240,74 +241,88 @@ export default function Home() {
     }
   }, [currentDate, userDataLoaded, loadDayData]);
   
-  // Data persistence effect
-  useEffect(() => {
+  // Debounced effect for saving settings
+  useDebouncedEffect(() => {
     if (!isClient || !userDataLoaded || showOnboarding) return;
+    
+    if (user?.isAnonymous) {
+      const settings = {
+        sleepHours, subjects, language, enableTimer,
+        enableDailyChallenge, enableTodoList,
+        hasCompletedOnboarding: true
+      };
+      localStorage.setItem('gridFocusSettings', JSON.stringify(settings));
+      return;
+    }
 
-    const handler = setTimeout(() => {
-        // ANONYMOUS USER - SAVE TO LOCAL STORAGE
-        if (user?.isAnonymous) {
-            const settings = { 
-                sleepHours, subjects, language, enableTimer, 
-                enableDailyChallenge, enableTodoList, 
-                hasCompletedOnboarding: true
-            };
-            localStorage.setItem('gridFocusSettings', JSON.stringify(settings));
+    if (user && userDocRef) {
+      const settingsData = {
+        settings: {
+          sleepHours, subjects, language,
+          enableTimer, enableDailyChallenge, enableTodoList
+        },
+      };
+      setDoc(userDocRef, settingsData, { merge: true }).catch(error => {
+        console.error("Error saving settings:", error);
+      });
+    }
+  }, [subjects, sleepHours, language, enableTimer, enableDailyChallenge, enableTodoList, user, userDocRef, isClient, userDataLoaded, showOnboarding], 2000);
 
-            if (timeBlocks.length > 0) {
-                const dateString = format(currentDate, 'yyyy-MM-dd');
-                const localBlocksStr = localStorage.getItem('gridFocusTimeBlocks');
-                const localBlocks = localBlocksStr ? JSON.parse(localBlocksStr) : {};
-                localBlocks[dateString] = timeBlocks;
-                localStorage.setItem('gridFocusTimeBlocks', JSON.stringify(localBlocks));
-            }
-            if (isToday(currentDate)) {
-                localStorage.setItem('gridFocusSolvedChallenges', JSON.stringify({ solved: solvedChallenges, qIndex: questionIndex }));
-            }
-            return;
+  // Debounced effect for saving time blocks
+  useDebouncedEffect(() => {
+    if (!isClient || !userDataLoaded || timeBlocks.length === 0) return;
+    
+    const dateString = format(currentDate, 'yyyy-MM-dd');
+
+    if (user?.isAnonymous) {
+      const localBlocksStr = localStorage.getItem('gridFocusTimeBlocks');
+      const localBlocks = localBlocksStr ? JSON.parse(localBlocksStr) : {};
+      localBlocks[dateString] = timeBlocks;
+      localStorage.setItem('gridFocusTimeBlocks', JSON.stringify(localBlocks));
+      return;
+    }
+    
+    if (user && firestore) {
+      const isEditable = differenceInHours(new Date(), currentDate) <= 36;
+      if (isEditable && timeBlocks.length === 24) {
+        const batch = writeBatch(firestore);
+        timeBlocks.forEach(block => {
+          const blockWithDate = { ...block, date: dateString };
+          const blockDocRef = doc(firestore, 'users', user.uid, 'time_blocks', `${dateString}_${block.hour}`);
+          batch.set(blockDocRef, blockWithDate);
+        });
+        batch.commit().catch(error => {
+          console.error("Error saving time blocks:", error);
+        });
+      }
+    }
+  }, [timeBlocks, currentDate, user, firestore, isClient, userDataLoaded], 2000);
+
+  // Debounced effect for saving daily challenge state
+  useDebouncedEffect(() => {
+    if (!isClient || !userDataLoaded || !isToday(currentDate)) return;
+
+    if (user?.isAnonymous) {
+      localStorage.setItem('gridFocusSolvedChallenges', JSON.stringify({ solved: solvedChallenges, qIndex: questionIndex }));
+      return;
+    }
+
+    if (user && userDocRef) {
+      const todayString = format(new Date(), 'yyyy-MM-dd');
+      const dailyData = {
+        daily: {
+          [todayString]: {
+            solvedChallenges: solvedChallenges,
+            questionIndex: questionIndex,
+          }
         }
+      };
+      setDoc(userDocRef, dailyData, { merge: true }).catch(error => {
+        console.error("Error saving daily challenge state:", error);
+      });
+    }
+  }, [solvedChallenges, questionIndex, currentDate, user, userDocRef, isClient, userDataLoaded], 1500);
 
-        // LOGGED-IN USER - SAVE TO FIRESTORE
-        if (user && userDocRef && firestore) {
-            const batch = writeBatch(firestore);
-            
-            const todayString = format(new Date(), 'yyyy-MM-dd');
-            const settingsData:any = {
-                settings: { 
-                  sleepHours, subjects, language,
-                  enableTimer, enableDailyChallenge, enableTodoList
-                },
-            };
-            if(isToday(currentDate)){
-                settingsData.daily = {
-                    [todayString]: {
-                        solvedChallenges: solvedChallenges,
-                        questionIndex: questionIndex,
-                    }
-                }
-            }
-
-            batch.set(userDocRef, settingsData, { merge: true });
-
-            const isEditable = differenceInHours(new Date(), currentDate) <= 36;
-            if (isEditable && timeBlocks.length === 24) {
-                const dateString = format(currentDate, 'yyyy-MM-dd');
-                timeBlocks.forEach(block => {
-                    const blockWithDate = { ...block, date: dateString };
-                    const blockDocRef = doc(firestore, 'users', user.uid, 'time_blocks', `${dateString}_${block.hour}`);
-                    batch.set(blockDocRef, blockWithDate);
-                });
-            }
-            
-            batch.commit().catch(error => {
-              console.error("Error saving data batch:", error);
-            });
-        }
-    }, 2000);
-
-    return () => clearTimeout(handler);
-
-  }, [timeBlocks, solvedChallenges, questionIndex, sleepHours, subjects, language, userName, currentDate, user, userDocRef, firestore, isClient, userDataLoaded, enableTimer, enableDailyChallenge, enableTodoList, showOnboarding]);
   
   // Effect to save timer data when it stops
   useEffect(() => {
