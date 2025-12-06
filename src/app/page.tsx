@@ -38,6 +38,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useTimer } from '@/context/timer-context';
 import { Inter } from 'next/font/google';
 import { useDebouncedEffect } from '@/hooks/useDebouncedEffect';
+import { cn } from '@/lib/utils';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-sans' });
 
