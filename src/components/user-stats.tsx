@@ -1,14 +1,14 @@
 
 'use client';
 
-import { useEffect, useState, useMemo, useCallback } from 'react';
+import { useState, useMemo } from 'react';
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { useFirestore } from '@/firebase';
+import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query, where, getDocs, doc, getDoc, orderBy } from 'firebase/firestore';
 import { subDays, startOfDay, format, parseISO, endOfDay, eachDayOfInterval } from 'date-fns';
-import type { TimeBlockState, Subject } from '@/lib/types';
+import type { TimeBlockState, Subject, DailySummary } from '@/lib/types';
 import { defaultSubjects } from '@/lib/subjects';
 import { cn } from '@/lib/utils';
 
@@ -72,50 +72,35 @@ interface UserStatsProps {
 
 export function UserStats({ userId }: UserStatsProps) {
   const firestore = useFirestore();
-  const [timeBlocks, setTimeBlocks] = useState<TimeBlockState[]>([]);
   const [timeRange, setTimeRange] = useState('7');
   const [subjects, setSubjects] = useState<Subject[]>(defaultSubjects);
-  const [dataLoaded, setDataLoaded] = useState(false);
-
-  const fetchTimeBlocks = useCallback(async () => {
-      if (!userId || !firestore) return;
-      
-      setDataLoaded(false);
-      const now = new Date();
-      const range = parseInt(timeRange);
-      const startDate = startOfDay(subDays(now, range - 1));
-      const endDate = endOfDay(now);
-
-      const q = query(
-        collection(firestore, 'users', userId, 'time_blocks'),
-        where('date', '>=', format(startDate, 'yyyy-MM-dd')),
-        where('date', '<=', format(endDate, 'yyyy-MM-dd')),
-        orderBy('date', 'asc')
-      );
-
-      try {
-        const querySnapshot = await getDocs(q);
-        const blocks = querySnapshot.docs.map(doc => doc.data() as TimeBlockState);
-        setTimeBlocks(blocks);
-
-        const userDocRef = doc(firestore, 'users', userId);
-        const userDoc = await getDoc(userDocRef);
-        if (userDoc.exists()) {
-            setSubjects(userDoc.data().settings?.subjects || defaultSubjects);
-        }
-      } catch (error) {
-        console.error("Error fetching time blocks for stats: ", error);
-        setTimeBlocks([]);
-      } finally {
-        setDataLoaded(true);
-      }
+  
+  const summariesQuery = useMemoFirebase(() => {
+    if (!userId || !firestore) return null;
+    const range = parseInt(timeRange);
+    const startDate = startOfDay(subDays(new Date(), range - 1));
+    
+    return query(
+      collection(firestore, 'users', userId, 'daily_summaries'),
+      where('date', '>=', format(startDate, 'yyyy-MM-dd')),
+      orderBy('date', 'asc')
+    );
   }, [userId, firestore, timeRange]);
+  
+  const { data: dailySummaries, isLoading: isSummariesLoading } = useCollection<DailySummary>(summariesQuery, { realtime: false });
 
-  useEffect(() => {
-    fetchTimeBlocks();
-  }, [fetchTimeBlocks]);
+  useMemo(async () => {
+    if (!userId || !firestore) return;
+    const userDocRef = doc(firestore, 'users', userId);
+    const userDoc = await getDoc(userDocRef);
+    if (userDoc.exists()) {
+        setSubjects(userDoc.data().settings?.subjects || defaultSubjects);
+    }
+  }, [userId, firestore]);
   
   const chartData = useMemo(() => {
+    if (!dailySummaries) return [];
+    
     const dataByDate: { [key: string]: any } = {};
     const now = new Date();
     const range = parseInt(timeRange);
@@ -132,24 +117,19 @@ export function UserStats({ userId }: UserStatsProps) {
       });
     });
 
-    timeBlocks.forEach(block => {
-        if (block.subject === 'idle' || block.subject === 'sleep') return;
-        
-        const dateKey = block.date.split('T')[0];
-        const dateLabel = format(parseISO(dateKey), 'MMM dd');
-
+    dailySummaries.forEach(summary => {
+        const dateLabel = format(parseISO(summary.date), 'MMM dd');
         if (dataByDate[dateLabel]) {
-            if (!dataByDate[dateLabel][block.subject]) {
-                dataByDate[dateLabel][block.subject] = 0;
-            }
-            dataByDate[dateLabel][block.subject] += block.duration / 60;
+            Object.keys(summary.subjectMinutes).forEach(subjectId => {
+                dataByDate[dateLabel][subjectId] = (summary.subjectMinutes[subjectId] || 0) / 60; // convert to hours
+            });
         }
     });
 
     return Object.values(dataByDate);
-  }, [timeBlocks, subjects, timeRange]);
+  }, [dailySummaries, subjects, timeRange]);
 
-  if (!dataLoaded) {
+  if (isSummariesLoading) {
     return (
         <Card>
             <CardHeader>
@@ -184,12 +164,12 @@ export function UserStats({ userId }: UserStatsProps) {
             <CardDescription>User's daily focused time breakdown by subject.</CardDescription>
         </CardHeader>
         <CardContent>
-            {chartData.length > 0 && timeBlocks.length > 0 ? (
+            {chartData.length > 0 && dailySummaries && dailySummaries.length > 0 ? (
                 <ResponsiveContainer width="100%" height={400}>
                   <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                     <defs>
                       {subjectsToRender.map((subject) => (
-                        <linearGradient key={subject.id} id={`color${subject.id}`} x1="0" y1="0" x2="0" y2="1">
+                        <linearGradient key={subject.id} id={`colorAdmin${subject.id}`} x1="0" y1="0" x2="0" y2="1">
                           <stop offset="5%" stopColor={subject.color} stopOpacity={0.8}/>
                           <stop offset="95%" stopColor={subject.color} stopOpacity={0.1}/>
                         </linearGradient>
@@ -220,7 +200,7 @@ export function UserStats({ userId }: UserStatsProps) {
                         stackId="1"
                         stroke={subject.color}
                         strokeWidth={2}
-                        fill={`url(#color${subject.id})`}
+                        fill={`url(#colorAdmin${subject.id})`}
                         fillOpacity={1}
                         animationDuration={1000}
                       />

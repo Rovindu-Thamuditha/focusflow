@@ -1,21 +1,22 @@
 
 'use client';
 
-import { useEffect, useState, useMemo, useCallback } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { MainHeader } from '@/components/main-header';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { useUser, useFirestore, useMemoFirebase } from '@/firebase';
+import { useUser, useFirestore, useMemoFirebase, useCollection } from '@/firebase';
 import { useRouter } from 'next/navigation';
-import { collection, query, where, getDocs, doc, getDoc, orderBy } from 'firebase/firestore';
-import { subDays, startOfDay, format, parseISO, endOfDay, eachDayOfInterval } from 'date-fns';
-import type { TimeBlockState, Subject, DailySummary } from '@/lib/types';
+import { collection, query, where, getDoc, doc, orderBy } from 'firebase/firestore';
+import { subDays, startOfDay, format, parseISO, eachDayOfInterval } from 'date-fns';
+import type { Subject, DailySummary } from '@/lib/types';
 import { defaultSubjects } from '@/lib/subjects';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { UserPlus } from 'lucide-react';
+import { GridFocusLoader } from '@/components/grid-focus-loader';
 
 const formatHoursAndMinutes = (decimalHours: number): string => {
     if (decimalHours === 0) return '0m';
@@ -77,56 +78,32 @@ export default function StatsPage() {
   const router = useRouter();
   const [timeRange, setTimeRange] = useState('7');
   const [subjects, setSubjects] = useState<Subject[]>(defaultSubjects);
-  const [dataLoaded, setDataLoaded] = useState(false);
-  const [summariesLoading, setSummariesLoading] = useState(true);
-  const [dailySummaries, setDailySummaries] = useState<DailySummary[]>([]);
   const isAnonymousUser = user?.isAnonymous;
   
-  useEffect(() => {
-    const fetchUserDataAndSummaries = async () => {
-      if (!user || !firestore || isAnonymousUser) {
-        if (!isUserLoading) {
-            setSummariesLoading(false);
-            setDataLoaded(true);
-        }
-        return;
-      }
-
-      setSummariesLoading(true);
-
-      // Fetch user settings to get subject colors
-      const userDocRef = doc(firestore, 'users', user.uid);
-      const userDoc = await getDoc(userDocRef);
-      if (userDoc.exists()) {
-          setSubjects(userDoc.data().settings?.subjects || defaultSubjects);
-      }
-      
-      // Fetch daily summaries
+  const summariesQuery = useMemoFirebase(() => {
+      if (!user || !firestore || isAnonymousUser) return null;
       const range = parseInt(timeRange);
       const startDate = startOfDay(subDays(new Date(), range - 1));
-      const summariesQuery = query(
+      return query(
           collection(firestore, 'users', user.uid, 'daily_summaries'),
           where('date', '>=', format(startDate, 'yyyy-MM-dd')),
           orderBy('date', 'asc')
       );
-      
-      try {
-        const querySnapshot = await getDocs(summariesQuery);
-        const summaries = querySnapshot.docs.map(doc => doc.data() as DailySummary);
-        setDailySummaries(summaries);
-      } catch (error) {
-        console.error("Error fetching summaries:", error);
-        setDailySummaries([]);
-      } finally {
-        setSummariesLoading(false);
-        setDataLoaded(true);
-      }
-    }
+  }, [user, firestore, isAnonymousUser, timeRange]);
 
-    if(!isUserLoading) {
-      fetchUserDataAndSummaries();
+  const { data: dailySummaries, isLoading: summariesLoading } = useCollection<DailySummary>(summariesQuery, { realtime: false });
+
+  useEffect(() => {
+    const fetchUserSettings = async () => {
+        if (!user || !firestore || isAnonymousUser) return;
+        const userDocRef = doc(firestore, 'users', user.uid);
+        const userDoc = await getDoc(userDocRef);
+        if (userDoc.exists()) {
+            setSubjects(userDoc.data().settings?.subjects || defaultSubjects);
+        }
     }
-  }, [user, isUserLoading, isAnonymousUser, firestore, timeRange]);
+    fetchUserSettings();
+  }, [user, firestore, isAnonymousUser]);
   
   const chartData = useMemo(() => {
     if (!dailySummaries) return [];
@@ -166,10 +143,11 @@ export default function StatsPage() {
     return dailySummaries.reduce((total, summary) => total + summary.totalMinutes, 0) / 60; // convert to hours
   }, [dailySummaries]);
 
-  if (isUserLoading || summariesLoading || !dataLoaded) {
+  if (isUserLoading || summariesLoading) {
     return (
-        <div className="flex items-center justify-center min-h-screen bg-background">
-          <div className="text-xl">Loading Statistics...</div>
+        <div className="flex flex-col items-center justify-center min-h-screen">
+          <GridFocusLoader />
+          <p className="mt-4 text-lg">Loading Statistics...</p>
         </div>
     );
   }
@@ -277,5 +255,3 @@ export default function StatsPage() {
     </div>
   );
 }
-
-    
