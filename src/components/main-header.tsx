@@ -16,15 +16,15 @@ import {
 import { useUser, useAuth } from "@/firebase";
 import { InfoDialog } from "./info-dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
+import { CurrentTime } from "./current-time";
 
 const ADMIN_EMAIL = 'rovinduthamu@gmail.com';
 
 interface MainHeaderProps {
   totalFocusedTime: number;
-  children?: React.ReactNode;
 }
 
-export function MainHeader({ totalFocusedTime, children }: MainHeaderProps) {
+export function MainHeader({ totalFocusedTime }: MainHeaderProps) {
   const { user } = useUser();
   const auth = useAuth();
   const router = useRouter();
@@ -60,7 +60,7 @@ export function MainHeader({ totalFocusedTime, children }: MainHeaderProps) {
           { !isAnonymousUser && <TotalFocusTime totalHours={totalFocusedTime} /> }
           
           <div className="hidden sm:flex items-center space-x-1">
-             {children}
+             <CurrentTime />
           </div>
           
           {!isAnonymousUser && (
@@ -145,7 +145,7 @@ export function MainHeader({ totalFocusedTime, children }: MainHeaderProps) {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <div className="px-2 py-1.5">{children}</div>
+                <div className="px-2 py-1.5"><CurrentTime /></div>
                 <DropdownMenuSeparator />
                  <DropdownMenuItem asChild>
                    <InfoDialog />

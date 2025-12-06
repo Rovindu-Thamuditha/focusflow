@@ -30,7 +30,6 @@ import {
 } from "@/components/ui/alert-dialog"
 import { GridFocusLoader } from '@/components/grid-focus-loader';
 import { FeedbackDialog } from '@/components/feedback-dialog';
-import { CurrentTime } from '@/components/current-time';
 import { TodoList } from '@/components/todo-list';
 import { FloatingTimer } from '@/components/floating-timer';
 import { WhatsNewDialog } from '@/components/whats-new-dialog';
@@ -64,7 +63,6 @@ export default function Home() {
   const { timerSubject, elapsedSeconds, lastStopTime, timerIsRunning, stopTimer } = useTimer();
 
   const [currentDate, setCurrentDate] = useState(startOfDay(new Date()));
-  const [liveTime, setLiveTime] = useState(new Date());
   const [timeBlocks, setTimeBlocks] = useState<TimeBlockState[]>([]);
   const [solvedChallenges, setSolvedChallenges] = useState<boolean[]>(Array(dailyQuestions.length).fill(false));
   const [isClient, setIsClient] = useState(false);
@@ -95,10 +93,6 @@ export default function Home() {
             });
         }
     }
-    const timer = setInterval(() => {
-      setLiveTime(new Date());
-    }, 1000); // Update every second
-    return () => clearInterval(timer);
   }, [user, isUserLoading, auth]);
 
   const loadDayData = useCallback(async (dateToLoad: Date) => {
@@ -481,7 +475,6 @@ export default function Home() {
   return (
     <div className={`flex flex-col min-h-screen ${inter.variable} font-body`}>
       <MainHeader totalFocusedTime={totalFocusedTime}>
-         <CurrentTime time={liveTime} />
          <SettingsDialog
             subjects={subjects}
             sleepHours={sleepHours}
@@ -518,7 +511,7 @@ export default function Home() {
                 subjects={subjects}
                 onBlockUpdate={handleBlockUpdate}
                 viewingDate={currentDate}
-                liveTime={liveTime}
+                liveTime={new Date()}
               />
             </CardContent>
           </Card>
