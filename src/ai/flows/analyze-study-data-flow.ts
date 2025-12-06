@@ -9,8 +9,7 @@
 
 import { ai } from '@/ai/genkit';
 import { z } from 'zod';
-import { getFirestore, collection, query, getDocs, orderBy, limit, doc, getDoc } from 'firebase/firestore';
-import { initializeFirebase } from '@/firebase';
+import { firestoreAdmin } from '@/firebase/server-init';
 import type { DailySummary, Subject } from '@/lib/types';
 import { defaultSubjects } from '@/lib/subjects';
 import { format } from 'date-fns';
@@ -68,18 +67,15 @@ const analyzeStudyDataFlow = ai.defineFlow(
     outputSchema: StudyAnalysisOutputSchema,
   },
   async (input) => {
-    // This flow runs on the server, so we can safely interact with Firestore here.
-    const { firestore } = initializeFirebase();
-
     // 1. Fetch user's custom subjects
-    const userDocRef = doc(firestore, 'users', input.userId);
-    const userDoc = await getDoc(userDocRef);
-    const userSubjects: Subject[] = userDoc.exists() ? (userDoc.data().settings?.subjects || defaultSubjects) : defaultSubjects;
+    const userDocRef = firestoreAdmin.doc(`users/${input.userId}`);
+    const userDoc = await userDocRef.get();
+    const userSubjects: Subject[] = userDoc.exists ? (userDoc.data()?.settings?.subjects || defaultSubjects) : defaultSubjects;
 
     // 2. Fetch last 30 days of daily summaries
-    const summariesRef = collection(firestore, 'users', input.userId, 'daily_summaries');
-    const q = query(summariesRef, orderBy('date', 'desc'), limit(30));
-    const summarySnapshot = await getDocs(q);
+    const summariesRef = firestoreAdmin.collection(`users/${input.userId}/daily_summaries`);
+    const q = summariesRef.orderBy('date', 'desc').limit(30);
+    const summarySnapshot = await q.get();
     const summaries: DailySummary[] = summarySnapshot.docs.map(d => d.data() as DailySummary);
 
     if (summaries.length === 0) {
