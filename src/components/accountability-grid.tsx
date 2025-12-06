@@ -70,6 +70,7 @@ const AccountabilityGridMemo = ({ blocks, subjects, onBlockUpdate, viewingDate, 
                 subjectId={block.subject}
                 duration={block.duration}
                 subjects={subjects}
+                allDayBlocks={blocks}
                 onClick={() => handleBlockClick(block.hour)}
                 onStateChange={(subject, duration) => onBlockUpdate(block.hour, subject, duration)}
                 isEditable={isEditableDate}

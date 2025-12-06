@@ -3,17 +3,17 @@
 
 import { cn } from "@/lib/utils";
 import * as React from 'react';
-import { Book, Zap, Coffee, Bed, Sparkles, BrainCircuit, FlaskConical, Dna, Code, PenTool, Briefcase, Moon, Sun } from "lucide-react";
-import type { Subject } from "@/lib/types";
+import { Book, Zap, Coffee, Bed, Sparkles, BrainCircuit, FlaskConical, Dna, Code, PenTool, Briefcase, Moon, Sun, Timer } from "lucide-react";
+import type { Subject, TimeBlockState } from "@/lib/types";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger } from "@/components/ui/context-menu";
-
 
 interface TimeBlockProps {
   hour: number;
   subjectId: string;
   duration: number;
   subjects: Subject[];
+  allDayBlocks: TimeBlockState[];
   onClick: () => void;
   onStateChange: (subjectId: string, duration: number) => void;
   isEditable: boolean;
@@ -35,7 +35,35 @@ const ICONS: { [key: string]: React.FC<React.SVGProps<SVGSVGElement>> } = {
   Moon,
 };
 
-export function TimeBlock({ hour, subjectId, duration, subjects, onClick, onStateChange, isEditable, isFuture, isCurrent, liveTime, activeTimerSubject }: TimeBlockProps) {
+const formatHoursAndMinutes = (totalMinutes: number): string => {
+    if (totalMinutes === 0) return '0m';
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+    
+    let result = '';
+    if (hours > 0) {
+        result += `${hours}h `;
+    }
+    if (minutes > 0 || hours === 0) {
+        result += `${minutes}m`;
+    }
+    return result.trim();
+};
+
+export function TimeBlock({ 
+    hour, 
+    subjectId, 
+    duration, 
+    subjects, 
+    allDayBlocks,
+    onClick, 
+    onStateChange, 
+    isEditable, 
+    isFuture, 
+    isCurrent, 
+    liveTime, 
+    activeTimerSubject 
+}: TimeBlockProps) {
   const isSleep = subjectId === 'sleep';
 
   const subject = isSleep 
@@ -43,8 +71,6 @@ export function TimeBlock({ hour, subjectId, duration, subjects, onClick, onStat
     : subjects.find(s => s.id === subjectId) || { id: 'idle', name: 'Idle', icon: 'Sparkles', color: 'hsl(var(--muted))' };
   
   const formattedHour = (hour % 12 === 0 ? 12 : hour % 12) + (hour < 12 || hour === 24 ? ' AM' : ' PM');
-  const nextHour = ((hour + 1) % 12 === 0 ? 12 : (hour + 1) % 12) + (hour + 1 < 12 || hour + 1 === 24 ? ' AM' : ' PM');
-  const timeSlot = `${formattedHour} - ${nextHour}`;
   
   const getBrightness = () => {
     if (duration === 0) return 'brightness-50';
@@ -70,6 +96,20 @@ export function TimeBlock({ hour, subjectId, duration, subjects, onClick, onStat
         onClick();
     }
   }
+
+  const dailySummary = React.useMemo(() => {
+    const summary = {
+      totalMinutes: 0,
+      subjectMinutes: {} as { [subjectId: string]: number }
+    };
+    allDayBlocks.forEach(block => {
+        if (block.subject !== 'idle' && block.subject !== 'sleep' && block.duration > 0) {
+            summary.totalMinutes += block.duration;
+            summary.subjectMinutes[block.subject] = (summary.subjectMinutes[block.subject] || 0) + block.duration;
+        }
+    });
+    return summary;
+  }, [allDayBlocks]);
 
   const blockButton = (
       <button
@@ -126,11 +166,39 @@ export function TimeBlock({ hour, subjectId, duration, subjects, onClick, onStat
                     </ContextMenuContent>
                 </ContextMenu>
             </TooltipTrigger>
-            <TooltipContent>
-                <p className="font-semibold">{isBeingTimed ? activeTimerSubject?.name : subject.name}</p>
-                <p className="text-sm text-muted-foreground">{isSleep ? "Right-click for options" : `Duration: ${duration} minutes`}</p>
-                <p className="text-xs text-muted-foreground">{timeSlot}</p>
-                 {isBeingTimed && <p className="text-xs text-red-500 font-semibold">In Progress</p>}
+            <TooltipContent className="p-2 text-xs">
+                <div className="flex items-center gap-2 mb-2 pb-2 border-b">
+                   <Icon className="w-4 h-4" style={{color: subject.color}} />
+                   <div className="flex-grow">
+                     <p className="font-semibold">{isBeingTimed ? activeTimerSubject?.name : subject.name}</p>
+                     <p className="text-muted-foreground">{`Duration: ${duration} minutes`}</p>
+                   </div>
+                   {isBeingTimed && <p className="text-xs text-red-500 font-semibold animate-pulse">Live</p>}
+                </div>
+                
+                <div className="font-semibold mb-1 text-foreground">Daily Summary</div>
+                <div className="space-y-1">
+                    {Object.entries(dailySummary.subjectMinutes).map(([subjectId, minutes]) => {
+                        const subj = subjects.find(s => s.id === subjectId);
+                        if (!subj) return null;
+                        return (
+                             <div key={subjectId} className="flex items-center justify-between">
+                                <div className="flex items-center gap-1.5">
+                                    <span className="w-2 h-2 rounded-full" style={{ backgroundColor: subj.color }}></span>
+                                    <span>{subj.name}:</span>
+                                </div>
+                                <span className="font-medium ml-2">{formatHoursAndMinutes(minutes)}</span>
+                            </div>
+                        )
+                    })}
+                </div>
+
+                <div className="border-t my-2"></div>
+                <div className="flex items-center justify-between font-bold text-foreground">
+                    <span className="flex items-center gap-1.5"><Timer className="w-3.5 h-3.5" />Total Focus:</span>
+                    <span>{formatHoursAndMinutes(dailySummary.totalMinutes)}</span>
+                </div>
+
             </TooltipContent>
         </Tooltip>
     </TooltipProvider>
