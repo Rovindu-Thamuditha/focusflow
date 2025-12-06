@@ -1,4 +1,5 @@
 
+
 export interface TimeBlockState {
   hour: number;
   subject: string;
@@ -21,4 +22,13 @@ export interface Todo {
   userId: string;
   order: number;
   parentId: string | null;
+}
+
+export interface DailySummary {
+  id: string; // YYYY-MM-DD
+  date: string; // YYYY-MM-DD
+  totalMinutes: number;
+  subjectMinutes: {
+    [subjectId: string]: number;
+  };
 }

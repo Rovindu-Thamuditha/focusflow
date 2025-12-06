@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import type { TimeBlockState, Subject } from '@/lib/types';
+import type { TimeBlockState, Subject, DailySummary } from '@/lib/types';
 import { AccountabilityGrid } from '@/components/accountability-grid';
 import { DailyChallenge } from '@/components/daily-challenge';
 import { MainHeader } from '@/components/main-header';
@@ -268,7 +268,7 @@ export default function Home() {
     }
   }, [subjects, sleepHours, language, enableTimer, enableDailyChallenge, enableTodoList, user, userDocRef, isClient, userDataLoaded, showOnboarding], 2000);
 
-  // Debounced effect for saving time blocks
+  // Debounced effect for saving time blocks and updating daily summary
   useDebouncedEffect(() => {
     if (!isClient || !userDataLoaded || timeBlocks.length === 0) return;
     
@@ -291,8 +291,27 @@ export default function Home() {
           const blockDocRef = doc(firestore, 'users', user.uid, 'time_blocks', `${dateString}_${block.hour}`);
           batch.set(blockDocRef, blockWithDate);
         });
+
+        // Calculate and set daily summary
+        const summary: DailySummary = {
+          id: dateString,
+          date: dateString,
+          totalMinutes: 0,
+          subjectMinutes: {}
+        };
+        
+        timeBlocks.forEach(block => {
+          if (block.subject !== 'idle' && block.subject !== 'sleep' && block.duration > 0) {
+            summary.totalMinutes += block.duration;
+            summary.subjectMinutes[block.subject] = (summary.subjectMinutes[block.subject] || 0) + block.duration;
+          }
+        });
+
+        const summaryDocRef = doc(firestore, 'users', user.uid, 'daily_summaries', dateString);
+        batch.set(summaryDocRef, summary);
+        
         batch.commit().catch(error => {
-          console.error("Error saving time blocks:", error);
+          console.error("Error saving time blocks and summary:", error);
         });
       }
     }
