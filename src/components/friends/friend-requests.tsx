@@ -2,7 +2,7 @@
 'use client';
 
 import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, where, doc, getDoc, updateDoc, deleteDoc, writeBatch, serverTimestamp } from 'firebase/firestore';
+import { collection, query, where, doc, getDoc, updateDoc, deleteDoc, writeBatch, serverTimestamp, limit } from 'firebase/firestore';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Check, X, Clock } from 'lucide-react';
@@ -38,7 +38,8 @@ export function FriendRequests({ currentUserId }: { currentUserId: string }) {
         return query(
             collection(firestore, 'friendships'),
             where('userIds', 'array-contains', currentUserId),
-            where('status', '==', 'pending')
+            where('status', '==', 'pending'),
+            limit(50)
         );
     }, [firestore, currentUserId]);
 
@@ -134,3 +135,5 @@ export function FriendRequests({ currentUserId }: { currentUserId: string }) {
         </Card>
     );
 }
+
+    

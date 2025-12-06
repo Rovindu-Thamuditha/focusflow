@@ -2,7 +2,7 @@
 'use client';
 
 import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, where, doc, getDoc, deleteDoc } from 'firebase/firestore';
+import { collection, query, where, doc, getDoc, deleteDoc, limit } from 'firebase/firestore';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Users, Trash2, Eye } from 'lucide-react';
@@ -47,7 +47,8 @@ export function FriendsList({ currentUserId }: { currentUserId: string }) {
         return query(
             collection(firestore, 'friendships'),
             where('userIds', 'array-contains', currentUserId),
-            where('status', '==', 'accepted')
+            where('status', '==', 'accepted'),
+            limit(50)
         );
     }, [firestore, currentUserId]);
 
@@ -138,3 +139,5 @@ export function FriendsList({ currentUserId }: { currentUserId: string }) {
         </Card>
     );
 }
+
+    

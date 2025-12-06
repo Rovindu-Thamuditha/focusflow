@@ -6,7 +6,7 @@ import { Area, AreaChart, CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContai
 import { MainHeader } from '@/components/main-header';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { useUser, useFirestore, useMemoFirebase } from '@/firebase';
 import { useRouter } from 'next/navigation';
 import { collection, query, where, getDocs, doc, getDoc, orderBy } from 'firebase/firestore';
 import { subDays, startOfDay, format, parseISO, endOfDay, eachDayOfInterval } from 'date-fns';
@@ -78,40 +78,55 @@ export default function StatsPage() {
   const [timeRange, setTimeRange] = useState('7');
   const [subjects, setSubjects] = useState<Subject[]>(defaultSubjects);
   const [dataLoaded, setDataLoaded] = useState(false);
+  const [summariesLoading, setSummariesLoading] = useState(true);
+  const [dailySummaries, setDailySummaries] = useState<DailySummary[]>([]);
   const isAnonymousUser = user?.isAnonymous;
-
-  const summariesQuery = useMemoFirebase(() => {
-    if (!user || !firestore || isAnonymousUser) return null;
-    const range = parseInt(timeRange);
-    const startDate = startOfDay(subDays(new Date(), range -1));
-    return query(
-        collection(firestore, 'users', user.uid, 'daily_summaries'),
-        where('date', '>=', format(startDate, 'yyyy-MM-dd')),
-        orderBy('date', 'asc')
-    );
-  }, [user, firestore, isAnonymousUser, timeRange]);
-
-  const { data: dailySummaries, isLoading: summariesLoading } = useCollection<DailySummary>(summariesQuery);
   
   useEffect(() => {
-    const fetchUserData = async () => {
-      if(user && !isAnonymousUser && firestore){
-        const userDocRef = doc(firestore, 'users', user.uid);
-        const userDoc = await getDoc(userDocRef);
-        if (userDoc.exists()) {
-            setSubjects(userDoc.data().settings?.subjects || defaultSubjects);
+    const fetchUserDataAndSummaries = async () => {
+      if (!user || !firestore || isAnonymousUser) {
+        if (!isUserLoading) {
+            setSummariesLoading(false);
+            setDataLoaded(true);
         }
-        setDataLoaded(true);
-      } else if (isAnonymousUser) {
-        // For anonymous user, we'd need to aggregate from localStorage, which is complex.
-        // For this optimization, we'll rely on the existing behavior for anonymous users.
+        return;
+      }
+
+      setSummariesLoading(true);
+
+      // Fetch user settings to get subject colors
+      const userDocRef = doc(firestore, 'users', user.uid);
+      const userDoc = await getDoc(userDocRef);
+      if (userDoc.exists()) {
+          setSubjects(userDoc.data().settings?.subjects || defaultSubjects);
+      }
+      
+      // Fetch daily summaries
+      const range = parseInt(timeRange);
+      const startDate = startOfDay(subDays(new Date(), range - 1));
+      const summariesQuery = query(
+          collection(firestore, 'users', user.uid, 'daily_summaries'),
+          where('date', '>=', format(startDate, 'yyyy-MM-dd')),
+          orderBy('date', 'asc')
+      );
+      
+      try {
+        const querySnapshot = await getDocs(summariesQuery);
+        const summaries = querySnapshot.docs.map(doc => doc.data() as DailySummary);
+        setDailySummaries(summaries);
+      } catch (error) {
+        console.error("Error fetching summaries:", error);
+        setDailySummaries([]);
+      } finally {
+        setSummariesLoading(false);
         setDataLoaded(true);
       }
     }
+
     if(!isUserLoading) {
-      fetchUserData();
+      fetchUserDataAndSummaries();
     }
-  }, [user, isUserLoading, isAnonymousUser, firestore]);
+  }, [user, isUserLoading, isAnonymousUser, firestore, timeRange]);
   
   const chartData = useMemo(() => {
     if (!dailySummaries) return [];
@@ -262,3 +277,5 @@ export default function StatsPage() {
     </div>
   );
 }
+
+    
