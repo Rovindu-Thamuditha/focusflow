@@ -111,12 +111,13 @@ export function TimeBlock({ hour, subjectId, duration, subjects, onClick, onStat
                 <ContextMenu>
                     <ContextMenuTrigger className="aspect-square w-full h-full">{blockButton}</ContextMenuTrigger>
                     <ContextMenuContent>
-                    {isSleep ? (
+                    {finalIsEditable && isSleep && (
                          <ContextMenuItem onClick={() => onStateChange('idle', 0)}>
                             <Sun className="mr-2 h-4 w-4" />
                             <span>Wake Up</span>
                         </ContextMenuItem>
-                    ) : (
+                    )}
+                    {finalIsEditable && !isSleep && (
                         <ContextMenuItem onClick={() => onStateChange('sleep', 0)}>
                             <Bed className="mr-2 h-4 w-4" />
                             <span>Mark as Sleep</span>
@@ -126,7 +127,7 @@ export function TimeBlock({ hour, subjectId, duration, subjects, onClick, onStat
                 </ContextMenu>
             </TooltipTrigger>
             <TooltipContent>
-                <p className="font-semibold">{subject.name}</p>
+                <p className="font-semibold">{isBeingTimed ? activeTimerSubject?.name : subject.name}</p>
                 <p className="text-sm text-muted-foreground">{isSleep ? "Right-click for options" : `Duration: ${duration} minutes`}</p>
                 <p className="text-xs text-muted-foreground">{timeSlot}</p>
                  {isBeingTimed && <p className="text-xs text-red-500 font-semibold">In Progress</p>}

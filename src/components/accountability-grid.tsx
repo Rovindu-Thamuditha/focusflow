@@ -73,7 +73,7 @@ export function AccountabilityGrid({ blocks, subjects, onBlockUpdate, viewingDat
                 isFuture={isFutureBlock}
                 isCurrent={isCurrentBlock}
                 liveTime={liveTime}
-                activeTimerSubject={isCurrentBlock ? activeTimerSubject : null}
+                activeTimerSubject={isCurrentBlock && activeTimerSubject ? activeTimerSubject : null}
               />
             );
         })}
