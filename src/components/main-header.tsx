@@ -28,28 +28,16 @@ const CurrentTime = dynamic(() => import('./current-time').then(mod => mod.Curre
 const ADMIN_EMAIL = 'rovinduthamu@gmail.com';
 
 interface MainHeaderProps {
-  children: React.ReactNode;
+  children?: React.ReactNode;
   totalFocusedTime: number;
+  enableAiInsights?: boolean;
 }
 
-export function MainHeader({ children, totalFocusedTime }: MainHeaderProps) {
+export function MainHeader({ children, totalFocusedTime, enableAiInsights }: MainHeaderProps) {
   const { user } = useUser();
   const auth = useAuth();
   const router = useRouter();
-  const firestore = useFirestore();
-
-  const [enableAiInsights, setEnableAiInsights] = useState(false);
-
-  const userDocRef = useMemoFirebase(() => user && !user.isAnonymous ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
-  const { data: userData } = useDoc(userDocRef);
-
-  useEffect(() => {
-    if (userData) {
-      setEnableAiInsights(userData.settings?.enableAiInsights === true);
-    }
-  }, [userData]);
-
-
+  
   const handleSignOut = async () => {
     if(auth) {
       await auth.signOut();
@@ -115,7 +103,7 @@ export function MainHeader({ children, totalFocusedTime }: MainHeaderProps) {
                     </Button>
                  </Link>
               ) : user ? (
-                <>
+                <div className="flex items-center gap-2">
                 {children}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
@@ -157,7 +145,7 @@ export function MainHeader({ children, totalFocusedTime }: MainHeaderProps) {
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
-                </>
+                </div>
               ) : null}
           </div>
           

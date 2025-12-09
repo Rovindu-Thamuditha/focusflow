@@ -19,6 +19,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Icons } from '@/components/icons';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { User as UserIcon } from 'lucide-react';
+import { GridFocusLoader } from '@/components/grid-focus-loader';
 
 const profileFormSchema = z.object({
   username: z.string().min(3, { message: 'Username must be at least 3 characters long.' }).max(30),
@@ -143,14 +144,3 @@ export default function ProfilePage() {
     </div>
   );
 }
-
-// Minimal loader to avoid dependency issues if GridFocusLoader is complex
-function GridFocusLoader() {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-screen">
-        <Icons.logo className="h-20 w-20 text-primary animate-spin" />
-        <p className="mt-4 text-lg">Loading...</p>
-      </div>
-    );
-}
-
