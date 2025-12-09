@@ -134,14 +134,6 @@ export function MainHeader({ children, totalFocusedTime, enableAiInsights }: Mai
                             <span>Profile</span>
                         </DropdownMenuItem>
                     </Link>
-                    {enableAiInsights && (
-                        <Link href="/insights" passHref>
-                            <DropdownMenuItem>
-                                <BrainCircuit className="mr-2 h-4 w-4" />
-                                <span>AI Insights</span>
-                            </DropdownMenuItem>
-                        </Link>
-                    )}
                      {user.email === ADMIN_EMAIL && (
                         <Link href="/admin" passHref>
                             <DropdownMenuItem>
