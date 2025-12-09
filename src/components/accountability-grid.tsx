@@ -14,15 +14,16 @@ interface AccountabilityGridProps {
   onBlockUpdate: (hour: number, subject: string, duration: number) => void;
   viewingDate: Date;
   liveTime: Date;
+  disableEditRestriction: boolean;
 }
 
-const AccountabilityGridMemo = ({ blocks, subjects, onBlockUpdate, viewingDate, liveTime }: AccountabilityGridProps) => {
+const AccountabilityGridMemo = ({ blocks, subjects, onBlockUpdate, viewingDate, liveTime, disableEditRestriction }: AccountabilityGridProps) => {
   const [selectedBlock, setSelectedBlock] = useState<TimeBlockState | null>(null);
   const { timerIsRunning, timerSubject } = useTimer();
   const activeTimerSubjectInfo = timerIsRunning ? subjects.find(s => s.id === timerSubject) : null;
 
 
-  const isEditableDate = differenceInHours(new Date(), viewingDate) <= 36;
+  const isEditableDate = disableEditRestriction || differenceInHours(new Date(), viewingDate) <= 36;
   const isViewingToday = isToday(viewingDate);
   const currentHour = liveTime.getHours();
 
@@ -57,7 +58,7 @@ const AccountabilityGridMemo = ({ blocks, subjects, onBlockUpdate, viewingDate, 
     <div>
       <h2 className="text-2xl font-bold mb-4 text-primary">24-Hour Focus Grid</h2>
       {!isEditableDate && (
-         <p className="text-sm text-yellow-500 mb-4">You can only edit entries from the last 36 hours.</p>
+         <p className="text-sm text-yellow-500 mb-4">You can only edit entries from the last 36 hours. You can disable this in settings.</p>
       )}
       <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2">
         {blocksToRender.map(block => {
@@ -96,3 +97,5 @@ const AccountabilityGridMemo = ({ blocks, subjects, onBlockUpdate, viewingDate, 
 }
 
 export const AccountabilityGrid = React.memo(AccountabilityGridMemo);
+
+    

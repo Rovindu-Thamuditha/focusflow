@@ -84,6 +84,7 @@ export default function Home() {
   const [enableDailyChallenge, setEnableDailyChallenge] = useState(true);
   const [enableTodoList, setEnableTodoList] = useState(true);
   const [enableAiInsights, setEnableAiInsights] = useState(false);
+  const [disableEditRestriction, setDisableEditRestriction] = useState(false);
   
   const userDocRef = useMemoFirebase(() => user && !user.isAnonymous ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
 
@@ -186,6 +187,7 @@ export default function Home() {
           setEnableDailyChallenge(settings.enableDailyChallenge !== false);
           setEnableTodoList(settings.enableTodoList !== false);
           setEnableAiInsights(settings.enableAiInsights === true);
+          setDisableEditRestriction(settings.disableEditRestriction === true);
           if (!settings.hasCompletedOnboarding) {
              setShowOnboarding(true);
           }
@@ -219,6 +221,7 @@ export default function Home() {
             setEnableDailyChallenge(settings.enableDailyChallenge !== false);
             setEnableTodoList(settings.enableTodoList !== false);
             setEnableAiInsights(settings.enableAiInsights === true);
+            setDisableEditRestriction(settings.disableEditRestriction === true);
             setSeenWhatsNewVersions(data.seenWhatsNewVersions || []);
             setHasBeenPromptedForFeedback(data.hasBeenPromptedForFeedback || false);
           } else {
@@ -252,6 +255,7 @@ export default function Home() {
     const settings = {
         sleepHours, subjects, language, enableTimer,
         enableDailyChallenge, enableTodoList, enableAiInsights,
+        disableEditRestriction,
         hasCompletedOnboarding: true
     };
     
@@ -266,7 +270,7 @@ export default function Home() {
         console.error("Error saving settings:", error);
       });
     }
-  }, [subjects, sleepHours, language, enableTimer, enableDailyChallenge, enableTodoList, enableAiInsights, user, userDocRef, isClient, userDataLoaded, showOnboarding], 2000);
+  }, [subjects, sleepHours, language, enableTimer, enableDailyChallenge, enableTodoList, enableAiInsights, disableEditRestriction, user, userDocRef, isClient, userDataLoaded, showOnboarding], 2000);
 
   // Debounced effect for saving time blocks and updating daily summary
   useDebouncedEffect(() => {
@@ -283,7 +287,7 @@ export default function Home() {
     }
     
     if (user && firestore) {
-      const isEditable = differenceInHours(new Date(), currentDate) <= 36;
+      const isEditable = disableEditRestriction || differenceInHours(new Date(), currentDate) <= 36;
       if (isEditable && timeBlocks.length === 24) {
         const batch = writeBatch(firestore);
         timeBlocks.forEach(block => {
@@ -315,7 +319,7 @@ export default function Home() {
         });
       }
     }
-  }, [timeBlocks, currentDate, user, firestore, isClient, userDataLoaded], 2000);
+  }, [timeBlocks, currentDate, user, firestore, isClient, userDataLoaded, disableEditRestriction], 2000);
 
   // Debounced effect for saving daily challenge state
   useDebouncedEffect(() => {
@@ -418,6 +422,7 @@ export default function Home() {
     setEnableDailyChallenge(newSettings.enableDailyChallenge);
     setEnableTodoList(newSettings.enableTodoList);
     setEnableAiInsights(newSettings.enableAiInsights);
+    setDisableEditRestriction(newSettings.disableEditRestriction);
 
     // Only reset grid if sleep hours actually changed
     if (JSON.stringify(oldSleepHours.sort()) !== JSON.stringify([...newSettings.sleepHours].sort())) {
@@ -510,6 +515,7 @@ export default function Home() {
             enableDailyChallenge={enableDailyChallenge}
             enableTodoList={enableTodoList}
             enableAiInsights={enableAiInsights}
+            disableEditRestriction={disableEditRestriction}
             onSave={handleSettingsSave}
           />
       </MainHeader>
@@ -540,6 +546,7 @@ export default function Home() {
                 onBlockUpdate={handleBlockUpdate}
                 viewingDate={currentDate}
                 liveTime={new Date()}
+                disableEditRestriction={disableEditRestriction}
               />
             </CardContent>
           </Card>
@@ -604,6 +611,7 @@ export default function Home() {
             enableDailyChallenge,
             enableTodoList,
             enableAiInsights,
+            disableEditRestriction,
           }}
         />
       )}

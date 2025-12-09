@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { Settings, Trash2, PlusCircle, Languages, Sparkles, SlidersHorizontal, Bed, MessageSquarePlus, Lock, BrainCircuit } from 'lucide-react';
+import { Settings, Trash2, PlusCircle, Languages, Sparkles, SlidersHorizontal, Bed, MessageSquarePlus, Lock, BrainCircuit, ShieldAlert } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -33,6 +33,7 @@ interface SettingsDialogProps {
   enableDailyChallenge: boolean;
   enableTodoList: boolean;
   enableAiInsights: boolean;
+  disableEditRestriction: boolean;
   onSave: (settings: {
     subjects: Subject[];
     sleepHours: number[];
@@ -41,6 +42,7 @@ interface SettingsDialogProps {
     enableDailyChallenge: boolean;
     enableTodoList: boolean;
     enableAiInsights: boolean;
+    disableEditRestriction: boolean;
   }) => void;
 }
 
@@ -54,6 +56,7 @@ export function SettingsDialog({
   enableDailyChallenge: initialEnableDailyChallenge,
   enableTodoList: initialEnableTodoList,
   enableAiInsights: initialEnableAiInsights,
+  disableEditRestriction: initialDisableEditRestriction,
   onSave,
 }: SettingsDialogProps) {
   const { user } = useUser();
@@ -71,6 +74,7 @@ export function SettingsDialog({
   const [enableDailyChallenge, setEnableDailyChallenge] = useState(initialEnableDailyChallenge);
   const [enableTodoList, setEnableTodoList] = useState(initialEnableTodoList);
   const [enableAiInsights, setEnableAiInsights] = useState(initialEnableAiInsights);
+  const [disableEditRestriction, setDisableEditRestriction] = useState(initialDisableEditRestriction);
 
   // Privacy Settings
   const privacySettingsRef = useMemoFirebase(() => {
@@ -95,8 +99,9 @@ export function SettingsDialog({
         setEnableDailyChallenge(initialEnableDailyChallenge);
         setEnableTodoList(initialEnableTodoList);
         setEnableAiInsights(initialEnableAiInsights);
+        setDisableEditRestriction(initialDisableEditRestriction);
     }
-  }, [isOpen, initialSubjects, initialSleepHours, initialLanguage, initialEnableTimer, initialEnableDailyChallenge, initialEnableTodoList, initialEnableAiInsights]);
+  }, [isOpen, initialSubjects, initialSleepHours, initialLanguage, initialEnableTimer, initialEnableDailyChallenge, initialEnableTodoList, initialEnableAiInsights, initialDisableEditRestriction]);
 
   useEffect(() => {
     if (initialPrivacySettings) {
@@ -108,7 +113,7 @@ export function SettingsDialog({
 
 
   const handleSave = async () => {
-    onSave({ subjects, sleepHours, language, enableTimer, enableDailyChallenge, enableTodoList, enableAiInsights });
+    onSave({ subjects, sleepHours, language, enableTimer, enableDailyChallenge, enableTodoList, enableAiInsights, disableEditRestriction });
     
     // Save privacy settings
     if (privacySettingsRef) {
@@ -201,6 +206,14 @@ export function SettingsDialog({
                             <SelectItem value="sinhala">Sinhala</SelectItem>
                         </SelectContent>
                     </Select>
+                </div>
+                <div className="flex items-center justify-between rounded-lg border p-3">
+                    <Label htmlFor="disable-edit-restriction" className="flex items-center gap-2"><ShieldAlert className="w-5 h-5" /> Disable 36-Hour Edit Lock</Label>
+                    <Switch
+                        id="disable-edit-restriction"
+                        checked={disableEditRestriction}
+                        onCheckedChange={setDisableEditRestriction}
+                    />
                 </div>
                  <div className="flex items-center justify-between rounded-lg border p-3">
                     <Label htmlFor="feedback" className="flex items-center gap-2"><MessageSquarePlus className="w-5 h-5" /> Submit Feedback</Label>

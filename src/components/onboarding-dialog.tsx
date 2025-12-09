@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { Settings, Trash2, PlusCircle, Sparkles, SlidersHorizontal, Bed, Palette, Moon, Sun, ListTodo, Timer, Trophy, BrainCircuit } from 'lucide-react';
+import { Settings, Trash2, PlusCircle, Sparkles, SlidersHorizontal, Bed, Palette, Moon, Sun, ListTodo, Timer, Trophy, BrainCircuit, ShieldAlert } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -29,6 +29,7 @@ interface OnboardingDialogProps {
     enableDailyChallenge: boolean;
     enableTodoList: boolean;
     enableAiInsights: boolean;
+    disableEditRestriction: boolean;
   };
 }
 
@@ -44,9 +45,10 @@ export function OnboardingDialog({ isOpen, onFinish, initialSettings }: Onboardi
   const [enableDailyChallenge, setEnableDailyChallenge] = useState(initialSettings.enableDailyChallenge);
   const [enableTodoList, setEnableTodoList] = useState(initialSettings.enableTodoList);
   const [enableAiInsights, setEnableAiInsights] = useState(initialSettings.enableAiInsights);
+  const [disableEditRestriction, setDisableEditRestriction] = useState(initialSettings.disableEditRestriction);
 
   const handleFinish = () => {
-    onFinish({ subjects, sleepHours, enableTimer, enableDailyChallenge, enableTodoList, language: initialSettings.language, enableAiInsights });
+    onFinish({ subjects, sleepHours, enableTimer, enableDailyChallenge, enableTodoList, language: initialSettings.language, enableAiInsights, disableEditRestriction });
   };
 
   const handleNext = () => setStep(s => Math.min(s + 1, TOTAL_STEPS));
@@ -163,6 +165,13 @@ export function OnboardingDialog({ isOpen, onFinish, initialSettings }: Onboardi
                                     <span className="font-normal text-muted-foreground text-xs">Get AI-powered insights on your study habits.</span>
                                 </Label>
                                 <Switch id="enable-ai-insights-onboarding" checked={enableAiInsights} onCheckedChange={setEnableAiInsights} />
+                            </div>
+                            <div className="flex items-center justify-between rounded-lg border p-4">
+                                <Label htmlFor="disable-edit-restriction-onboarding" className="flex flex-col gap-1">
+                                    <span className="font-semibold flex items-center gap-2"><ShieldAlert /> Disable Edit Lock</span>
+                                    <span className="font-normal text-muted-foreground text-xs">Allow editing grid entries older than 36 hours.</span>
+                                </Label>
+                                <Switch id="disable-edit-restriction-onboarding" checked={disableEditRestriction} onCheckedChange={setDisableEditRestriction} />
                             </div>
                         </div>
                     </div>
