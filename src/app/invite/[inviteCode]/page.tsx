@@ -69,19 +69,32 @@ export default function InvitePage() {
 
         setRequestStatus('sending');
         try {
-            // Check if a friendship or pending request already exists
+            // Firestore doesn't support inequality checks on different fields in a single query.
+            // We must perform two separate queries.
             const friendshipsRef = collection(firestore, 'friendships');
-            const existingFriendshipQuery = query(
-                friendshipsRef,
-                where('userIds', 'in', [[currentUser.uid, inviter.id], [inviter.id, currentUser.uid]])
-            );
             
-            const existingFriendshipSnapshot = await getDocs(existingFriendshipQuery);
+            // Query 1: Check for an accepted friendship.
+            const acceptedQuery = query(
+                friendshipsRef,
+                where('userIds', 'array-contains', currentUser.uid),
+                where('status', '==', 'accepted')
+            );
+            const acceptedSnapshot = await getDocs(acceptedQuery);
+            const isAlreadyFriend = acceptedSnapshot.docs.some(doc => doc.data().userIds.includes(inviter.id));
 
-            if (!existingFriendshipSnapshot.empty) {
+            // Query 2: Check for a pending friendship.
+            const pendingQuery = query(
+                friendshipsRef,
+                where('userIds', 'in', [[currentUser.uid, inviter.id], [inviter.id, currentUser.uid]]),
+                where('status', '==', 'pending')
+            );
+            const pendingSnapshot = await getDocs(pendingQuery);
+
+            if (isAlreadyFriend || !pendingSnapshot.empty) {
                 setRequestStatus('exists');
                 return;
             }
+
             
             // Create a new friendship document and a notification for the target user
             const batch = writeBatch(firestore);
@@ -99,6 +112,7 @@ export default function InvitePage() {
             // Notification Doc for the inviter
             const notificationRef = doc(collection(firestore, 'users', inviter.id, 'notifications'));
             const notificationData = {
+                userId: inviter.id,
                 type: 'friend_request',
                 fromUserId: currentUser.uid,
                 title: 'New Friend Request',
@@ -204,4 +218,3 @@ export default function InvitePage() {
         </div>
     );
 }
-
