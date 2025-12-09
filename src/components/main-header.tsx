@@ -54,14 +54,14 @@ export function MainHeader({ children, totalFocusedTime, enableAiInsights }: Mai
 
   return (
     <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur-sm">
-      <div className="container flex h-16 items-center space-x-4 sm:justify-between sm:space-x-0">
+      <div className="container flex h-16 items-center justify-between">
         <div className="flex gap-6 items-center">
           <Link href="/" className="flex items-center gap-2">
             <Icons.logo className="h-6 w-6 text-primary" />
             <h1 className="text-xl sm:text-2xl font-bold text-primary">GridFocus</h1>
           </Link>
         </div>
-        <div className="flex flex-1 items-center justify-end space-x-1 sm:space-x-2">
+        <div className="flex items-center space-x-1 sm:space-x-2">
           { !isAnonymousUser && <TotalFocusTime totalHours={totalFocusedTime} /> }
           
           <div className="hidden sm:flex items-center space-x-1">
@@ -98,8 +98,7 @@ export function MainHeader({ children, totalFocusedTime, enableAiInsights }: Mai
           <ThemeToggle />
 
           {/* Desktop-only items */}
-          <div className="hidden sm:flex items-center">
-              {children}
+          <div className="hidden sm:flex items-center gap-2">
               {isAnonymousUser ? (
                  <Link href="/login" passHref>
                     <Button>
@@ -108,6 +107,8 @@ export function MainHeader({ children, totalFocusedTime, enableAiInsights }: Mai
                     </Button>
                  </Link>
               ) : user ? (
+                <>
+                {children}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" className="relative h-8 w-8 rounded-full">
@@ -156,6 +157,7 @@ export function MainHeader({ children, totalFocusedTime, enableAiInsights }: Mai
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
+                </>
               ) : null}
           </div>
           
@@ -229,5 +231,3 @@ export function MainHeader({ children, totalFocusedTime, enableAiInsights }: Mai
     </header>
   );
 }
-
-    
