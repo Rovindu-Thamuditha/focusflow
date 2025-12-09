@@ -78,6 +78,8 @@ export default function Home() {
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [isFeedbackDialogOpen, setIsFeedbackDialogOpen] = useState(false);
   const [hasBeenPromptedForFeedback, setHasBeenPromptedForFeedback] = useState(false);
+  const [dayChallengeIndex, setDayChallengeIndex] = useState(0);
+
 
   // Feature toggles
   const [enableTimer, setEnableTimer] = useState(true);
@@ -98,6 +100,10 @@ export default function Home() {
         }
     }
   }, [user, isUserLoading, auth]);
+
+  useEffect(() => {
+    setDayChallengeIndex(getDayOfYear(new Date()));
+  }, []);
 
   const loadDayData = useCallback(async (dateToLoad: Date) => {
     if (!user || !userDataLoaded) return;
@@ -490,10 +496,9 @@ export default function Home() {
 
   const currentQuestion = useMemo(() => {
     if (!isClient) return dailyQuestions[0];
-    const dayIndex = getDayOfYear(new Date());
     const qIndex = isToday(currentDate) ? questionIndex : 0;
-    return dailyQuestions[(dayIndex + qIndex) % dailyQuestions.length];
-  }, [isClient, currentDate, questionIndex]);
+    return dailyQuestions[(dayChallengeIndex + qIndex) % dailyQuestions.length];
+  }, [isClient, currentDate, questionIndex, dayChallengeIndex]);
 
   if (isUserLoading || !isClient || !user || !userDataLoaded) {
     return (
@@ -624,5 +629,7 @@ export default function Home() {
     </div>
   );
 }
+
+    
 
     
