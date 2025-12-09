@@ -17,11 +17,9 @@ import {
   DropdownMenuTrigger,
   DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu"
-import { useUser, useAuth, useDoc, useFirestore, useMemoFirebase } from "@/firebase";
+import { useUser, useAuth } from "@/firebase";
 import { InfoDialog } from "./info-dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
-import { doc } from "firebase/firestore";
-import { useEffect, useState } from "react";
 
 const CurrentTime = dynamic(() => import('./current-time').then(mod => mod.CurrentTime), { ssr: false });
 

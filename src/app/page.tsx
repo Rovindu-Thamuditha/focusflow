@@ -11,7 +11,7 @@ import { getDayOfYear, format, addDays, subDays, startOfDay, isToday, isFuture, 
 import { Card, CardContent } from '@/components/ui/card';
 import { SettingsDialog } from '@/components/settings-dialog';
 import { defaultSubjects } from '@/lib/subjects';
-import { useUser, useAuth, useFirestore, useMemoFirebase, FirestorePermissionError, errorEmitter } from '@/firebase';
+import { useUser, useAuth, useFirestore, useMemoFirebase, FirestorePermissionError, errorEmitter, useDoc, useCollection } from '@/firebase';
 import { useRouter } from 'next/navigation';
 import { doc, setDoc, getDoc, getDocs, collection, query, where, writeBatch, arrayUnion } from 'firebase/firestore';
 import { signInAnonymously } from 'firebase/auth';
@@ -89,6 +89,19 @@ export default function Home() {
   const [disableEditRestriction, setDisableEditRestriction] = useState(false);
   
   const userDocRef = useMemoFirebase(() => user && !user.isAnonymous ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
+  const { data: userData } = useDoc(userDocRef);
+
+  const dateString = useMemo(() => format(currentDate, 'yyyy-MM-dd'), [currentDate]);
+  
+  const timeBlockQuery = useMemoFirebase(() => {
+    if (!user || user.isAnonymous || !firestore) return null;
+    return query(
+        collection(firestore, 'users', user.uid, 'time_blocks'), 
+        where('date', '==', dateString)
+    );
+  }, [user, firestore, dateString]);
+  
+  const { data: cloudTimeBlocks } = useCollection<TimeBlockState>(timeBlockQuery);
 
   useEffect(() => {
     setIsClient(true);
@@ -102,85 +115,40 @@ export default function Home() {
   }, [user, isUserLoading, auth]);
 
   useEffect(() => {
+    // Set the base index for the daily challenge question pool
+    // This should only run once on client mount to avoid hydration errors
     setDayChallengeIndex(getDayOfYear(new Date()));
   }, []);
 
-  const loadDayData = useCallback(async (dateToLoad: Date) => {
-    if (!user || !userDataLoaded) return;
-  
-    const dateString = format(dateToLoad, 'yyyy-MM-dd');
-    
-    // ANONYMOUS USER - LOAD FROM LOCAL STORAGE
-    if (user.isAnonymous) {
-        const localBlocksStr = localStorage.getItem('gridFocusTimeBlocks');
-        const localBlocks = localBlocksStr ? JSON.parse(localBlocksStr) : {};
-        const dayBlocks = localBlocks[dateString];
+  const loadLocalDayData = useCallback((dateToLoad: Date) => {
+    const localDateString = format(dateToLoad, 'yyyy-MM-dd');
+    const localBlocksStr = localStorage.getItem('gridFocusTimeBlocks');
+    const localBlocks = localBlocksStr ? JSON.parse(localBlocksStr) : {};
+    const dayBlocks = localBlocks[localDateString];
 
-        if (dayBlocks) {
-            setTimeBlocks(dayBlocks);
-        } else {
-            setTimeBlocks(createInitialState(sleepHours, dateToLoad));
-        }
-        // Load local challenge state if it's today
-        if(isToday(dateToLoad)) {
-            const localChallengesStr = localStorage.getItem('gridFocusSolvedChallenges');
-            const localChallenges = localChallengesStr ? JSON.parse(localChallengesStr) : {};
-            setSolvedChallenges(localChallenges.solved || Array(dailyQuestions.length).fill(false));
-            setQuestionIndex(localChallenges.qIndex || 0);
-        } else {
-            setSolvedChallenges(Array(dailyQuestions.length).fill(false));
-            setQuestionIndex(0);
-        }
-        return;
+    if (dayBlocks) {
+      setTimeBlocks(dayBlocks);
+    } else {
+      setTimeBlocks(createInitialState(sleepHours, dateToLoad));
     }
 
-    // LOGGED-IN USER - LOAD FROM FIRESTORE
-    if (!firestore) return;
-    try {
-      const timeBlockQuery = query(
-        collection(firestore, 'users', user.uid, 'time_blocks'), 
-        where('date', '==', dateString)
-      );
-      const querySnapshot = await getDocs(timeBlockQuery);
-  
-      if (!querySnapshot.empty) {
-        const blocksFromDb = querySnapshot.docs.map(d => d.data() as TimeBlockState);
-        const normalizedBlocks = Array.from({ length: 24 }, (_, i) => {
-            const foundBlock = blocksFromDb.find(b => b.hour === i);
-            return foundBlock || { hour: i, subject: sleepHours.includes(i) ? 'sleep' : 'idle', duration: 0, date: dateString };
-        });
-        setTimeBlocks(normalizedBlocks.sort((a, b) => a.hour - b.hour));
-      } else {
-        setTimeBlocks(createInitialState(sleepHours, dateToLoad));
-      }
-  
-      if (isToday(dateToLoad) && userDocRef) {
-        const userDoc = await getDoc(userDocRef);
-        if (userDoc.exists()) {
-           const todayString = format(new Date(), 'yyyy-MM-dd');
-           const dailyData = userDoc.data().daily?.[todayString];
-           setSolvedChallenges(dailyData?.solvedChallenges || Array(dailyQuestions.length).fill(false));
-           setQuestionIndex(dailyData?.questionIndex || 0);
-        } else {
-           setSolvedChallenges(Array(dailyQuestions.length).fill(false));
-           setQuestionIndex(0);
-        }
-      } else {
-        setSolvedChallenges(Array(dailyQuestions.length).fill(false));
-        setQuestionIndex(0);
-      }
-  
-    } catch (e) {
-      console.error("Error loading day data: ", e);
+    if (isToday(dateToLoad)) {
+      const localChallengesStr = localStorage.getItem('gridFocusSolvedChallenges');
+      const localChallenges = localChallengesStr ? JSON.parse(localChallengesStr) : {};
+      setSolvedChallenges(localChallenges.solved || Array(dailyQuestions.length).fill(false));
+      setQuestionIndex(localChallenges.qIndex || 0);
+    } else {
+      setSolvedChallenges(Array(dailyQuestions.length).fill(false));
+      setQuestionIndex(0);
     }
-  }, [user, firestore, userDocRef, sleepHours, userDataLoaded]);
+  }, [sleepHours]);
 
-  // Initial data load effect
+
+  // Effect for initial user data loading (from settings)
   useEffect(() => {
     if (!user || !isClient) return;
-
-    const loadInitialUserData = async () => {
-      // ANONYMOUS USER
+  
+    const loadInitialSettings = () => {
       if (user.isAnonymous) {
         const settingsStr = localStorage.getItem('gridFocusSettings');
         if (settingsStr) {
@@ -204,56 +172,71 @@ export default function Home() {
            setShowOnboarding(true);
         }
         setUserDataLoaded(true);
-        return;
-      }
-  
-      // LOGGED-IN USER
-      if (userDocRef) {
-        try {
-          const userDoc = await getDoc(userDocRef);
-          if (userDoc.exists()) {
-            const data = userDoc.data();
-            setUserName(data.username || user.displayName || '');
-            const settings = data.settings || {};
-            
-            if (!data.hasCompletedOnboarding) {
-              setShowOnboarding(true);
-            }
-
-            setSleepHours(settings.sleepHours || []);
-            setSubjects(settings.subjects || defaultSubjects);
-            setLanguage(settings.language || 'english');
-            setEnableTimer(settings.enableTimer !== false);
-            setEnableDailyChallenge(settings.enableDailyChallenge !== false);
-            setEnableTodoList(settings.enableTodoList !== false);
-            setEnableAiInsights(settings.enableAiInsights === true);
-            setDisableEditRestriction(settings.disableEditRestriction === true);
-            setSeenWhatsNewVersions(data.seenWhatsNewVersions || []);
-            setHasBeenPromptedForFeedback(data.hasBeenPromptedForFeedback || false);
-          } else {
-             setUserName(user.displayName || 'User');
-             setShowOnboarding(true);
-          }
-        } catch (e) {
-            console.error("Error loading user data", e);
-            errorEmitter.emit('permission-error', new FirestorePermissionError({ path: userDocRef.path, operation: 'get' }));
-        } finally {
-            setUserDataLoaded(true); 
+      } else if (userData) {
+        setUserName(userData.username || user.displayName || '');
+        const settings = userData.settings || {};
+        
+        if (!userData.hasCompletedOnboarding) {
+          setShowOnboarding(true);
         }
+
+        setSleepHours(settings.sleepHours || []);
+        setSubjects(settings.subjects || defaultSubjects);
+        setLanguage(settings.language || 'english');
+        setEnableTimer(settings.enableTimer !== false);
+        setEnableDailyChallenge(settings.enableDailyChallenge !== false);
+        setEnableTodoList(settings.enableTodoList !== false);
+        setEnableAiInsights(settings.enableAiInsights === true);
+        setDisableEditRestriction(settings.disableEditRestriction === true);
+        setSeenWhatsNewVersions(userData.seenWhatsNewVersions || []);
+        setHasBeenPromptedForFeedback(userData.hasBeenPromptedForFeedback || false);
+
+        if (isToday(currentDate)) {
+           const todayString = format(new Date(), 'yyyy-MM-dd');
+           const dailyData = userData.daily?.[todayString];
+           setSolvedChallenges(dailyData?.solvedChallenges || Array(dailyQuestions.length).fill(false));
+           setQuestionIndex(dailyData?.questionIndex || 0);
+        }
+
+        setUserDataLoaded(true); 
+      } else if (!isUserLoading && userDocRef === null && !userData) {
+        // This case handles the moment a user signs up and userData isn't available yet.
+        // We can set defaults to avoid a blank screen.
+        setUserName(user.displayName || 'User');
+        setShowOnboarding(true);
+        setUserDataLoaded(true);
       }
     };
-
+  
     if (!userDataLoaded) {
-      loadInitialUserData();
+      loadInitialSettings();
     }
-  }, [user, isClient, userDocRef, userDataLoaded]);
+  }, [user, isClient, userData, isUserLoading, userDataLoaded, currentDate, userDocRef]);
   
+
+  // Effect to load data for the current day (local or cloud)
   useEffect(() => {
-    if (userDataLoaded) {
-      loadDayData(currentDate);
+    if (!user || !userDataLoaded) return;
+
+    if (user.isAnonymous) {
+      loadLocalDayData(currentDate);
+    } else if (cloudTimeBlocks) {
+      if (cloudTimeBlocks.length > 0) {
+        const normalizedBlocks = Array.from({ length: 24 }, (_, i) => {
+          return cloudTimeBlocks.find(b => b.hour === i) || { hour: i, subject: sleepHours.includes(i) ? 'sleep' : 'idle', duration: 0, date: dateString };
+        });
+        setTimeBlocks(normalizedBlocks.sort((a, b) => a.hour - b.hour));
+      } else {
+        setTimeBlocks(createInitialState(sleepHours, currentDate));
+      }
+      
+      if (!isToday(currentDate)) {
+          setSolvedChallenges(Array(dailyQuestions.length).fill(false));
+          setQuestionIndex(0);
+      }
     }
-  }, [currentDate, userDataLoaded, loadDayData]);
-  
+  }, [user, userDataLoaded, currentDate, cloudTimeBlocks, sleepHours, dateString, loadLocalDayData]);
+
   // Debounced effect for saving settings
   useDebouncedEffect(() => {
     if (!isClient || !userDataLoaded || showOnboarding) return;
@@ -280,17 +263,7 @@ export default function Home() {
 
   // Debounced effect for saving time blocks and updating daily summary
   useDebouncedEffect(() => {
-    if (!isClient || !userDataLoaded || timeBlocks.length === 0) return;
-    
-    const dateString = format(currentDate, 'yyyy-MM-dd');
-
-    if (user?.isAnonymous) {
-      const localBlocksStr = localStorage.getItem('gridFocusTimeBlocks');
-      const localBlocks = localBlocksStr ? JSON.parse(localBlocksStr) : {};
-      localBlocks[dateString] = timeBlocks;
-      localStorage.setItem('gridFocusTimeBlocks', JSON.stringify(localBlocks));
-      return;
-    }
+    if (!isClient || !userDataLoaded || timeBlocks.length === 0 || user?.isAnonymous) return;
     
     if (user && firestore) {
       const isEditable = disableEditRestriction || differenceInHours(new Date(), currentDate) <= 36;
@@ -325,7 +298,18 @@ export default function Home() {
         });
       }
     }
-  }, [timeBlocks, currentDate, user, firestore, isClient, userDataLoaded, disableEditRestriction], 2000);
+  }, [timeBlocks, currentDate, user, firestore, isClient, userDataLoaded, disableEditRestriction, dateString], 2000);
+  
+   // Debounced effect for saving local time blocks (for anonymous users)
+  useDebouncedEffect(() => {
+    if (!isClient || !userDataLoaded || !user?.isAnonymous || timeBlocks.length === 0) return;
+    
+    const localBlocksStr = localStorage.getItem('gridFocusTimeBlocks');
+    const localBlocks = localBlocksStr ? JSON.parse(localBlocksStr) : {};
+    localBlocks[dateString] = timeBlocks;
+    localStorage.setItem('gridFocusTimeBlocks', JSON.stringify(localBlocks));
+
+  }, [timeBlocks, dateString, user, isClient, userDataLoaded], 2000);
 
   // Debounced effect for saving daily challenge state
   useDebouncedEffect(() => {
@@ -629,7 +613,3 @@ export default function Home() {
     </div>
   );
 }
-
-    
-
-    

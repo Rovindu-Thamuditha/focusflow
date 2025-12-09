@@ -69,10 +69,6 @@ export function useCollection<T = any>(
   const [error, setError] = useState<FirestoreError | Error | null>(null);
 
   useEffect(() => {
-    if (memoizedTargetRefOrQuery && !memoizedTargetRefOrQuery.__memo) {
-      throw new Error('Query or CollectionReference passed to useCollection was not memoized. Use useMemoFirebase to memoize it.');
-    }
-    
     if (!memoizedTargetRefOrQuery) {
       setData(null);
       setIsLoading(false);
