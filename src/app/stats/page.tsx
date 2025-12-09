@@ -267,5 +267,4 @@ export default function StatsPage() {
       </main>
     </div>
   );
-
-    
+}

@@ -1,4 +1,6 @@
 
+'use client';
+
 import { LogOut, Shield, MoreVertical, BarChart2, Info, UserPlus, Users, User, BrainCircuit } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -15,9 +17,11 @@ import {
   DropdownMenuTrigger,
   DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu"
-import { useUser, useAuth } from "@/firebase";
+import { useUser, useAuth, useDoc, useFirestore, useMemoFirebase } from "@/firebase";
 import { InfoDialog } from "./info-dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
+import { doc } from "firebase/firestore";
+import { useEffect, useState } from "react";
 
 const CurrentTime = dynamic(() => import('./current-time').then(mod => mod.CurrentTime), { ssr: false });
 
@@ -26,13 +30,25 @@ const ADMIN_EMAIL = 'rovinduthamu@gmail.com';
 interface MainHeaderProps {
   children: React.ReactNode;
   totalFocusedTime: number;
-  enableAiInsights?: boolean;
 }
 
-export function MainHeader({ children, totalFocusedTime, enableAiInsights }: MainHeaderProps) {
+export function MainHeader({ children, totalFocusedTime }: MainHeaderProps) {
   const { user } = useUser();
   const auth = useAuth();
   const router = useRouter();
+  const firestore = useFirestore();
+
+  const [enableAiInsights, setEnableAiInsights] = useState(false);
+
+  const userDocRef = useMemoFirebase(() => user && !user.isAnonymous ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
+  const { data: userData } = useDoc(userDocRef);
+
+  useEffect(() => {
+    if (userData) {
+      setEnableAiInsights(userData.settings?.enableAiInsights === true);
+    }
+  }, [userData]);
+
 
   const handleSignOut = async () => {
     if(auth) {
@@ -61,28 +77,20 @@ export function MainHeader({ children, totalFocusedTime, enableAiInsights }: Mai
             <h1 className="text-xl sm:text-2xl font-bold text-primary">GridFocus</h1>
           </Link>
         </div>
-        <div className="flex items-center space-x-1 sm:space-x-2">
+
+        <div className="flex items-center justify-end flex-1 space-x-1 sm:space-x-2">
           { !isAnonymousUser && <TotalFocusTime totalHours={totalFocusedTime} /> }
           
-          <div className="hidden sm:flex items-center space-x-1">
+          <div className="hidden sm:flex items-center">
              <CurrentTime />
           </div>
           
           {!isAnonymousUser && (
-            <>
               <Link href="/friends" passHref>
                 <Button variant="ghost" size="icon" title="Friends">
                     <Users className="h-5 w-5" />
                 </Button>
               </Link>
-              {enableAiInsights && (
-                <Link href="/insights" passHref>
-                    <Button variant="ghost" size="icon" title="AI Insights">
-                        <BrainCircuit className="h-5 w-5" />
-                    </Button>
-                </Link>
-              )}
-            </>
           )}
 
           <Link href="/stats" passHref>
@@ -98,7 +106,7 @@ export function MainHeader({ children, totalFocusedTime, enableAiInsights }: Mai
           <ThemeToggle />
 
           {/* Desktop-only items */}
-          <div className="hidden sm:flex items-center gap-2">
+          <div className="hidden sm:flex items-center gap-1">
               {isAnonymousUser ? (
                  <Link href="/login" passHref>
                     <Button>
