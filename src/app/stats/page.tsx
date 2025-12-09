@@ -101,8 +101,9 @@ export default function StatsPage() {
         const userDoc = await getDoc(userDocRef);
         if (userDoc.exists()) {
             const data = userDoc.data();
-            setSubjects(data.settings?.subjects || defaultSubjects);
-            setEnableAiInsights(data.settings?.enableAiInsights === true);
+            const userSettings = data.settings || {};
+            setSubjects(userSettings.subjects || defaultSubjects);
+            setEnableAiInsights(userSettings.enableAiInsights === true);
         }
     }
     fetchUserSettings();

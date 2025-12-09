@@ -89,7 +89,7 @@ export default function ProfilePage() {
   if (isUserLoading || !user) {
     return (
         <div className="flex items-center justify-center min-h-screen">
-            <GridFocusLoader />
+             <div className="text-xl">Loading Profile...</div>
         </div>
     );
   }
