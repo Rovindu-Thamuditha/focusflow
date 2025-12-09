@@ -79,6 +79,7 @@ export default function Home() {
   const [isFeedbackDialogOpen, setIsFeedbackDialogOpen] = useState(false);
   const [hasBeenPromptedForFeedback, setHasBeenPromptedForFeedback] = useState(false);
   const [dayChallengeIndex, setDayChallengeIndex] = useState(0);
+  const [isChallengeReady, setIsChallengeReady] = useState(false);
 
 
   // Feature toggles
@@ -116,8 +117,9 @@ export default function Home() {
 
   useEffect(() => {
     // Set the base index for the daily challenge question pool
-    // This should only run once on client mount to avoid hydration errors
+    // This MUST only run on the client to avoid hydration errors
     setDayChallengeIndex(getDayOfYear(new Date()));
+    setIsChallengeReady(true);
   }, []);
 
   const loadLocalDayData = useCallback((dateToLoad: Date) => {
@@ -479,10 +481,9 @@ export default function Home() {
 
 
   const currentQuestion = useMemo(() => {
-    if (!isClient) return dailyQuestions[0];
     const qIndex = isToday(currentDate) ? questionIndex : 0;
     return dailyQuestions[(dayChallengeIndex + qIndex) % dailyQuestions.length];
-  }, [isClient, currentDate, questionIndex, dayChallengeIndex]);
+  }, [currentDate, questionIndex, dayChallengeIndex]);
 
   if (isUserLoading || !isClient || !user || !userDataLoaded) {
     return (
@@ -540,7 +541,7 @@ export default function Home() {
             </CardContent>
           </Card>
           <div className="space-y-6">
-             {enableDailyChallenge && (
+             {enableDailyChallenge && isChallengeReady && (
                 <DailyChallenge
                     question={currentQuestion}
                     isSolved={solvedChallenges[questionIndex]}
