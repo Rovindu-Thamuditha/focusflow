@@ -83,6 +83,7 @@ export default function Home() {
   const [enableTimer, setEnableTimer] = useState(true);
   const [enableDailyChallenge, setEnableDailyChallenge] = useState(true);
   const [enableTodoList, setEnableTodoList] = useState(true);
+  const [enableAiInsights, setEnableAiInsights] = useState(false);
   
   const userDocRef = useMemoFirebase(() => user && !user.isAnonymous ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
 
@@ -184,6 +185,7 @@ export default function Home() {
           setEnableTimer(settings.enableTimer !== false);
           setEnableDailyChallenge(settings.enableDailyChallenge !== false);
           setEnableTodoList(settings.enableTodoList !== false);
+          setEnableAiInsights(settings.enableAiInsights === true);
           if (!settings.hasCompletedOnboarding) {
              setShowOnboarding(true);
           }
@@ -216,6 +218,7 @@ export default function Home() {
             setEnableTimer(settings.enableTimer !== false);
             setEnableDailyChallenge(settings.enableDailyChallenge !== false);
             setEnableTodoList(settings.enableTodoList !== false);
+            setEnableAiInsights(settings.enableAiInsights === true);
             setSeenWhatsNewVersions(data.seenWhatsNewVersions || []);
             setHasBeenPromptedForFeedback(data.hasBeenPromptedForFeedback || false);
           } else {
@@ -246,28 +249,24 @@ export default function Home() {
   useDebouncedEffect(() => {
     if (!isClient || !userDataLoaded || showOnboarding) return;
     
-    if (user?.isAnonymous) {
-      const settings = {
+    const settings = {
         sleepHours, subjects, language, enableTimer,
-        enableDailyChallenge, enableTodoList,
+        enableDailyChallenge, enableTodoList, enableAiInsights,
         hasCompletedOnboarding: true
-      };
+    };
+    
+    if (user?.isAnonymous) {
       localStorage.setItem('gridFocusSettings', JSON.stringify(settings));
       return;
     }
 
     if (user && userDocRef) {
-      const settingsData = {
-        settings: {
-          sleepHours, subjects, language,
-          enableTimer, enableDailyChallenge, enableTodoList
-        },
-      };
+      const settingsData = { settings };
       setDoc(userDocRef, settingsData, { merge: true }).catch(error => {
         console.error("Error saving settings:", error);
       });
     }
-  }, [subjects, sleepHours, language, enableTimer, enableDailyChallenge, enableTodoList, user, userDocRef, isClient, userDataLoaded, showOnboarding], 2000);
+  }, [subjects, sleepHours, language, enableTimer, enableDailyChallenge, enableTodoList, enableAiInsights, user, userDocRef, isClient, userDataLoaded, showOnboarding], 2000);
 
   // Debounced effect for saving time blocks and updating daily summary
   useDebouncedEffect(() => {
@@ -418,6 +417,7 @@ export default function Home() {
     setEnableTimer(newSettings.enableTimer);
     setEnableDailyChallenge(newSettings.enableDailyChallenge);
     setEnableTodoList(newSettings.enableTodoList);
+    setEnableAiInsights(newSettings.enableAiInsights);
 
     // Only reset grid if sleep hours actually changed
     if (JSON.stringify(oldSleepHours.sort()) !== JSON.stringify([...newSettings.sleepHours].sort())) {
@@ -501,7 +501,7 @@ export default function Home() {
 
   return (
     <div className={cn('flex flex-col min-h-screen font-sans', inter.variable)}>
-      <MainHeader totalFocusedTime={totalFocusedTime}>
+      <MainHeader totalFocusedTime={totalFocusedTime} enableAiInsights={enableAiInsights}>
          <SettingsDialog
             subjects={subjects}
             sleepHours={sleepHours}
@@ -509,6 +509,7 @@ export default function Home() {
             enableTimer={enableTimer}
             enableDailyChallenge={enableDailyChallenge}
             enableTodoList={enableTodoList}
+            enableAiInsights={enableAiInsights}
             onSave={handleSettingsSave}
           />
       </MainHeader>
@@ -602,6 +603,7 @@ export default function Home() {
             enableTimer,
             enableDailyChallenge,
             enableTodoList,
+            enableAiInsights,
           }}
         />
       )}
@@ -614,3 +616,5 @@ export default function Home() {
     </div>
   );
 }
+
+    

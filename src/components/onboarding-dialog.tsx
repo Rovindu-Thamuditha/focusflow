@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { Settings, Trash2, PlusCircle, Sparkles, SlidersHorizontal, Bed, Palette, Moon, Sun, ListTodo, Timer, Trophy } from 'lucide-react';
+import { Settings, Trash2, PlusCircle, Sparkles, SlidersHorizontal, Bed, Palette, Moon, Sun, ListTodo, Timer, Trophy, BrainCircuit } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -16,6 +16,7 @@ import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
 import { Icons } from './icons';
 import { ScrollArea } from './ui/scroll-area';
+import { Badge } from './ui/badge';
 
 interface OnboardingDialogProps {
   isOpen: boolean;
@@ -27,6 +28,7 @@ interface OnboardingDialogProps {
     enableTimer: boolean;
     enableDailyChallenge: boolean;
     enableTodoList: boolean;
+    enableAiInsights: boolean;
   };
 }
 
@@ -41,9 +43,10 @@ export function OnboardingDialog({ isOpen, onFinish, initialSettings }: Onboardi
   const [enableTimer, setEnableTimer] = useState(initialSettings.enableTimer);
   const [enableDailyChallenge, setEnableDailyChallenge] = useState(initialSettings.enableDailyChallenge);
   const [enableTodoList, setEnableTodoList] = useState(initialSettings.enableTodoList);
+  const [enableAiInsights, setEnableAiInsights] = useState(initialSettings.enableAiInsights);
 
   const handleFinish = () => {
-    onFinish({ subjects, sleepHours, enableTimer, enableDailyChallenge, enableTodoList, language: initialSettings.language });
+    onFinish({ subjects, sleepHours, enableTimer, enableDailyChallenge, enableTodoList, language: initialSettings.language, enableAiInsights });
   };
 
   const handleNext = () => setStep(s => Math.min(s + 1, TOTAL_STEPS));
@@ -154,6 +157,13 @@ export function OnboardingDialog({ isOpen, onFinish, initialSettings }: Onboardi
                                 </Label>
                                 <Switch id="enable-todo-list-onboarding" checked={enableTodoList} onCheckedChange={setEnableTodoList} />
                             </div>
+                             <div className="flex items-center justify-between rounded-lg border p-4">
+                                <Label htmlFor="enable-ai-insights-onboarding" className="flex flex-col gap-1">
+                                    <span className="font-semibold flex items-center gap-2"><BrainCircuit /> AI Study Analysis <Badge variant="outline">Beta</Badge></span>
+                                    <span className="font-normal text-muted-foreground text-xs">Get AI-powered insights on your study habits.</span>
+                                </Label>
+                                <Switch id="enable-ai-insights-onboarding" checked={enableAiInsights} onCheckedChange={setEnableAiInsights} />
+                            </div>
                         </div>
                     </div>
                 )}
@@ -175,3 +185,5 @@ export function OnboardingDialog({ isOpen, onFinish, initialSettings }: Onboardi
     </Dialog>
   );
 }
+
+    

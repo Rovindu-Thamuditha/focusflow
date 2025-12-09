@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { Settings, Trash2, PlusCircle, Languages, Sparkles, SlidersHorizontal, Bed, MessageSquarePlus, Lock } from 'lucide-react';
+import { Settings, Trash2, PlusCircle, Languages, Sparkles, SlidersHorizontal, Bed, MessageSquarePlus, Lock, BrainCircuit } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -17,6 +17,7 @@ import { FeedbackDialog } from './feedback-dialog';
 import { useDoc, useFirestore, useUser, useMemoFirebase } from '@/firebase';
 import { doc, setDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
+import { Badge } from './ui/badge';
 
 interface PrivacySettings {
     shareTotalFocusTime: boolean;
@@ -31,6 +32,7 @@ interface SettingsDialogProps {
   enableTimer: boolean;
   enableDailyChallenge: boolean;
   enableTodoList: boolean;
+  enableAiInsights: boolean;
   onSave: (settings: {
     subjects: Subject[];
     sleepHours: number[];
@@ -38,6 +40,7 @@ interface SettingsDialogProps {
     enableTimer: boolean;
     enableDailyChallenge: boolean;
     enableTodoList: boolean;
+    enableAiInsights: boolean;
   }) => void;
 }
 
@@ -50,6 +53,7 @@ export function SettingsDialog({
   enableTimer: initialEnableTimer,
   enableDailyChallenge: initialEnableDailyChallenge,
   enableTodoList: initialEnableTodoList,
+  enableAiInsights: initialEnableAiInsights,
   onSave,
 }: SettingsDialogProps) {
   const { user } = useUser();
@@ -66,6 +70,7 @@ export function SettingsDialog({
   const [enableTimer, setEnableTimer] = useState(initialEnableTimer);
   const [enableDailyChallenge, setEnableDailyChallenge] = useState(initialEnableDailyChallenge);
   const [enableTodoList, setEnableTodoList] = useState(initialEnableTodoList);
+  const [enableAiInsights, setEnableAiInsights] = useState(initialEnableAiInsights);
 
   // Privacy Settings
   const privacySettingsRef = useMemoFirebase(() => {
@@ -89,8 +94,9 @@ export function SettingsDialog({
         setEnableTimer(initialEnableTimer);
         setEnableDailyChallenge(initialEnableDailyChallenge);
         setEnableTodoList(initialEnableTodoList);
+        setEnableAiInsights(initialEnableAiInsights);
     }
-  }, [isOpen, initialSubjects, initialSleepHours, initialLanguage, initialEnableTimer, initialEnableDailyChallenge, initialEnableTodoList]);
+  }, [isOpen, initialSubjects, initialSleepHours, initialLanguage, initialEnableTimer, initialEnableDailyChallenge, initialEnableTodoList, initialEnableAiInsights]);
 
   useEffect(() => {
     if (initialPrivacySettings) {
@@ -102,7 +108,7 @@ export function SettingsDialog({
 
 
   const handleSave = async () => {
-    onSave({ subjects, sleepHours, language, enableTimer, enableDailyChallenge, enableTodoList });
+    onSave({ subjects, sleepHours, language, enableTimer, enableDailyChallenge, enableTodoList, enableAiInsights });
     
     // Save privacy settings
     if (privacySettingsRef) {
@@ -284,6 +290,18 @@ export function SettingsDialog({
                         onCheckedChange={setEnableTodoList}
                     />
                 </div>
+                 <div className="flex items-center justify-between rounded-lg border p-3">
+                    <div className="flex items-center gap-2">
+                      <BrainCircuit className="w-5 h-5" />
+                      <Label htmlFor="enable-ai-insights">Enable AI Study Analysis</Label>
+                      <Badge variant="outline">Beta</Badge>
+                    </div>
+                    <Switch
+                        id="enable-ai-insights"
+                        checked={enableAiInsights}
+                        onCheckedChange={setEnableAiInsights}
+                    />
+                </div>
              </div>
           </TabsContent>
           <TabsContent value="privacy" className="py-4 px-1">
@@ -338,3 +356,5 @@ export function SettingsDialog({
     </>
   );
 }
+
+    

@@ -24,10 +24,12 @@ const CurrentTime = dynamic(() => import('./current-time').then(mod => mod.Curre
 const ADMIN_EMAIL = 'rovinduthamu@gmail.com';
 
 interface MainHeaderProps {
+  children: React.ReactNode;
   totalFocusedTime: number;
+  enableAiInsights?: boolean;
 }
 
-export function MainHeader({ totalFocusedTime }: MainHeaderProps) {
+export function MainHeader({ children, totalFocusedTime, enableAiInsights }: MainHeaderProps) {
   const { user } = useUser();
   const auth = useAuth();
   const router = useRouter();
@@ -73,11 +75,13 @@ export function MainHeader({ totalFocusedTime }: MainHeaderProps) {
                     <Users className="h-5 w-5" />
                 </Button>
               </Link>
-              <Link href="/insights" passHref>
-                <Button variant="ghost" size="icon" title="AI Insights">
-                    <BrainCircuit className="h-5 w-5" />
-                </Button>
-              </Link>
+              {enableAiInsights && (
+                <Link href="/insights" passHref>
+                    <Button variant="ghost" size="icon" title="AI Insights">
+                        <BrainCircuit className="h-5 w-5" />
+                    </Button>
+                </Link>
+              )}
             </>
           )}
 
@@ -95,6 +99,7 @@ export function MainHeader({ totalFocusedTime }: MainHeaderProps) {
 
           {/* Desktop-only items */}
           <div className="hidden sm:flex items-center">
+              {children}
               {isAnonymousUser ? (
                  <Link href="/login" passHref>
                     <Button>
@@ -128,12 +133,14 @@ export function MainHeader({ totalFocusedTime }: MainHeaderProps) {
                             <span>Profile</span>
                         </DropdownMenuItem>
                     </Link>
-                     <Link href="/insights" passHref>
-                        <DropdownMenuItem>
-                            <BrainCircuit className="mr-2 h-4 w-4" />
-                            <span>AI Insights</span>
-                        </DropdownMenuItem>
-                    </Link>
+                    {enableAiInsights && (
+                        <Link href="/insights" passHref>
+                            <DropdownMenuItem>
+                                <BrainCircuit className="mr-2 h-4 w-4" />
+                                <span>AI Insights</span>
+                            </DropdownMenuItem>
+                        </Link>
+                    )}
                      {user.email === ADMIN_EMAIL && (
                         <Link href="/admin" passHref>
                             <DropdownMenuItem>
@@ -161,6 +168,7 @@ export function MainHeader({ totalFocusedTime }: MainHeaderProps) {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
+                <div className="px-2 py-1.5">{children}</div>
                 <div className="px-2 py-1.5"><CurrentTime /></div>
                 <DropdownMenuSeparator />
                  <DropdownMenuItem asChild>
@@ -180,12 +188,14 @@ export function MainHeader({ totalFocusedTime }: MainHeaderProps) {
                         <span>Friends</span>
                       </DropdownMenuItem>
                     </Link>
-                    <Link href="/insights" passHref>
-                        <DropdownMenuItem>
-                            <BrainCircuit className="mr-2 h-4 w-4" />
-                            <span>AI Insights</span>
-                        </DropdownMenuItem>
-                    </Link>
+                    {enableAiInsights && (
+                        <Link href="/insights" passHref>
+                            <DropdownMenuItem>
+                                <BrainCircuit className="mr-2 h-4 w-4" />
+                                <span>AI Insights</span>
+                            </DropdownMenuItem>
+                        </Link>
+                    )}
                    </>
                  )}
                 <DropdownMenuSeparator />
@@ -195,8 +205,7 @@ export function MainHeader({ totalFocusedTime }: MainHeaderProps) {
                             <UserPlus className="mr-2 h-4 w-4" />
                             <span>Sign Up to Save</span>
                         </DropdownMenuItem>
-                    </Link>
-                 ) : user ? (
+                    </Link>                 ) : user ? (
                   <>
                   {user.email === ADMIN_EMAIL && (
                         <Link href="/admin" passHref>
@@ -220,3 +229,5 @@ export function MainHeader({ totalFocusedTime }: MainHeaderProps) {
     </header>
   );
 }
+
+    
