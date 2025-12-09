@@ -15,7 +15,7 @@ import { defaultSubjects } from '@/lib/subjects';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { UserPlus } from 'lucide-react';
+import { UserPlus, BrainCircuit } from 'lucide-react';
 import { GridFocusLoader } from '@/components/grid-focus-loader';
 
 const formatHoursAndMinutes = (decimalHours: number): string => {
@@ -78,6 +78,7 @@ export default function StatsPage() {
   const router = useRouter();
   const [timeRange, setTimeRange] = useState('7');
   const [subjects, setSubjects] = useState<Subject[]>(defaultSubjects);
+  const [enableAiInsights, setEnableAiInsights] = useState(false);
   const isAnonymousUser = user?.isAnonymous;
   
   const summariesQuery = useMemoFirebase(() => {
@@ -99,7 +100,9 @@ export default function StatsPage() {
         const userDocRef = doc(firestore, 'users', user.uid);
         const userDoc = await getDoc(userDocRef);
         if (userDoc.exists()) {
-            setSubjects(userDoc.data().settings?.subjects || defaultSubjects);
+            const data = userDoc.data();
+            setSubjects(data.settings?.subjects || defaultSubjects);
+            setEnableAiInsights(data.settings?.enableAiInsights === true);
         }
     }
     fetchUserSettings();
@@ -167,17 +170,27 @@ export default function StatsPage() {
           <Card className={cn("border-primary/20 transition-all", isAnonymousUser && "blur-sm pointer-events-none")}>
               <CardHeader>
                   <CardTitle className="flex justify-between items-center text-2xl font-bold">
-                    <span>Focus Statistics</span>
-                    <Select value={timeRange} onValueChange={setTimeRange}>
-                      <SelectTrigger className="w-[180px]">
-                        <SelectValue placeholder="Select time range" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="7">Last 7 Days</SelectItem>
-                        <SelectItem value="30">Last 30 Days</SelectItem>
-                        <SelectItem value="90">Last 90 Days</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <div className="flex-grow">Focus Statistics</div>
+                    <div className="flex items-center gap-2">
+                        {enableAiInsights && (
+                            <Link href="/insights" passHref>
+                                <Button variant="outline">
+                                    <BrainCircuit className="mr-2 h-4 w-4" />
+                                    AI Insights
+                                </Button>
+                            </Link>
+                        )}
+                        <Select value={timeRange} onValueChange={setTimeRange}>
+                          <SelectTrigger className="w-[180px]">
+                            <SelectValue placeholder="Select time range" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="7">Last 7 Days</SelectItem>
+                            <SelectItem value="30">Last 30 Days</SelectItem>
+                            <SelectItem value="90">Last 90 Days</SelectItem>
+                          </SelectContent>
+                        </Select>
+                    </div>
                   </CardTitle>
                   <CardDescription>Your daily focused time breakdown by subject.</CardDescription>
               </CardHeader>
@@ -254,4 +267,5 @@ export default function StatsPage() {
       </main>
     </div>
   );
-}
+
+    
