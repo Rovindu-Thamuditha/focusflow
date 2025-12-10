@@ -64,7 +64,7 @@ export default function Home() {
   const { toast } = useToast();
   const { timerSubject, elapsedSeconds, lastStopTime, timerIsRunning } = useTimer();
 
-  const [currentDate, setCurrentDate] = useState(startOfDay(new Date()));
+  const [currentDate, setCurrentDate] = useState<Date | null>(null);
   const [timeBlocks, setTimeBlocks] = useState<TimeBlockState[]>([]);
   const [solvedChallenges, setSolvedChallenges] = useState<boolean[]>(Array(dailyQuestions.length).fill(false));
   const [isClient, setIsClient] = useState(false);
@@ -92,10 +92,10 @@ export default function Home() {
   const userDocRef = useMemoFirebase(() => user && !user.isAnonymous ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
   const { data: userData } = useDoc(userDocRef);
 
-  const dateString = useMemo(() => format(currentDate, 'yyyy-MM-dd'), [currentDate]);
+  const dateString = useMemo(() => currentDate ? format(currentDate, 'yyyy-MM-dd') : null, [currentDate]);
   
   const timeBlockQuery = useMemoFirebase(() => {
-    if (!user || user.isAnonymous || !firestore) return null;
+    if (!user || user.isAnonymous || !firestore || !dateString) return null;
     return query(
         collection(firestore, 'users', user.uid, 'time_blocks'), 
         where('date', '==', dateString)
@@ -106,6 +106,7 @@ export default function Home() {
 
   useEffect(() => {
     setIsClient(true);
+    setCurrentDate(startOfDay(new Date()));
     if (!isUserLoading && !user) {
         if (auth) {
             signInAnonymously(auth).catch(error => {
@@ -148,7 +149,7 @@ export default function Home() {
 
   // Effect for initial user data loading (from settings)
   useEffect(() => {
-    if (!user || !isClient) return;
+    if (!user || !isClient || !currentDate) return;
   
     const loadInitialSettings = () => {
       if (user.isAnonymous) {
@@ -218,14 +219,14 @@ export default function Home() {
 
   // Effect to load data for the current day (local or cloud)
   useEffect(() => {
-    if (!user || !userDataLoaded) return;
+    if (!user || !userDataLoaded || !currentDate) return;
 
     if (user.isAnonymous) {
       loadLocalDayData(currentDate);
     } else if (cloudTimeBlocks) {
       if (cloudTimeBlocks.length > 0) {
         const normalizedBlocks = Array.from({ length: 24 }, (_, i) => {
-          return cloudTimeBlocks.find(b => b.hour === i) || { hour: i, subject: sleepHours.includes(i) ? 'sleep' : 'idle', duration: 0, date: dateString };
+          return cloudTimeBlocks.find(b => b.hour === i) || { hour: i, subject: sleepHours.includes(i) ? 'sleep' : 'idle', duration: 0, date: dateString! };
         });
         setTimeBlocks(normalizedBlocks.sort((a, b) => a.hour - b.hour));
       } else {
@@ -265,7 +266,7 @@ export default function Home() {
 
   // Debounced effect for saving time blocks and updating daily summary
   useDebouncedEffect(() => {
-    if (!isClient || !userDataLoaded || timeBlocks.length === 0 || user?.isAnonymous) return;
+    if (!isClient || !userDataLoaded || timeBlocks.length === 0 || user?.isAnonymous || !currentDate || !dateString) return;
     
     if (user && firestore) {
       const isEditable = disableEditRestriction || differenceInHours(new Date(), currentDate) <= 36;
@@ -304,7 +305,7 @@ export default function Home() {
   
    // Debounced effect for saving local time blocks (for anonymous users)
   useDebouncedEffect(() => {
-    if (!isClient || !userDataLoaded || !user?.isAnonymous || timeBlocks.length === 0) return;
+    if (!isClient || !userDataLoaded || !user?.isAnonymous || timeBlocks.length === 0 || !dateString) return;
     
     const localBlocksStr = localStorage.getItem('gridFocusTimeBlocks');
     const localBlocks = localBlocksStr ? JSON.parse(localBlocksStr) : {};
@@ -315,7 +316,7 @@ export default function Home() {
 
   // Debounced effect for saving daily challenge state
   useDebouncedEffect(() => {
-    if (!isClient || !userDataLoaded || !isToday(currentDate)) return;
+    if (!isClient || !userDataLoaded || !currentDate || !isToday(currentDate)) return;
 
     if (user?.isAnonymous) {
       localStorage.setItem('gridFocusSolvedChallenges', JSON.stringify({ solved: solvedChallenges, qIndex: questionIndex }));
@@ -341,7 +342,7 @@ export default function Home() {
   
   // Effect to save timer data when it stops
   useEffect(() => {
-    if (!timerIsRunning && lastStopTime) {
+    if (!timerIsRunning && lastStopTime && currentDate) {
         const stoppedAt = new Date(lastStopTime);
         // Only apply if the timer stopped on the currently viewed date
         if (format(stoppedAt, 'yyyy-MM-dd') !== format(currentDate, 'yyyy-MM-dd')) {
@@ -369,6 +370,7 @@ export default function Home() {
 
 
   const handleBlockUpdate = useCallback((hour: number, subject: string, duration: number) => {
+    if (!currentDate) return;
     setTimeBlocks(currentBlocks =>
       currentBlocks.map(block =>
         block.hour === hour ? { ...block, subject, duration, date: format(currentDate, 'yyyy-MM-dd') } : block
@@ -377,6 +379,7 @@ export default function Home() {
   }, [currentDate]);
 
   const handleGridReset = useCallback((newSleepHours: number[]) => {
+    if (!currentDate) return;
     setTimeBlocks(currentBlocks => {
         const newGrid = createInitialState(newSleepHours, currentDate);
         return newGrid.map(newBlock => {
@@ -389,10 +392,12 @@ export default function Home() {
   }, [currentDate]);
 
   const handleResetDay = useCallback(() => {
+    if (!currentDate) return;
     setTimeBlocks(createInitialState(sleepHours, currentDate));
   }, [sleepHours, currentDate]);
 
   const changeDay = useCallback((offset: number) => {
+    if (!currentDate) return;
     const newDate = startOfDay(offset > 0 ? addDays(currentDate, offset) : subDays(currentDate, -offset));
     if (isFuture(newDate)) return;
     setCurrentDate(newDate);
@@ -481,11 +486,12 @@ export default function Home() {
 
 
   const currentQuestion = useMemo(() => {
+    if (!currentDate) return dailyQuestions[0];
     const qIndex = isToday(currentDate) ? questionIndex : 0;
     return dailyQuestions[(dayChallengeIndex + qIndex) % dailyQuestions.length];
   }, [currentDate, questionIndex, dayChallengeIndex]);
 
-  if (isUserLoading || !isClient || !user || !userDataLoaded) {
+  if (isUserLoading || !isClient || !user || !userDataLoaded || !currentDate) {
     return (
         <div className="flex flex-col items-center justify-center min-h-screen">
           <GridFocusLoader />
