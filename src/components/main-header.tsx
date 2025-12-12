@@ -149,6 +149,7 @@ export function MainHeader({ children, totalFocusedTime, enableAiInsights }: Mai
           
           {/* Mobile-only dropdown menu */}
           <div className="sm:hidden">
+             {children}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon">
@@ -177,9 +178,6 @@ export function MainHeader({ children, totalFocusedTime, enableAiInsights }: Mai
                             </DropdownMenuItem>
                         </Link>
                    )}
-                   <DropdownMenuItem asChild>
-                     <Link href="/settings">Settings</Link>
-                   </DropdownMenuItem>
                    <DropdownMenuItem onClick={handleSignOut}>
                     <LogOut className="mr-2 h-4 w-4" />
                     <span>Sign Out</span>

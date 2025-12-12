@@ -2,7 +2,7 @@
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
-import { Area, AreaChart, CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { MainHeader } from '@/components/main-header';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -18,11 +18,10 @@ import Link from 'next/link';
 import { UserPlus, BrainCircuit } from 'lucide-react';
 import { GridFocusLoader } from '@/components/grid-focus-loader';
 
-const formatHoursAndMinutes = (decimalHours: number): string => {
-    if (decimalHours === 0) return '0m';
-    const totalMinutes = Math.round(decimalHours * 60);
+const formatHoursAndMinutes = (totalMinutes: number): string => {
+    if (totalMinutes === 0) return '0m';
     const hours = Math.floor(totalMinutes / 60);
-    const minutes = totalMinutes % 60;
+    const minutes = Math.round(totalMinutes % 60);
     
     let result = '';
     if (hours > 0) {
@@ -36,7 +35,7 @@ const formatHoursAndMinutes = (decimalHours: number): string => {
 
 const CustomTooltip = ({ active, payload, label, subjects }: any) => {
   if (active && payload && payload.length) {
-    const totalHours = payload.reduce((acc: number, entry: any) => acc + entry.value, 0);
+    const totalMinutes = payload.reduce((acc: number, entry: any) => acc + entry.value, 0);
 
     return (
       <div className="p-2 bg-card border rounded-md shadow-lg text-card-foreground text-xs">
@@ -56,12 +55,12 @@ const CustomTooltip = ({ active, payload, label, subjects }: any) => {
             );
           })}
         </div>
-        {totalHours > 0 && (
+        {totalMinutes > 0 && (
           <>
             <div className="border-t my-1"></div>
             <div className="flex items-center justify-between font-bold">
                 <span>Total:</span>
-                <span>{formatHoursAndMinutes(totalHours)}</span>
+                <span>{formatHoursAndMinutes(totalMinutes)}</span>
             </div>
           </>
         )}
@@ -134,7 +133,7 @@ export default function StatsPage() {
         const dateLabel = format(parseISO(summary.date), 'MMM dd');
         if (dataByDate[dateLabel]) {
             Object.keys(summary.subjectMinutes).forEach(subjectId => {
-                dataByDate[dateLabel][subjectId] = (summary.subjectMinutes[subjectId] || 0) / 60; // convert to hours
+                dataByDate[dateLabel][subjectId] = (summary.subjectMinutes[subjectId] || 0); // Keep in minutes
             });
         }
     });
@@ -144,7 +143,7 @@ export default function StatsPage() {
 
   const totalFocusTimeInRange = useMemo(() => {
     if(!dailySummaries) return 0;
-    return dailySummaries.reduce((total, summary) => total + summary.totalMinutes, 0) / 60; // convert to hours
+    return dailySummaries.reduce((total, summary) => total + summary.totalMinutes, 0) / 60; // convert to hours for header
   }, [dailySummaries]);
 
   if (isUserLoading || summariesLoading) {
@@ -170,19 +169,19 @@ export default function StatsPage() {
         <div className="relative">
           <Card className={cn("border-primary/20 transition-all", isAnonymousUser && "blur-sm pointer-events-none")}>
               <CardHeader>
-                  <CardTitle className="flex justify-between items-center text-2xl font-bold">
+                  <CardTitle className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 text-2xl font-bold">
                     <div className="flex-grow">Focus Statistics</div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
                         {enableAiInsights && (
-                            <Link href="/insights" passHref>
-                                <Button variant="outline">
+                            <Link href="/insights" passHref className="w-full sm:w-auto">
+                                <Button variant="outline" className="w-full">
                                     <BrainCircuit className="mr-2 h-4 w-4" />
                                     AI Insights
                                 </Button>
                             </Link>
                         )}
                         <Select value={timeRange} onValueChange={setTimeRange}>
-                          <SelectTrigger className="w-[180px]">
+                          <SelectTrigger className="w-full sm:w-[180px]">
                             <SelectValue placeholder="Select time range" />
                           </SelectTrigger>
                           <SelectContent>
@@ -198,46 +197,35 @@ export default function StatsPage() {
               <CardContent>
                   {chartData.length > 0 && dailySummaries && dailySummaries.length > 0 ? (
                       <ResponsiveContainer width="100%" height={400}>
-                        <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                          <defs>
-                            {subjectsToRender.map((subject) => (
-                              <linearGradient key={subject.id} id={`color${subject.id}`} x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="5%" stopColor={subject.color} stopOpacity={0.8}/>
-                                <stop offset="95%" stopColor={subject.color} stopOpacity={0.1}/>
-                              </linearGradient>
-                            ))}
-                          </defs>
-                          <CartesianGrid vertical={false} strokeDasharray="3 3" strokeOpacity={0.1} />
-                          <XAxis 
-                            dataKey="date" 
-                            axisLine={false} 
-                            tickLine={false} 
-                            tick={{fontSize: 12, fill: 'hsl(var(--muted-foreground))'}} 
-                            dy={10}
-                          />
-                          <YAxis 
-                            axisLine={false} 
-                            tickLine={false} 
-                            tick={{fontSize: 12, fill: 'hsl(var(--muted-foreground))'}} 
-                            label={{ value: 'Hours', angle: -90, position: 'insideLeft', offset: 0, style: { fill: 'hsl(var(--muted-foreground))' } }} 
-                          />
-                          <Tooltip content={<CustomTooltip subjects={subjects} />} />
-                          <Legend iconType="circle" />
-                          {subjectsToRender.map((subject) => (
-                            <Area
-                              key={subject.id}
-                              type="monotone"
-                              dataKey={subject.id}
-                              name={subject.name.charAt(0).toUpperCase() + subject.name.slice(1)}
-                              stackId="1"
-                              stroke={subject.color}
-                              strokeWidth={2}
-                              fill={`url(#color${subject.id})`}
-                              fillOpacity={1}
-                              animationDuration={1000}
-                            />
-                          ))}
-                        </AreaChart>
+                          <BarChart data={chartData} layout="vertical" margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                              <CartesianGrid horizontal={false} strokeDasharray="3 3" strokeOpacity={0.1} />
+                              <XAxis 
+                                  type="number"
+                                  axisLine={false} 
+                                  tickLine={false}
+                                  tickFormatter={(value) => formatHoursAndMinutes(value)}
+                                  tick={{fontSize: 12, fill: 'hsl(var(--muted-foreground))'}} 
+                                  />
+                              <YAxis 
+                                  dataKey="date" 
+                                  type="category"
+                                  axisLine={false} 
+                                  tickLine={false} 
+                                  tick={{fontSize: 12, fill: 'hsl(var(--muted-foreground))'}} 
+                                  />
+                              <Tooltip content={<CustomTooltip subjects={subjects} />} cursor={{fill: 'hsl(var(--secondary))'}} />
+                              <Legend iconType="circle" />
+                              {subjectsToRender.map((subject) => (
+                                <Bar
+                                  key={subject.id}
+                                  dataKey={subject.id}
+                                  name={subject.name.charAt(0).toUpperCase() + subject.name.slice(1)}
+                                  stackId="a"
+                                  fill={subject.color}
+                                  animationDuration={1000}
+                                />
+                              ))}
+                          </BarChart>
                       </ResponsiveContainer>
                   ) : (
                       <div className="flex items-center justify-center h-[400px] text-muted-foreground">
