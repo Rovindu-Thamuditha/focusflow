@@ -96,7 +96,7 @@ export default function ProfilePage() {
 
   return (
     <div className="flex flex-col min-h-screen">
-      <MainHeader totalFocusedTime={0} />
+      <MainHeader totalFocusedTime={0} showBackButton />
       <main className="flex-grow container mx-auto p-4 sm:p-6 md:p-8 flex justify-center">
         <Card className="w-full max-w-2xl">
           <CardHeader>

@@ -46,35 +46,35 @@ const DailyChallengeMemo = ({ question, isSolved, onSolveChange, language, isTod
 
   return (
     <Card className="bg-card/70 border-2 border-primary/20 hover:border-primary/50 transition-colors duration-300">
-      <CardHeader className="flex flex-row items-center gap-3 space-y-0 p-4">
-        <Trophy className="w-6 h-6 text-primary" />
+      <CardHeader className="flex flex-row items-center gap-3 space-y-0 p-2">
+        <Trophy className="w-5 h-5 text-primary" />
         <div>
-          <CardTitle className="text-lg font-bold">Daily Challenge</CardTitle>
-          <CardDescription className="text-xs">Question {questionIndex + 1} of {totalQuestions}</CardDescription>
+          <CardTitle className="text-base font-bold">Daily Challenge</CardTitle>
+          <CardDescription className="text-xs">Q {questionIndex + 1}/{totalQuestions}</CardDescription>
         </div>
       </CardHeader>
-      <CardContent className="space-y-4 p-4 pt-0">
+      <CardContent className="space-y-2 p-2 pt-0">
         <div>
-          <div className="flex justify-between items-center mb-2">
-            <h3 className={`font-semibold text-sm ${subjectColors[question.subject] || 'text-foreground'}`}>{question.subject}</h3>
+          <div className="flex justify-between items-center mb-1">
+            <h3 className={`font-semibold text-xs ${subjectColors[question.subject] || 'text-foreground'}`}>{question.subject}</h3>
             <p className="text-xs text-muted-foreground">{question.topic}</p>
           </div>
-          <div className="p-3 bg-background rounded-lg border text-sm prose dark:prose-invert max-w-none break-words">
+          <div className="p-3 bg-background rounded-lg border text-sm prose-sm dark:prose-invert max-w-none break-words overflow-y-auto">
             <BlockMath math={questionText} />
           </div>
         </div>
 
-        <div className="flex items-center justify-between p-2 rounded-lg bg-secondary transition-all duration-300" data-solved={isSolved}>
+        <div className="flex items-center justify-between p-1 rounded-lg bg-secondary transition-all duration-300" data-solved={isSolved}>
           <div className="flex items-center space-x-2">
             <Checkbox 
               id="solve-challenge" 
               checked={isSolved}
               onCheckedChange={() => onSolveChange(!isSolved)}
-              className="w-5 h-5 data-[state=checked]:bg-accent data-[state=checked]:text-accent-foreground border-primary"
+              className="w-4 h-4 data-[state=checked]:bg-accent data-[state=checked]:text-accent-foreground border-primary"
               disabled={!isToday}
             />
-            <Label htmlFor="solve-challenge" className="text-sm font-medium cursor-pointer">
-              {isSolved ? "Conquered!" : "Mark as Solved"}
+            <Label htmlFor="solve-challenge" className="text-xs font-medium cursor-pointer">
+              {isSolved ? "Conquered!" : "Mark Solved"}
             </Label>
           </div>
            {isToday && (
@@ -84,7 +84,7 @@ const DailyChallengeMemo = ({ question, isSolved, onSolveChange, language, isTod
                     variant="outline"
                     onClick={handlePreviousQuestion}
                     disabled={questionIndex === 0}
-                    className="h-8"
+                    className="h-7 px-2"
                 >
                     Prev
                 </Button>
@@ -92,7 +92,7 @@ const DailyChallengeMemo = ({ question, isSolved, onSolveChange, language, isTod
                     size="sm"
                     onClick={handleNextQuestion}
                     disabled={questionIndex >= totalQuestions - 1}
-                    className="h-8"
+                    className="h-7 px-2"
                 >
                     Next
                 </Button>

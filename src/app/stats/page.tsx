@@ -15,7 +15,7 @@ import { defaultSubjects } from '@/lib/subjects';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { UserPlus, BrainCircuit } from 'lucide-react';
+import { UserPlus, BrainCircuit, ArrowLeft } from 'lucide-react';
 import { GridFocusLoader } from '@/components/grid-focus-loader';
 
 const formatHoursAndMinutes = (totalMinutes: number): string => {
@@ -164,7 +164,7 @@ export default function StatsPage() {
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
-      <MainHeader totalFocusedTime={totalFocusTimeInRange} />
+      <MainHeader totalFocusedTime={totalFocusTimeInRange} showBackButton />
       <main className="flex-grow container mx-auto p-4 sm:p-6 md:p-8">
         <div className="relative">
           <Card className={cn("border-primary/20 transition-all", isAnonymousUser && "blur-sm pointer-events-none")}>

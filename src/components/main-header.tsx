@@ -1,7 +1,7 @@
 
 'use client';
 
-import { LogOut, Shield, MoreVertical, BarChart2, Info, UserPlus, Users, User, BrainCircuit, Settings } from "lucide-react";
+import { LogOut, Shield, MoreVertical, BarChart2, Info, UserPlus, Users, User, BrainCircuit, Settings, ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import dynamic from 'next/dynamic';
@@ -20,7 +20,6 @@ import {
 import { useUser, useAuth } from "@/firebase";
 import { InfoDialog } from "./info-dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
-import { SettingsDialog } from "./settings-dialog";
 
 
 const CurrentTime = dynamic(() => import('./current-time').then(mod => mod.CurrentTime), { ssr: false });
@@ -31,9 +30,10 @@ interface MainHeaderProps {
   children?: React.ReactNode;
   totalFocusedTime: number;
   enableAiInsights?: boolean;
+  showBackButton?: boolean;
 }
 
-export function MainHeader({ children, totalFocusedTime, enableAiInsights }: MainHeaderProps) {
+export function MainHeader({ children, totalFocusedTime, enableAiInsights, showBackButton = false }: MainHeaderProps) {
   const { user } = useUser();
   const auth = useAuth();
   const router = useRouter();
@@ -59,11 +59,17 @@ export function MainHeader({ children, totalFocusedTime, enableAiInsights }: Mai
   return (
     <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur-sm">
       <div className="container flex h-16 items-center justify-between">
-        <div className="flex gap-6 items-center">
-          <Link href="/" className="flex items-center gap-2 ml-4 sm:ml-0">
-            <Icons.logo className="h-6 w-6 text-primary" />
-            <h1 className="text-xl sm:text-2xl font-bold text-primary hidden sm:inline-block">GridFocus</h1>
-          </Link>
+        <div className="flex gap-2 items-center">
+            {showBackButton ? (
+                 <Button variant="ghost" size="icon" onClick={() => router.back()}>
+                    <ArrowLeft />
+                 </Button>
+            ) : (
+                <Link href="/" className="flex items-center gap-2 ml-4 sm:ml-0">
+                    <Icons.logo className="h-6 w-6 text-primary" />
+                    <h1 className="text-xl sm:text-2xl font-bold text-primary hidden sm:inline-block">GridFocus</h1>
+                </Link>
+            )}
         </div>
 
         <div className="flex items-center justify-end flex-1 space-x-1 sm:space-x-2">
@@ -104,7 +110,11 @@ export function MainHeader({ children, totalFocusedTime, enableAiInsights }: Mai
                  </Link>
               ) : user ? (
                 <div className="flex items-center gap-2">
-                {children}
+                <Link href="/settings" passHref>
+                    <Button variant="ghost" size="icon">
+                        <Settings className="h-[1.2rem] w-[1.2rem]" />
+                    </Button>
+                </Link>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" className="relative h-8 w-8 rounded-full">
@@ -151,8 +161,12 @@ export function MainHeader({ children, totalFocusedTime, enableAiInsights }: Mai
           
           {/* Mobile-only menu */}
           <div className="sm:hidden flex items-center">
-            {children}
             <ThemeToggle />
+            <Link href="/settings" passHref>
+                <Button variant="ghost" size="icon">
+                    <Settings className="h-[1.2rem] w-[1.2rem]" />
+                </Button>
+            </Link>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon">

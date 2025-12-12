@@ -10,10 +10,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { Copy, Check, Link as LinkIcon } from 'lucide-react';
+import { Copy, Check, Link as LinkIcon, ArrowLeft } from 'lucide-react';
 import { FriendRequests } from '@/components/friends/friend-requests';
 import { FriendsList } from '@/components/friends/friends-list';
 import { GridFocusLoader } from '@/components/grid-focus-loader';
+import Link from 'next/link';
 
 
 interface AppUser {
@@ -111,7 +112,7 @@ export default function FriendsPage() {
     
     return (
         <div className="flex flex-col min-h-screen">
-            <MainHeader totalFocusedTime={0} />
+            <MainHeader totalFocusedTime={0} showBackButton />
             <main className="flex-grow container mx-auto p-4 sm:p-6 md:p-8">
                 <Card>
                     <CardHeader>

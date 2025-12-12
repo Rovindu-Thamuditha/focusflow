@@ -106,18 +106,14 @@ export default function Home() {
 
   useEffect(() => {
     setIsClient(true);
-    setCurrentDate(startOfDay(new Date()));
     if (!isUserLoading && !user) {
-        if (auth) {
-            signInAnonymously(auth).catch(error => {
-                console.error("Anonymous sign-in failed:", error);
-            });
-        }
+        router.push('/login');
     }
-  }, [user, isUserLoading, auth]);
-
+  }, [user, isUserLoading, router]);
+  
   useEffect(() => {
     if (isClient) {
+      setCurrentDate(startOfDay(new Date()));
       setDayChallengeIndex(getDayOfYear(new Date()));
       setIsChallengeReady(true);
     }
@@ -502,26 +498,13 @@ export default function Home() {
 
   return (
     <div className={cn('flex flex-col min-h-screen font-sans', inter.variable)}>
-      <MainHeader totalFocusedTime={totalFocusedTime} enableAiInsights={enableAiInsights}>
-         <SettingsDialog
-            subjects={subjects}
-            sleepHours={sleepHours}
-            language={language}
-            enableTimer={enableTimer}
-            enableDailyChallenge={enableDailyChallenge}
-            enableTodoList={enableTodoList}
-            enableAiInsights={enableAiInsights}
-            disableEditRestriction={disableEditRestriction}
-            onSave={handleSettingsSave}
-          />
-      </MainHeader>
+      <MainHeader totalFocusedTime={totalFocusedTime} enableAiInsights={enableAiInsights} />
       <main className="flex-grow container mx-auto p-2 pb-20 sm:pb-8">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
             <div>
               <h2 className="text-xl sm:text-3xl font-bold text-foreground">
-                {user.isAnonymous ? "Welcome!" : `Welcome back, ${userName}!`}
+                Welcome back, {userName}!
               </h2>
-              {user.isAnonymous && <p className="text-xs text-amber-500">Sign up to save progress.</p>}
               <div className="flex items-center gap-2 mt-2">
                 <Button variant="outline" size="icon" onClick={() => changeDay(-1)}>
                     <ChevronLeft className="w-4 h-4" />
