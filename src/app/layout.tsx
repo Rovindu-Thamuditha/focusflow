@@ -17,8 +17,18 @@ import 'katex/dist/katex.min.css';
 const inter = Inter({ subsets: ['latin'], variable: '--font-sans' });
 
 export const metadata: Metadata = {
-  title: 'GridFocus',
+  title: 'FocusFlow',
   description: 'Track your focus and conquer your day.',
+  manifest: '/manifest.json',
+  themeColor: [
+      { media: '(prefers-color-scheme: light)', color: '#ffffff' },
+      { media: '(prefers-color-scheme: dark)', color: '#212529' },
+  ],
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'FocusFlow',
+  },
 };
 
 export default function RootLayout({
