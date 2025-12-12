@@ -4,7 +4,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { doc, setDoc, serverTimestamp, getDoc, getDocs, collection, query, where, orderBy, limit } from 'firebase/firestore';
+import { doc, setDoc, serverTimestamp, getDoc, collection, query, where, orderBy, limit } from 'firebase/firestore';
 import { MainHeader } from '@/components/main-header';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { GridFocusLoader } from '@/components/grid-focus-loader';
@@ -82,10 +82,10 @@ export default function InsightsPage() {
                     // Fetch user settings to get custom subjects
                     const userDocRef = doc(firestore, 'users', user.uid);
                     const userDoc = await getDoc(userDocRef);
-                    const userSubjects = userDoc.exists() ? (userDoc.data().settings?.subjects || defaultSubjects) : defaultSubjects;
+                    const userSubjects = userDoc.exists() ? (userDoc.data().subjects || defaultSubjects) : defaultSubjects;
 
                     const newAnalysis = await analyzeStudyData({ 
-                        subjects: JSON.stringify(userSubjects.filter(s => s.id !== 'idle' && s.id !== 'sleep')),
+                        subjects: JSON.stringify(userSubjects.filter((s: Subject) => s.id !== 'idle' && s.id !== 'sleep')),
                         summaries: JSON.stringify(dailySummaries || []),
                         currentDate: format(new Date(), 'yyyy-MM-dd')
                     });

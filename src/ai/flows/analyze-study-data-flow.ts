@@ -9,7 +9,6 @@
 
 import { ai } from '@/ai/genkit';
 import { z } from 'zod';
-import type { DailySummary, Subject } from '@/lib/types';
 import { format } from 'date-fns';
 
 // Define the structured output we expect from the AI model.

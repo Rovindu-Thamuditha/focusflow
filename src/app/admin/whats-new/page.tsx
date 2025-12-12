@@ -169,11 +169,11 @@ export default function WhatsNewAdminPage() {
       </main>
 
       <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle>{editingItem ? 'Edit' : 'Create'} Announcement</DialogTitle>
             <DialogDescription>
-                Fill out the details for the announcement. Use Markdown for content formatting.
+                Fill out the details for the announcement. Full markdown is supported.
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleFormSubmit} className="space-y-4">
@@ -187,7 +187,7 @@ export default function WhatsNewAdminPage() {
             </div>
             <div>
               <Label htmlFor="content">Content (Markdown supported)</Label>
-              <Textarea id="content" value={content} onChange={(e) => setContent(e.target.value)} required rows={8} />
+              <Textarea id="content" value={content} onChange={(e) => setContent(e.target.value)} required rows={12} />
             </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setIsFormOpen(false)}>Cancel</Button>

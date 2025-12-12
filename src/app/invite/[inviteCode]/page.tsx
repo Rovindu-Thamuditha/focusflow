@@ -4,7 +4,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useUser, useFirestore, errorEmitter, FirestorePermissionError } from '@/firebase';
-import { collection, query, where, getDocs, writeBatch, doc, serverTimestamp } from 'firebase/firestore';
+import { collection, query, where, getDocs, writeBatch, doc, serverTimestamp, getDoc } from 'firebase/firestore';
 import { MainHeader } from '@/components/main-header';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -21,6 +21,8 @@ interface Inviter {
     photoURL?: string;
 }
 
+type RequestStatus = 'idle' | 'sending' | 'sent' | 'error' | 'exists';
+
 export default function InvitePage() {
     const { user: currentUser, isUserLoading } = useUser();
     const firestore = useFirestore();
@@ -32,7 +34,7 @@ export default function InvitePage() {
     const [inviter, setInviter] = useState<Inviter | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    const [requestStatus, setRequestStatus] = useState<'idle' | 'sending' | 'sent' | 'error' | 'exists'>('idle');
+    const [requestStatus, setRequestStatus] = useState<RequestStatus>('idle');
 
     useEffect(() => {
         const findInviter = async () => {
@@ -66,26 +68,25 @@ export default function InvitePage() {
 
     const handleSendRequest = async () => {
         if (!firestore || !currentUser || currentUser.isAnonymous || !inviter) return;
-
+    
         setRequestStatus('sending');
         try {
-            // Check if a friendship or pending request already exists
             const friendshipsRef = collection(firestore, 'friendships');
-            const existingFriendshipQuery = query(
-                friendshipsRef,
-                where('userIds', 'in', [[currentUser.uid, inviter.id], [inviter.id, currentUser.uid]])
-            );
             
-            const existingFriendshipSnapshot = await getDocs(existingFriendshipQuery);
-
-            if (!existingFriendshipSnapshot.empty) {
+            // Check for existing accepted or pending relationships
+            const qAccepted = query(friendshipsRef, where('userIds', 'in', [[currentUser.uid, inviter.id].sort()]), where('status', '==', 'accepted'));
+            const qPending = query(friendshipsRef, where('userIds', 'in', [[currentUser.uid, inviter.id].sort()]), where('status', '==', 'pending'));
+    
+            const [acceptedSnapshot, pendingSnapshot] = await Promise.all([getDocs(qAccepted), getDocs(qPending)]);
+    
+            if (!acceptedSnapshot.empty || !pendingSnapshot.empty) {
                 setRequestStatus('exists');
                 return;
             }
-            
+    
             // Create a new friendship document and a notification for the target user
             const batch = writeBatch(firestore);
-
+    
             // Friendship Doc
             const newFriendshipRef = doc(collection(firestore, 'friendships'));
             const friendshipData = {
@@ -95,10 +96,11 @@ export default function InvitePage() {
                 createdAt: serverTimestamp()
             };
             batch.set(newFriendshipRef, friendshipData);
-
+    
             // Notification Doc for the inviter
             const notificationRef = doc(collection(firestore, 'users', inviter.id, 'notifications'));
             const notificationData = {
+                userId: inviter.id,
                 type: 'friend_request',
                 fromUserId: currentUser.uid,
                 title: 'New Friend Request',
@@ -107,22 +109,33 @@ export default function InvitePage() {
                 createdAt: serverTimestamp(),
             };
             batch.set(notificationRef, notificationData);
-
-            await batch.commit();
-
-            toast({ title: 'Friend Request Sent!', description: `Your request to ${inviter.username || 'the user'} has been sent.` });
-            setRequestStatus('sent');
-
+    
+            batch.commit()
+                .then(() => {
+                    toast({ title: 'Friend Request Sent!', description: `Your request to ${inviter.username || 'the user'} has been sent.` });
+                    setRequestStatus('sent');
+                })
+                .catch(err => {
+                     console.error("Error writing friend request batch:", err);
+                     setRequestStatus('error');
+                     errorEmitter.emit(
+                         'permission-error',
+                         new FirestorePermissionError({
+                             path: `/users/${inviter.id}/notifications`,
+                             operation: 'create',
+                             requestResourceData: notificationData
+                         })
+                     );
+                });
+    
         } catch (error: any) {
             console.error("Error sending friend request:", error);
             setRequestStatus('error');
-            errorEmitter.emit(
-                'permission-error',
-                new FirestorePermissionError({ 
-                    path: `/users/${inviter.id}/notifications`, 
-                    operation: 'create', 
-                })
-            );
+            toast({
+                title: "Error",
+                description: "An unexpected error occurred. Please try again.",
+                variant: "destructive"
+            });
         }
     };
 
@@ -157,12 +170,12 @@ export default function InvitePage() {
                         <CardDescription>has invited you to connect on GridFocus!</CardDescription>
                     </CardHeader>
                     <CardContent>
-                        {requestStatus === 'idle' && (
+                        {requestStatus === 'idle' || requestStatus === 'error' ? (
                              <Button className="w-full" size="lg" onClick={handleSendRequest} disabled={requestStatus === 'sending'}>
                                 <UserPlus className="mr-2"/>
                                 {requestStatus === 'sending' ? 'Sending...' : 'Send Friend Request'}
                             </Button>
-                        )}
+                        ) : null}
                          {requestStatus === 'sent' && (
                             <div className="text-center p-4 bg-green-500/10 text-green-700 dark:text-green-400 rounded-lg space-y-2">
                                 <PartyPopper className="h-8 w-8 mx-auto"/>
@@ -174,11 +187,6 @@ export default function InvitePage() {
                              <div className="text-center p-4 bg-yellow-500/10 text-yellow-700 dark:text-yellow-400 rounded-lg">
                                 <p className="font-semibold">You already have a pending request with or are friends with {inviter.username}.</p>
                              </div>
-                        )}
-                        {requestStatus === 'error' && (
-                            <div className="text-center p-4 bg-red-500/10 text-destructive rounded-lg">
-                                <p className="font-semibold">Something went wrong. Please try again.</p>
-                            </div>
                         )}
                     </CardContent>
                 </>
@@ -204,4 +212,3 @@ export default function InvitePage() {
         </div>
     );
 }
-

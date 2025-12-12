@@ -1,4 +1,6 @@
 
+'use client';
+
 import { LogOut, Shield, MoreVertical, BarChart2, Info, UserPlus, Users, User, BrainCircuit } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -24,7 +26,7 @@ const CurrentTime = dynamic(() => import('./current-time').then(mod => mod.Curre
 const ADMIN_EMAIL = 'rovinduthamu@gmail.com';
 
 interface MainHeaderProps {
-  children: React.ReactNode;
+  children?: React.ReactNode;
   totalFocusedTime: number;
   enableAiInsights?: boolean;
 }
@@ -33,7 +35,7 @@ export function MainHeader({ children, totalFocusedTime, enableAiInsights }: Mai
   const { user } = useUser();
   const auth = useAuth();
   const router = useRouter();
-
+  
   const handleSignOut = async () => {
     if(auth) {
       await auth.signOut();
@@ -61,28 +63,20 @@ export function MainHeader({ children, totalFocusedTime, enableAiInsights }: Mai
             <h1 className="text-xl sm:text-2xl font-bold text-primary">GridFocus</h1>
           </Link>
         </div>
-        <div className="flex items-center space-x-1 sm:space-x-2">
+
+        <div className="flex items-center justify-end flex-1 space-x-1 sm:space-x-2">
           { !isAnonymousUser && <TotalFocusTime totalHours={totalFocusedTime} /> }
           
-          <div className="hidden sm:flex items-center space-x-1">
+          <div className="hidden sm:flex items-center">
              <CurrentTime />
           </div>
           
           {!isAnonymousUser && (
-            <>
               <Link href="/friends" passHref>
                 <Button variant="ghost" size="icon" title="Friends">
                     <Users className="h-5 w-5" />
                 </Button>
               </Link>
-              {enableAiInsights && (
-                <Link href="/insights" passHref>
-                    <Button variant="ghost" size="icon" title="AI Insights">
-                        <BrainCircuit className="h-5 w-5" />
-                    </Button>
-                </Link>
-              )}
-            </>
           )}
 
           <Link href="/stats" passHref>
@@ -98,7 +92,7 @@ export function MainHeader({ children, totalFocusedTime, enableAiInsights }: Mai
           <ThemeToggle />
 
           {/* Desktop-only items */}
-          <div className="hidden sm:flex items-center gap-2">
+          <div className="hidden sm:flex items-center gap-1">
               {isAnonymousUser ? (
                  <Link href="/login" passHref>
                     <Button>
@@ -107,7 +101,7 @@ export function MainHeader({ children, totalFocusedTime, enableAiInsights }: Mai
                     </Button>
                  </Link>
               ) : user ? (
-                <>
+                <div className="flex items-center gap-2">
                 {children}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
@@ -134,14 +128,6 @@ export function MainHeader({ children, totalFocusedTime, enableAiInsights }: Mai
                             <span>Profile</span>
                         </DropdownMenuItem>
                     </Link>
-                    {enableAiInsights && (
-                        <Link href="/insights" passHref>
-                            <DropdownMenuItem>
-                                <BrainCircuit className="mr-2 h-4 w-4" />
-                                <span>AI Insights</span>
-                            </DropdownMenuItem>
-                        </Link>
-                    )}
                      {user.email === ADMIN_EMAIL && (
                         <Link href="/admin" passHref>
                             <DropdownMenuItem>
@@ -157,7 +143,7 @@ export function MainHeader({ children, totalFocusedTime, enableAiInsights }: Mai
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
-                </>
+                </div>
               ) : null}
           </div>
           

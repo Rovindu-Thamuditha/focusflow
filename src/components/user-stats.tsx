@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -89,13 +89,20 @@ export function UserStats({ userId }: UserStatsProps) {
   
   const { data: dailySummaries, isLoading: isSummariesLoading } = useCollection<DailySummary>(summariesQuery, { realtime: false });
 
-  useMemo(async () => {
-    if (!userId || !firestore) return;
-    const userDocRef = doc(firestore, 'users', userId);
-    const userDoc = await getDoc(userDocRef);
-    if (userDoc.exists()) {
-        setSubjects(userDoc.data().settings?.subjects || defaultSubjects);
-    }
+  useEffect(() => {
+    const fetchSubjects = async () => {
+      if (!userId || !firestore) return;
+      const userDocRef = doc(firestore, 'users', userId);
+      try {
+        const userDoc = await getDoc(userDocRef);
+        if (userDoc.exists()) {
+            setSubjects(userDoc.data().settings?.subjects || defaultSubjects);
+        }
+      } catch (error) {
+        console.error("Failed to fetch user subjects for stats:", error);
+      }
+    };
+    fetchSubjects();
   }, [userId, firestore]);
   
   const chartData = useMemo(() => {

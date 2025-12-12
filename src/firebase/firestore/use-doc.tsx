@@ -49,10 +49,6 @@ export function useDoc<T = any>(
   const [error, setError] = useState<FirestoreError | Error | null>(null);
 
   useEffect(() => {
-    if (memoizedDocRef && !memoizedDocRef.__memo) {
-        throw new Error('DocumentReference passed to useDoc was not memoized. Use useMemoFirebase to memoize it.');
-    }
-
     if (!memoizedDocRef) {
       setData(null);
       setIsLoading(false);
