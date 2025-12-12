@@ -338,26 +338,27 @@ export function TodoList() {
 
   return (
     <Card className="bg-card/70 border-2 border-primary/20 hover:border-primary/50 transition-colors duration-300">
-      <CardHeader className="flex flex-row items-center gap-4 space-y-0 pb-4">
-        <ListChecks className="w-8 h-8 text-primary" />
+      <CardHeader className="flex flex-row items-center gap-3 space-y-0 p-4">
+        <ListChecks className="w-6 h-6 text-primary" />
         <div>
-          <CardTitle className="text-xl font-bold">Today's Tasks</CardTitle>
-          <CardDescription>Drag to reorder, add sub-tasks, and conquer your day.</CardDescription>
+          <CardTitle className="text-lg font-bold">Today's Tasks</CardTitle>
+          <CardDescription className="text-xs">Your daily checklist.</CardDescription>
         </div>
       </CardHeader>
-      <CardContent>
+      <CardContent className="p-4 pt-0">
         <form onSubmit={addTodo} className="flex gap-2 mb-4">
           <Input
             value={newTodo}
             onChange={(e) => setNewTodo(e.target.value)}
             placeholder="Add a new task..."
+            className="h-9"
           />
-          <Button type="submit">Add</Button>
+          <Button type="submit" size="sm">Add</Button>
         </form>
 
-        <ScrollArea className="h-64 pr-4">
-            {cloudLoading && <p className="text-muted-foreground">Loading tasks...</p>}
-            {!cloudLoading && hierarchicalTodos.length === 0 && <p className="text-muted-foreground text-center py-8">No tasks yet. Add one!</p>}
+        <ScrollArea className="h-56 pr-3">
+            {cloudLoading && <p className="text-muted-foreground text-sm">Loading tasks...</p>}
+            {!cloudLoading && hierarchicalTodos.length === 0 && <p className="text-muted-foreground text-center py-8 text-sm">No tasks yet. Add one!</p>}
             
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
                 {renderSortableList(hierarchicalTodos, null)}

@@ -486,8 +486,8 @@ export default function Home() {
 
 
   const currentQuestion = useMemo(() => {
-    if (!isChallengeReady) return dailyQuestions[0];
-    const qIndex = isToday(currentDate!) ? questionIndex : 0;
+    if (!isChallengeReady || !currentDate) return dailyQuestions[0];
+    const qIndex = isToday(currentDate) ? questionIndex : 0;
     return dailyQuestions[(dayChallengeIndex + qIndex) % dailyQuestions.length];
   }, [currentDate, questionIndex, dayChallengeIndex, isChallengeReady]);
 
@@ -515,27 +515,27 @@ export default function Home() {
             onSave={handleSettingsSave}
           />
       </MainHeader>
-      <main className="flex-grow container mx-auto p-4 sm:p-6 md:p-8 pb-20 sm:pb-8">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+      <main className="flex-grow container mx-auto p-2 pb-20 sm:pb-8">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
             <div>
-              <h2 className="text-2xl sm:text-3xl font-bold text-foreground">
-                {user.isAnonymous ? "Welcome to GridFocus!" : `Welcome back, ${userName}!`}
+              <h2 className="text-xl sm:text-3xl font-bold text-foreground">
+                {user.isAnonymous ? "Welcome!" : `Welcome back, ${userName}!`}
               </h2>
-              {user.isAnonymous && <p className="text-sm text-amber-500">Your data is temporary. Sign up to save your progress permanently.</p>}
+              {user.isAnonymous && <p className="text-xs text-amber-500">Sign up to save progress.</p>}
               <div className="flex items-center gap-2 mt-2">
                 <Button variant="outline" size="icon" onClick={() => changeDay(-1)}>
                     <ChevronLeft className="w-4 h-4" />
                 </Button>
-                <h3 className="text-lg sm:text-xl font-semibold text-center w-48 sm:w-64">{format(currentDate, 'PPP')}</h3>
+                <h3 className="text-base sm:text-xl font-semibold text-center w-36 sm:w-64">{format(currentDate, 'PPP')}</h3>
                 <Button variant="outline" size="icon" onClick={() => changeDay(1)} disabled={isToday(currentDate)}>
                     <ChevronRight className="w-4 h-4" />
                 </Button>
               </div>
             </div>
         </div>
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8 items-start">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-start">
           <Card className="lg:col-span-2">
-            <CardContent className="p-4 sm:p-6">
+            <CardContent className="p-2 sm:p-4">
               <AccountabilityGrid
                 blocks={timeBlocks}
                 subjects={subjects}
@@ -546,7 +546,7 @@ export default function Home() {
               />
             </CardContent>
           </Card>
-          <div className="space-y-6">
+          <div className="space-y-4">
              {enableDailyChallenge && isChallengeReady && (
                 <DailyChallenge
                     question={currentQuestion}
@@ -562,7 +562,7 @@ export default function Home() {
              {enableTodoList && <TodoList />}
           </div>
         </div>
-         {!isToday(currentDate) && <div className="mt-8 flex justify-center">
+         {!isToday(currentDate) && <div className="mt-6 flex justify-center">
             <AlertDialog>
               <AlertDialogTrigger asChild>
                 <Button variant="destructive" className="w-full sm:w-auto">
@@ -612,7 +612,7 @@ export default function Home() {
         />
       )}
 
-      <footer className="text-center py-4 text-muted-foreground text-sm space-x-4">
+      <footer className="text-center py-4 text-muted-foreground text-xs space-x-4">
         <span>Made with ♥ by <a href="https://github.com/Rovindu-Thamuditha/" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Tipiz</a></span>
         <span>|</span>
         <button onClick={() => setIsFeedbackDialogOpen(true)} className="text-primary hover:underline">Send Feedback</button>
