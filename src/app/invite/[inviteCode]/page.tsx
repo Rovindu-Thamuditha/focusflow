@@ -1,10 +1,9 @@
-
 'use client';
 
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useUser, useFirestore, errorEmitter, FirestorePermissionError } from '@/firebase';
-import { collection, query, where, getDocs, writeBatch, doc, serverTimestamp, getDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, writeBatch, doc, serverTimestamp } from 'firebase/firestore';
 import { MainHeader } from '@/components/main-header';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -21,6 +20,7 @@ interface Inviter {
     photoURL?: string;
 }
 
+// Define the clear union type for request status
 type RequestStatus = 'idle' | 'sending' | 'sent' | 'error' | 'exists';
 
 export default function InvitePage() {
@@ -74,8 +74,11 @@ export default function InvitePage() {
             const friendshipsRef = collection(firestore, 'friendships');
             
             // Check for existing accepted or pending relationships
-            const qAccepted = query(friendshipsRef, where('userIds', 'in', [[currentUser.uid, inviter.id].sort()]), where('status', '==', 'accepted'));
-            const qPending = query(friendshipsRef, where('userIds', 'in', [[currentUser.uid, inviter.id].sort()]), where('status', '==', 'pending'));
+            // NOTE: The `array-contains-any` query type might be better here depending on your Firestore rules/indexing
+            const sortedUserIds = [currentUser.uid, inviter.id].sort();
+
+            const qAccepted = query(friendshipsRef, where('userIds', '==', sortedUserIds), where('status', '==', 'accepted'));
+            const qPending = query(friendshipsRef, where('userIds', '==', sortedUserIds), where('status', '==', 'pending'));
     
             const [acceptedSnapshot, pendingSnapshot] = await Promise.all([getDocs(qAccepted), getDocs(qPending)]);
     
@@ -90,7 +93,7 @@ export default function InvitePage() {
             // Friendship Doc
             const newFriendshipRef = doc(collection(firestore, 'friendships'));
             const friendshipData = {
-                userIds: [currentUser.uid, inviter.id].sort(),
+                userIds: sortedUserIds,
                 status: 'pending',
                 requesterId: currentUser.uid,
                 createdAt: serverTimestamp()
@@ -139,6 +142,48 @@ export default function InvitePage() {
         }
     };
 
+    // --- NEW HELPER FUNCTION FOR CLEANER JSX RENDERING ---
+    const renderInviteAction = () => {
+        if (!inviter) return null; // Should not happen if renderContent is called correctly
+
+        switch (requestStatus) {
+            case 'idle':
+            case 'error':
+            case 'sending':
+                // Button is rendered in all three states, and disabled only while 'sending'.
+                return (
+                    <Button 
+                        className="w-full" 
+                        size="lg" 
+                        onClick={handleSendRequest} 
+                        disabled={requestStatus === 'sending'}
+                    >
+                        <UserPlus className="mr-2"/>
+                        {requestStatus === 'sending' ? 'Sending...' : 'Send Friend Request'}
+                    </Button>
+                );
+
+            case 'sent':
+                return (
+                    <div className="text-center p-4 bg-green-500/10 text-green-700 dark:text-green-400 rounded-lg space-y-2">
+                        <PartyPopper className="h-8 w-8 mx-auto"/>
+                        <p className="font-semibold">Request Sent!</p>
+                        <p className="text-sm">{inviter.username} will be notified.</p>
+                    </div>
+                );
+
+            case 'exists':
+                return (
+                    <div className="text-center p-4 bg-yellow-500/10 text-yellow-700 dark:text-yellow-400 rounded-lg">
+                        <p className="font-semibold">You already have a pending request with or are friends with {inviter.username}.</p>
+                    </div>
+                );
+                
+            default:
+                return null;
+        }
+    }
+    // -----------------------------------------------------
 
     const renderContent = () => {
         if (isLoading || isUserLoading) {
@@ -170,29 +215,8 @@ export default function InvitePage() {
                         <CardDescription>has invited you to connect on GridFocus!</CardDescription>
                     </CardHeader>
                     <CardContent>
-                        
-                        {requestStatus === 'idle' || requestStatus === 'error' || requestStatus === 'sending' ? (
-                            <Button 
-                                className="w-full" 
-                                size="lg" 
-                                onClick={handleSendRequest} 
-                                // The button should be disabled when it is 'sending'
-                                disabled={requestStatus === 'sending'} 
-                                // The button should only be clickable if it's 'idle' or 'error'
-                                // We can add a check here, but the 'disabled' prop handles the primary control.
-                            >
-                                <UserPlus className="mr-2"/>
-                                {requestStatus === 'sending' ? 'Sending...' : 'Send Friend Request'}
-                            </Button>
-                        ) : null}
-                        
-                        {/* The rest of your status checks remain the same */}
-                        {requestStatus === 'sent' && (
-                            {/* ... */}
-                        )}
-                        {requestStatus === 'exists' && (
-                            {/* ... */}
-                        )}
+                        {/* Use the new helper function for clean, type-safe rendering */}
+                        {renderInviteAction()}
                     </CardContent>
                 </>
             );
@@ -206,8 +230,8 @@ export default function InvitePage() {
             <MainHeader totalFocusedTime={0} />
             <main className="flex-grow container mx-auto p-4 sm:p-6 md:p-8 flex items-center justify-center">
                 <Card className="w-full max-w-md">
-                   {renderContent()}
-                   <CardFooter className="justify-center pt-4">
+                    {renderContent()}
+                    <CardFooter className="justify-center pt-4">
                         <Link href="/" passHref>
                            <Button variant="ghost"><ArrowLeft className="mr-2"/> Go Back Home</Button>
                         </Link>
