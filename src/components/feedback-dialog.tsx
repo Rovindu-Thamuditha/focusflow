@@ -35,7 +35,7 @@ export function FeedbackDialog({ isOpen, onOpenChange }: FeedbackDialogProps) {
 
     setIsSending(true);
     try {
-        const result = await sendFeedback({ feedback, userEmail: user?.email });
+        const result = await sendFeedback({ feedback, userEmail: user?.email ?? undefined });
         if (result.success) {
             toast({
                 title: "Feedback Sent!",

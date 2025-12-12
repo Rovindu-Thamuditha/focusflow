@@ -1,0 +1,8 @@
+{
+  "appId": "app.gridfocus.mobile",
+  "appName": "GridFocus Mobile",
+  "webDir": ".next",
+  "server": {
+    "androidScheme": "https"
+  }
+}
