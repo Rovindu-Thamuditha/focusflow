@@ -79,6 +79,25 @@ export default function StatsPage() {
   const [subjects, setSubjects] = useState<Subject[]>(defaultSubjects);
   const [enableAiInsights, setEnableAiInsights] = useState(false);
   const isAnonymousUser = user?.isAnonymous;
+  const [isOnline, setIsOnline] = useState(true);
+
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    // Set initial state
+    if (typeof window !== 'undefined' && typeof window.navigator !== 'undefined') {
+      setIsOnline(window.navigator.onLine);
+    }
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
   
   const summariesQuery = useMemoFirebase(() => {
       if (!user || !firestore || isAnonymousUser) return null;
@@ -174,9 +193,9 @@ export default function StatsPage() {
                     <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
                         {enableAiInsights && (
                             <Link href="/insights" passHref className="w-full sm:w-auto">
-                                <Button variant="outline" className="w-full">
+                                <Button variant="outline" className="w-full" disabled={!isOnline}>
                                     <BrainCircuit className="mr-2 h-4 w-4" />
-                                    AI Insights
+                                    {isOnline ? 'AI Insights' : 'AI Offline'}
                                 </Button>
                             </Link>
                         )}
