@@ -1,7 +1,7 @@
 
 'use client';
 
-import { LogOut, Shield, MoreVertical, BarChart2, Info, UserPlus, Users, User, BrainCircuit } from "lucide-react";
+import { LogOut, Shield, MoreVertical, BarChart2, Info, UserPlus, Users, User, BrainCircuit, Settings } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import dynamic from 'next/dynamic';
@@ -20,6 +20,8 @@ import {
 import { useUser, useAuth } from "@/firebase";
 import { InfoDialog } from "./info-dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
+import { SettingsDialog } from "./settings-dialog";
+
 
 const CurrentTime = dynamic(() => import('./current-time').then(mod => mod.CurrentTime), { ssr: false });
 
@@ -58,7 +60,7 @@ export function MainHeader({ children, totalFocusedTime, enableAiInsights }: Mai
     <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur-sm">
       <div className="container flex h-16 items-center justify-between">
         <div className="flex gap-6 items-center">
-          <Link href="/" className="flex items-center gap-2">
+          <Link href="/" className="flex items-center gap-2 ml-4 sm:ml-0">
             <Icons.logo className="h-6 w-6 text-primary" />
             <h1 className="text-xl sm:text-2xl font-bold text-primary hidden sm:inline-block">GridFocus</h1>
           </Link>
@@ -148,8 +150,8 @@ export function MainHeader({ children, totalFocusedTime, enableAiInsights }: Mai
           </div>
           
           {/* Mobile-only dropdown menu */}
-          <div className="sm:hidden">
-             {children}
+          <div className="sm:hidden flex items-center">
+            {children}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon">
@@ -185,8 +187,9 @@ export function MainHeader({ children, totalFocusedTime, enableAiInsights }: Mai
                   </>
                 ) : null}
                 <DropdownMenuSeparator />
-                <DropdownMenuItem asChild>
-                    <div className="w-full">
+                 <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                    <div className="w-full flex items-center justify-between">
+                        <span>Theme</span>
                         <ThemeToggle />
                     </div>
                 </DropdownMenuItem>
