@@ -75,7 +75,7 @@ export function FloatingTimer({
         <Button
             variant="default"
             className={cn(
-                "fixed bottom-4 right-4 h-14 w-14 rounded-full shadow-lg z-50 text-white",
+                "fixed bottom-20 right-4 h-14 w-14 rounded-full shadow-lg z-50 text-white",
                 timerIsRunning ? 'bg-red-500 hover:bg-red-600 animate-pulse' : 'bg-primary hover:bg-primary/90'
             )}
             title={timerIsRunning ? 'View Focus Timer' : 'Start Focus Timer'}

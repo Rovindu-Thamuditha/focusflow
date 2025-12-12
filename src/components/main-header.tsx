@@ -149,9 +149,10 @@ export function MainHeader({ children, totalFocusedTime, enableAiInsights }: Mai
               ) : null}
           </div>
           
-          {/* Mobile-only dropdown menu */}
+          {/* Mobile-only menu */}
           <div className="sm:hidden flex items-center">
             {children}
+            <ThemeToggle />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon">
@@ -186,13 +187,6 @@ export function MainHeader({ children, totalFocusedTime, enableAiInsights }: Mai
                   </DropdownMenuItem>
                   </>
                 ) : null}
-                <DropdownMenuSeparator />
-                 <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
-                    <div className="w-full flex items-center justify-between">
-                        <span>Theme</span>
-                        <ThemeToggle />
-                    </div>
-                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
