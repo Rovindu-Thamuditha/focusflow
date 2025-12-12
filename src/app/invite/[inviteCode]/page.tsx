@@ -170,11 +170,7 @@ export default function InvitePage() {
                         <CardDescription>has invited you to connect on GridFocus!</CardDescription>
                     </CardHeader>
                     <CardContent>
-                        {/* This button should only show in the 'idle' or 'error' state, 
-                            and be disabled only while 'sending'. 
-                            However, if the status is 'sending', it should still display the loading state.
-                            Let's group the clickable/loading states together.
-                        */}
+                        
                         {requestStatus === 'idle' || requestStatus === 'error' || requestStatus === 'sending' ? (
                             <Button 
                                 className="w-full" 
