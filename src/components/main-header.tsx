@@ -60,7 +60,7 @@ export function MainHeader({ children, totalFocusedTime, enableAiInsights }: Mai
         <div className="flex gap-6 items-center">
           <Link href="/" className="flex items-center gap-2">
             <Icons.logo className="h-6 w-6 text-primary" />
-            <h1 className="text-xl sm:text-2xl font-bold text-primary">GridFocus</h1>
+            <h1 className="text-xl sm:text-2xl font-bold text-primary hidden sm:inline-block">GridFocus</h1>
           </Link>
         </div>
 
@@ -71,25 +71,25 @@ export function MainHeader({ children, totalFocusedTime, enableAiInsights }: Mai
              <CurrentTime />
           </div>
           
-          {!isAnonymousUser && (
-              <Link href="/friends" passHref>
-                <Button variant="ghost" size="icon" title="Friends">
-                    <Users className="h-5 w-5" />
-                </Button>
-              </Link>
-          )}
+          <div className="hidden sm:flex">
+            {!isAnonymousUser && (
+                <Link href="/friends" passHref>
+                  <Button variant="ghost" size="icon" title="Friends">
+                      <Users className="h-5 w-5" />
+                  </Button>
+                </Link>
+            )}
 
-          <Link href="/stats" passHref>
-            <Button variant="ghost" size="icon" title="Statistics">
-                <BarChart2 className="h-5 w-5" />
-            </Button>
-          </Link>
-          
-          <div className="hidden sm:inline-flex">
+            <Link href="/stats" passHref>
+              <Button variant="ghost" size="icon" title="Statistics">
+                  <BarChart2 className="h-5 w-5" />
+              </Button>
+            </Link>
+            
             <InfoDialog />
-          </div>
 
-          <ThemeToggle />
+            <ThemeToggle />
+          </div>
 
           {/* Desktop-only items */}
           <div className="hidden sm:flex items-center gap-1">
@@ -156,45 +156,19 @@ export function MainHeader({ children, totalFocusedTime, enableAiInsights }: Mai
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <div className="px-2 py-1.5">{children}</div>
-                <div className="px-2 py-1.5"><CurrentTime /></div>
-                <DropdownMenuSeparator />
-                 <DropdownMenuItem asChild>
-                   <InfoDialog />
-                 </DropdownMenuItem>
-                 {!isAnonymousUser && (
-                   <>
-                    <Link href="/profile" passHref>
-                        <DropdownMenuItem>
-                            <User className="mr-2 h-4 w-4" />
-                            <span>Profile</span>
-                        </DropdownMenuItem>
-                    </Link>
-                    <Link href="/friends" passHref>
-                      <DropdownMenuItem>
-                        <Users className="mr-2 h-4 w-4" />
-                        <span>Friends</span>
-                      </DropdownMenuItem>
-                    </Link>
-                    {enableAiInsights && (
-                        <Link href="/insights" passHref>
-                            <DropdownMenuItem>
-                                <BrainCircuit className="mr-2 h-4 w-4" />
-                                <span>AI Insights</span>
-                            </DropdownMenuItem>
-                        </Link>
-                    )}
-                   </>
-                 )}
-                <DropdownMenuSeparator />
-                 {isAnonymousUser ? (
+                {isAnonymousUser ? (
                     <Link href="/login" passHref>
                         <DropdownMenuItem>
                             <UserPlus className="mr-2 h-4 w-4" />
                             <span>Sign Up to Save</span>
                         </DropdownMenuItem>
-                    </Link>                 ) : user ? (
+                    </Link>
+                ) : user ? (
                   <>
+                  <DropdownMenuLabel>
+                    <p>{user.displayName}</p>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
                   {user.email === ADMIN_EMAIL && (
                         <Link href="/admin" passHref>
                             <DropdownMenuItem>
@@ -203,12 +177,21 @@ export function MainHeader({ children, totalFocusedTime, enableAiInsights }: Mai
                             </DropdownMenuItem>
                         </Link>
                    )}
-                  <DropdownMenuItem onClick={handleSignOut}>
+                   <DropdownMenuItem asChild>
+                     <Link href="/settings">Settings</Link>
+                   </DropdownMenuItem>
+                   <DropdownMenuItem onClick={handleSignOut}>
                     <LogOut className="mr-2 h-4 w-4" />
                     <span>Sign Out</span>
                   </DropdownMenuItem>
                   </>
                 ) : null}
+                <DropdownMenuSeparator />
+                <DropdownMenuItem asChild>
+                    <div className="w-full">
+                        <ThemeToggle />
+                    </div>
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>

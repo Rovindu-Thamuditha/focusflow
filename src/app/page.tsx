@@ -117,11 +117,11 @@ export default function Home() {
   }, [user, isUserLoading, auth]);
 
   useEffect(() => {
-    // Set the base index for the daily challenge question pool
-    // This MUST only run on the client to avoid hydration errors
-    setDayChallengeIndex(getDayOfYear(new Date()));
-    setIsChallengeReady(true);
-  }, []);
+    if (isClient) {
+      setDayChallengeIndex(getDayOfYear(new Date()));
+      setIsChallengeReady(true);
+    }
+  }, [isClient]);
 
   const loadLocalDayData = useCallback((dateToLoad: Date) => {
     const localDateString = format(dateToLoad, 'yyyy-MM-dd');
@@ -486,10 +486,10 @@ export default function Home() {
 
 
   const currentQuestion = useMemo(() => {
-    if (!currentDate) return dailyQuestions[0];
-    const qIndex = isToday(currentDate) ? questionIndex : 0;
+    if (!isChallengeReady) return dailyQuestions[0];
+    const qIndex = isToday(currentDate!) ? questionIndex : 0;
     return dailyQuestions[(dayChallengeIndex + qIndex) % dailyQuestions.length];
-  }, [currentDate, questionIndex, dayChallengeIndex]);
+  }, [currentDate, questionIndex, dayChallengeIndex, isChallengeReady]);
 
   if (isUserLoading || !isClient || !user || !userDataLoaded || !currentDate) {
     return (
@@ -515,7 +515,7 @@ export default function Home() {
             onSave={handleSettingsSave}
           />
       </MainHeader>
-      <main className="flex-grow container mx-auto p-4 sm:p-6 md:p-8">
+      <main className="flex-grow container mx-auto p-4 sm:p-6 md:p-8 pb-20 sm:pb-8">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
             <div>
               <h2 className="text-2xl sm:text-3xl font-bold text-foreground">

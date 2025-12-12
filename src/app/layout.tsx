@@ -9,6 +9,7 @@ import { FirebaseClientProvider } from '@/firebase/client-provider';
 import { SpeedInsights } from '@vercel/speed-insights/next';
 import { TimerProvider } from '@/context/timer-context';
 import { TooltipProvider } from '@/components/ui/tooltip';
+import { BottomNav } from '@/components/bottom-nav';
 
 import 'katex/dist/katex.min.css';
 
@@ -43,7 +44,10 @@ export default function RootLayout({
             >
               <TooltipProvider>
                 <TimerProvider>
-                  {children}
+                  <div className="relative flex min-h-screen flex-col">
+                    {children}
+                  </div>
+                  <BottomNav />
                 </TimerProvider>
               </TooltipProvider>
               <Toaster />
