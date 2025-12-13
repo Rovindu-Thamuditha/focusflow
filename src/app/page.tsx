@@ -80,6 +80,7 @@ export default function Home() {
   const [hasBeenPromptedForFeedback, setHasBeenPromptedForFeedback] = useState(false);
   const [dayChallengeIndex, setDayChallengeIndex] = useState(0);
   const [isChallengeReady, setIsChallengeReady] = useState(false);
+  const [isSigningInAnonymously, setIsSigningInAnonymously] = useState(false);
 
 
   // Feature toggles
@@ -106,15 +107,17 @@ export default function Home() {
 
   useEffect(() => {
     setIsClient(true);
-    if (!isUserLoading && !user) {
-      if (auth) {
-        signInAnonymously(auth).catch(error => {
-          console.error("Anonymous sign-in failed:", error);
-          router.push('/login'); // Fallback to login if anonymous fails
-        });
-      }
+    // This effect handles the initial anonymous sign-in flow.
+    if (!isUserLoading && !user && auth && !isSigningInAnonymously) {
+      setIsSigningInAnonymously(true); // Set flag to prevent re-entry
+      signInAnonymously(auth).catch(error => {
+        console.error("Anonymous sign-in failed:", error);
+        router.push('/login'); // Fallback if anonymous fails
+      }).finally(() => {
+        setIsSigningInAnonymously(false);
+      });
     }
-  }, [isUserLoading, user, auth, router]);
+  }, [isUserLoading, user, auth, router, isSigningInAnonymously]);
   
   useEffect(() => {
     if (isClient) {

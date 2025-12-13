@@ -10,6 +10,7 @@ import { SpeedInsights } from '@vercel/speed-insights/next';
 import { TimerProvider } from '@/context/timer-context';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { BottomNav } from '@/components/bottom-nav';
+import { syncOfflineFeedback } from '@/lib/feedback-manager';
 
 import 'katex/dist/katex.min.css';
 
@@ -32,6 +33,13 @@ export const viewport: Viewport = {
       { media: '(prefers-color-scheme: light)', color: '#ffffff' },
       { media: '(prefers-color-scheme: dark)', color: '#212529' },
   ],
+}
+
+// Global sync trigger for offline feedback
+if (typeof window !== 'undefined') {
+  window.addEventListener('online', syncOfflineFeedback);
+  // Attempt a sync on initial load as well, in case the app was closed while offline
+  syncOfflineFeedback();
 }
 
 export default function RootLayout({

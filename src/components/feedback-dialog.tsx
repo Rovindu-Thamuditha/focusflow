@@ -2,15 +2,14 @@
 "use client";
 
 import { useState } from 'react';
-import { MessageSquarePlus } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { type FeedbackInput } from '@/ai/flows/send-feedback-flow';
 import { useUser } from '@/firebase';
 import { Icons } from './icons';
+import { saveFeedbackOffline, syncOfflineFeedback } from '@/lib/feedback-manager';
 
 interface FeedbackDialogProps {
     isOpen: boolean;
@@ -34,35 +33,45 @@ export function FeedbackDialog({ isOpen, onOpenChange }: FeedbackDialogProps) {
     }
 
     setIsSending(true);
+    const feedbackData = { feedback, userEmail: user?.email ?? 'anonymous', timestamp: new Date().toISOString() };
+
     try {
-        const feedbackInput: FeedbackInput = { feedback, userEmail: user?.email ?? undefined };
-        
+        if (typeof navigator !== 'undefined' && !navigator.onLine) {
+            throw new Error('Offline');
+        }
+
         const response = await fetch('/api/send-feedback', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(feedbackInput)
+            body: JSON.stringify(feedbackData)
         });
+
+        if (!response.ok) {
+            throw new Error('API Error');
+        }
 
         const result = await response.json();
 
-        if (response.ok && result.success) {
+        if (result.success) {
             toast({
                 title: "Feedback Sent!",
                 description: "Thank you for helping us improve GridFocus.",
             });
-            onOpenChange(false);
-            setFeedback("");
+            await syncOfflineFeedback(); // Attempt to send any previously queued feedback
         } else {
-             throw new Error(result.details || "API returned an error");
+            throw new Error(result.details || "API returned an error");
         }
+
     } catch (error) {
-        console.error("Failed to send feedback:", error);
+        console.warn("Could not send feedback directly, saving offline.", error);
+        saveFeedbackOffline(feedbackData);
         toast({
-            variant: "destructive",
-            title: "Something went wrong",
-            description: "Could not send your feedback. Please try again later.",
+            title: "Feedback Saved Offline",
+            description: "We'll send your feedback automatically when you're back online.",
         });
     } finally {
+        onOpenChange(false);
+        setFeedback("");
         setIsSending(false);
     }
   };

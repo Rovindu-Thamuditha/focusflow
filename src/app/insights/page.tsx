@@ -103,12 +103,14 @@ export default function InsightsPage() {
                     const newAnalysis: StudyAnalysisOutput = await response.json();
                     
                     // Cache the new analysis in Firestore
-                    await setDoc(insightDocRef, {
-                        id: todayStr,
-                        userId: user.uid,
-                        generatedAt: serverTimestamp(),
-                        analysis: newAnalysis
-                    });
+                    if (Object.keys(newAnalysis).length > 0) {
+                        await setDoc(insightDocRef, {
+                            id: todayStr,
+                            userId: user.uid,
+                            generatedAt: serverTimestamp(),
+                            analysis: newAnalysis
+                        });
+                    }
                     
                     setInsights(newAnalysis);
                 }
