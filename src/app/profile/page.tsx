@@ -18,7 +18,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { useToast } from '@/hooks/use-toast';
 import { Icons } from '@/components/icons';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { User as UserIcon } from 'lucide-react';
+import { User as UserIcon, LogOut } from 'lucide-react';
 import { GridFocusLoader } from '@/components/grid-focus-loader';
 
 const profileFormSchema = z.object({
@@ -58,6 +58,13 @@ export default function ProfilePage() {
     return <UserIcon />;
   }
 
+  const handleSignOut = async () => {
+    if(auth) {
+      await auth.signOut();
+      router.push('/login');
+    }
+  }
+
   const onSubmit = async (data: ProfileFormValues) => {
     if (!user || !auth || !firestore) return;
 
@@ -89,7 +96,7 @@ export default function ProfilePage() {
   if (isUserLoading || !user) {
     return (
         <div className="flex items-center justify-center min-h-screen">
-             <div className="text-xl">Loading Profile...</div>
+             <GridFocusLoader />
         </div>
     );
   }
@@ -139,6 +146,12 @@ export default function ProfilePage() {
               </form>
             </Form>
           </CardContent>
+          <CardFooter className="border-t pt-6">
+            <Button variant="destructive" onClick={handleSignOut} className="w-full sm:w-auto ml-auto">
+              <LogOut className="mr-2 h-4 w-4" />
+              Log Out
+            </Button>
+          </CardFooter>
         </Card>
       </main>
     </div>

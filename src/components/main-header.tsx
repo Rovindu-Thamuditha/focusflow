@@ -167,42 +167,6 @@ export function MainHeader({ children, totalFocusedTime, enableAiInsights, showB
                     <Settings className="h-[1.2rem] w-[1.2rem]" />
                 </Button>
             </Link>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon">
-                  <MoreVertical className="h-5 w-5" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                {isAnonymousUser ? (
-                    <Link href="/login" passHref>
-                        <DropdownMenuItem>
-                            <UserPlus className="mr-2 h-4 w-4" />
-                            <span>Sign Up to Save</span>
-                        </DropdownMenuItem>
-                    </Link>
-                ) : user ? (
-                  <>
-                  <DropdownMenuLabel>
-                    <p>{user.displayName}</p>
-                  </DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  {user.email === ADMIN_EMAIL && (
-                        <Link href="/admin" passHref>
-                            <DropdownMenuItem>
-                            <Shield className="mr-2 h-4 w-4" />
-                            <span>Admin</span>
-                            </DropdownMenuItem>
-                        </Link>
-                   )}
-                   <DropdownMenuItem onClick={handleSignOut}>
-                    <LogOut className="mr-2 h-4 w-4" />
-                    <span>Sign Out</span>
-                  </DropdownMenuItem>
-                  </>
-                ) : null}
-              </DropdownMenuContent>
-            </DropdownMenu>
           </div>
         </div>
       </div>
