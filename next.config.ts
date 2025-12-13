@@ -1,6 +1,8 @@
 
 import type {NextConfig} from 'next';
 
+const isProd = process.env.NODE_ENV === 'production';
+
 const nextConfig: NextConfig = {
   /* config options here */
   images: {
@@ -18,14 +20,14 @@ const nextConfig: NextConfig = {
         pathname: '/**',
       },
       {
-        protocol: 'https',
+        protocol: 'https' as const,
         hostname: 'picsum.photos',
         port: '',
         pathname: '/**',
       },
     ],
   },
-  output: 'export',
+  output: isProd ? 'export' : undefined,
 };
 
 export default nextConfig;
