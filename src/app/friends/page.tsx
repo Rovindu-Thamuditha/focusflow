@@ -1,19 +1,27 @@
 
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { MainHeader } from '@/components/main-header';
-import { useUser } from '@/firebase';
+import { useUser, useFirestore, errorEmitter, FirestorePermissionError } from '@/firebase';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { FriendRequests } from '@/components/friends/friend-requests';
 import { FriendsList } from '@/components/friends/friends-list';
 import { GridFocusLoader } from '@/components/grid-focus-loader';
-import { InviteCodeHandler } from '@/components/friends-ui/InviteCodeHandler';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { Send } from 'lucide-react';
+import { collection, query, where, getDocs, writeBatch, doc, serverTimestamp } from 'firebase/firestore';
+import { useToast } from '@/hooks/use-toast';
 
 export default function FriendsPage() {
     const { user, isUserLoading } = useUser();
+    const firestore = useFirestore();
     const router = useRouter();
+    const { toast } = useToast();
+    const [friendUsername, setFriendUsername] = useState('');
+    const [isSendingRequest, setIsSendingRequest] = useState(false);
     
     useEffect(() => {
         if (isUserLoading) return;
@@ -23,6 +31,74 @@ export default function FriendsPage() {
         }
     }, [user, isUserLoading, router]);
 
+    const handleSendRequest = async () => {
+        if (!firestore || !user || !friendUsername.trim()) return;
+
+        setIsSendingRequest(true);
+        try {
+            const usersRef = collection(firestore, 'users');
+            const q = query(usersRef, where('username', '==', friendUsername.trim()));
+            const querySnapshot = await getDocs(q);
+
+            if (querySnapshot.empty) {
+                toast({ variant: "destructive", title: "User Not Found", description: "No user found with that username." });
+                setIsSendingRequest(false);
+                return;
+            }
+
+            const friendDoc = querySnapshot.docs[0];
+            const friendId = friendDoc.id;
+            const friendData = friendDoc.data();
+
+            if (friendId === user.uid) {
+                toast({ variant: "destructive", title: "Oops!", description: "You can't add yourself as a friend." });
+                setIsSendingRequest(false);
+                return;
+            }
+            
+            const friendshipsRef = collection(firestore, 'friendships');
+            const sortedUserIds = [user.uid, friendId].sort();
+            const qExisting = query(friendshipsRef, where('userIds', '==', sortedUserIds));
+            const existingSnapshot = await getDocs(qExisting);
+            
+            if (!existingSnapshot.empty) {
+                 toast({ variant: "destructive", title: "Already Connected", description: "You are already friends or have a pending request with this user." });
+                 setIsSendingRequest(false);
+                 return;
+            }
+
+            const batch = writeBatch(firestore);
+            const newFriendshipRef = doc(collection(firestore, 'friendships'));
+            batch.set(newFriendshipRef, {
+                userIds: sortedUserIds,
+                status: 'pending',
+                requesterId: user.uid,
+                createdAt: serverTimestamp()
+            });
+
+            const notificationRef = doc(collection(firestore, 'users', friendId, 'notifications'));
+            const notificationData = {
+                type: 'friend_request',
+                fromUserId: user.uid,
+                title: 'New Friend Request',
+                message: `${user.displayName || 'A new user'} sent you a friend request!`,
+                isRead: false,
+                createdAt: serverTimestamp(),
+            };
+            batch.set(notificationRef, notificationData);
+    
+            await batch.commit();
+
+            toast({ title: 'Friend Request Sent!', description: `Your request to ${friendData.username} has been sent.` });
+            setFriendUsername('');
+
+        } catch (error) {
+            console.error("Error sending friend request:", error);
+            toast({ variant: "destructive", title: "Error", description: "Failed to send friend request." });
+        } finally {
+            setIsSendingRequest(false);
+        }
+    };
 
     if (isUserLoading || !user) {
         return (
@@ -42,7 +118,21 @@ export default function FriendsPage() {
                         <CardDescription>Enter a friend's username below to send a request.</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-6">
-                        <InviteCodeHandler />
+                        <div className="p-4 border rounded-lg bg-secondary/50">
+                            <h3 className="font-semibold mb-2 flex items-center gap-2"><Send className="w-5 h-5"/>Enter a Friend's Username</h3>
+                            <div className="flex items-center gap-2">
+                                <Input 
+                                    value={friendUsername}
+                                    onChange={(e) => setFriendUsername(e.target.value)}
+                                    className="text-base" 
+                                    placeholder="Username"
+                                    disabled={isSendingRequest}
+                                />
+                                <Button onClick={handleSendRequest} disabled={!friendUsername.trim() || isSendingRequest}>
+                                    {isSendingRequest ? 'Sending...' : 'Add Friend'}
+                                </Button>
+                            </div>
+                        </div>
                     </CardContent>
                 </Card>
 
