@@ -504,7 +504,7 @@ export default function Home() {
   return (
     <div className={cn('flex flex-col min-h-screen font-sans', inter.variable)}>
       <MainHeader totalFocusedTime={totalFocusedTime} enableAiInsights={enableAiInsights} />
-      <main className="flex-grow container mx-auto p-2 pb-20 sm:pb-8">
+      <main className="flex-grow container mx-auto p-2 sm:pb-8">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
             <div>
               <h2 className="text-xl sm:text-3xl font-bold text-foreground">
@@ -571,6 +571,11 @@ export default function Home() {
               </AlertDialogContent>
             </AlertDialog>
         </div>}
+        <footer className="text-center py-4 text-muted-foreground text-xs space-x-4 pb-20 sm:pb-4">
+          <span>Made with ♥ by <a href="https://github.com/Rovindu-Thamuditha/" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Tipiz</a></span>
+          <span>|</span>
+          <button onClick={() => setIsFeedbackDialogOpen(true)} className="text-primary hover:underline">Send Feedback</button>
+        </footer>
       </main>
 
       {enableTimer && (
@@ -599,12 +604,6 @@ export default function Home() {
           }}
         />
       )}
-
-      <footer className="text-center py-4 text-muted-foreground text-xs space-x-4">
-        <span>Made with ♥ by <a href="https://github.com/Rovindu-Thamuditha/" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Tipiz</a></span>
-        <span>|</span>
-        <button onClick={() => setIsFeedbackDialogOpen(true)} className="text-primary hover:underline">Send Feedback</button>
-      </footer>
     </div>
   );
 }
