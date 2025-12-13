@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -65,7 +64,11 @@ export default function InsightsPage() {
         }
 
         const getInsights = async () => {
-            if (!user || !insightDocRef || !firestore) return;
+            // Guard against null/undefined values
+            if (!user || !insightDocRef || !firestore) {
+                setIsLoading(false);
+                return;
+            }
             
             setIsLoading(true);
             try {
