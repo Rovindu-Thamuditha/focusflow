@@ -9,7 +9,7 @@ import { MainHeader } from '@/components/main-header';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { GridFocusLoader } from '@/components/grid-focus-loader';
 import { StudyInsights } from '@/components/study-insights';
-import { analyzeStudyData, type StudyAnalysisOutput } from '@/ai/flows/analyze-study-data-flow';
+import { type StudyAnalysisOutput, type StudyAnalysisInput } from '@/ai/flows/analyze-study-data-flow';
 import type { DailySummary, Subject } from '@/lib/types';
 import { format, subDays } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
@@ -84,11 +84,23 @@ export default function InsightsPage() {
                     const userDoc = await getDoc(userDocRef);
                     const userSubjects = userDoc.exists() ? (userDoc.data().subjects || defaultSubjects) : defaultSubjects;
 
-                    const newAnalysis = await analyzeStudyData({ 
+                    const analysisInput: StudyAnalysisInput = {
                         subjects: JSON.stringify(userSubjects.filter((s: Subject) => s.id !== 'idle' && s.id !== 'sleep')),
                         summaries: JSON.stringify(dailySummaries || []),
                         currentDate: format(new Date(), 'yyyy-MM-dd')
+                    };
+
+                    const response = await fetch('/api/analyze-study-data', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(analysisInput)
                     });
+
+                    if (!response.ok) {
+                        throw new Error('Failed to fetch analysis from API.');
+                    }
+                    
+                    const newAnalysis: StudyAnalysisOutput = await response.json();
                     
                     // Cache the new analysis in Firestore
                     await setDoc(insightDocRef, {

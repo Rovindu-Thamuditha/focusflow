@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { sendFeedback } from '@/ai/flows/send-feedback-flow';
+import { type FeedbackInput } from '@/ai/flows/send-feedback-flow';
 import { useUser } from '@/firebase';
 import { Icons } from './icons';
 
@@ -35,8 +35,17 @@ export function FeedbackDialog({ isOpen, onOpenChange }: FeedbackDialogProps) {
 
     setIsSending(true);
     try {
-        const result = await sendFeedback({ feedback, userEmail: user?.email ?? undefined });
-        if (result.success) {
+        const feedbackInput: FeedbackInput = { feedback, userEmail: user?.email ?? undefined };
+        
+        const response = await fetch('/api/send-feedback', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(feedbackInput)
+        });
+
+        const result = await response.json();
+
+        if (response.ok && result.success) {
             toast({
                 title: "Feedback Sent!",
                 description: "Thank you for helping us improve GridFocus.",
@@ -44,7 +53,7 @@ export function FeedbackDialog({ isOpen, onOpenChange }: FeedbackDialogProps) {
             onOpenChange(false);
             setFeedback("");
         } else {
-             throw new Error("Flow returned success: false");
+             throw new Error(result.details || "API returned an error");
         }
     } catch (error) {
         console.error("Failed to send feedback:", error);
