@@ -3,19 +3,17 @@
 
 import { useState, useEffect } from 'react';
 import { MainHeader } from '@/components/main-header';
-import { useUser, useFirestore } from '@/firebase';
+import { useUser, useFirestore, errorEmitter, FirestorePermissionError } from '@/firebase';
 import { useRouter } from 'next/navigation';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, collection, query, where, getDocs, writeBatch, serverTimestamp } from 'firebase/firestore';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { Copy, Check, Link as LinkIcon, ArrowLeft } from 'lucide-react';
+import { Copy, Check, UserPlus, Send, ArrowLeft } from 'lucide-react';
 import { FriendRequests } from '@/components/friends/friend-requests';
 import { FriendsList } from '@/components/friends/friends-list';
 import { GridFocusLoader } from '@/components/grid-focus-loader';
-import Link from 'next/link';
-
 
 interface AppUser {
     id: string;
@@ -38,17 +36,14 @@ export default function FriendsPage() {
     const firestore = useFirestore();
     const router = useRouter();
     const { toast } = useToast();
-    const [inviteLink, setInviteLink] = useState('');
+    const [inviteCode, setInviteCode] = useState('');
     const [copied, setCopied] = useState(false);
+    const [friendCode, setFriendCode] = useState('');
+    const [isSendingRequest, setIsSendingRequest] = useState(false);
     
     useEffect(() => {
         if (isUserLoading) return;
         if (!user || user.isAnonymous) {
-            toast({
-                title: "Login Required",
-                description: "You must have an account to add friends.",
-                variant: "destructive"
-            });
             router.push('/login');
             return;
         }
@@ -63,7 +58,6 @@ export default function FriendsPage() {
                 let code = userData.inviteCode;
 
                 if (!code) {
-                    // If the user doesn't have an invite code, generate and save one.
                     code = generateInviteCode();
                     try {
                         await setDoc(userDocRef, { inviteCode: code }, { merge: true });
@@ -71,16 +65,13 @@ export default function FriendsPage() {
                         console.error("Failed to save new invite code:", error);
                         toast({
                             title: "Error",
-                            description: "Could not generate your invite link. Please refresh.",
+                            description: "Could not generate your invite code. Please refresh.",
                             variant: "destructive"
                         });
                         return;
                     }
                 }
-                
-                const origin = 'https://gridfocus.vercel.app';
-                setInviteLink(`${origin}/invite/${code}`);
-
+                setInviteCode(code);
             } else {
                  console.error("User document not found for UID:", user.uid);
                  toast({
@@ -95,12 +86,97 @@ export default function FriendsPage() {
     }, [user, isUserLoading, firestore, router, toast]);
 
     const handleCopy = () => {
-        if (!inviteLink) return;
-        navigator.clipboard.writeText(inviteLink);
+        if (!inviteCode) return;
+        navigator.clipboard.writeText(inviteCode);
         setCopied(true);
-        toast({ title: "Copied!", description: "Your invite link has been copied to the clipboard." });
+        toast({ title: "Copied!", description: "Your invite code has been copied." });
         setTimeout(() => setCopied(false), 2000);
     };
+    
+    const handleSendRequest = async () => {
+        if (!firestore || !user || !friendCode.trim()) return;
+
+        setIsSendingRequest(true);
+        try {
+            const usersRef = collection(firestore, 'users');
+            const q = query(usersRef, where('inviteCode', '==', friendCode.trim()));
+            const querySnapshot = await getDocs(q);
+
+            if (querySnapshot.empty) {
+                toast({ variant: "destructive", title: "Invalid Code", description: "No user found with that invite code." });
+                setIsSendingRequest(false);
+                return;
+            }
+
+            const inviterDoc = querySnapshot.docs[0];
+            const inviterId = inviterDoc.id;
+            const inviterUsername = inviterDoc.data().username || 'the user';
+
+            if (inviterId === user.uid) {
+                toast({ variant: "destructive", title: "Oops!", description: "You can't add yourself as a friend." });
+                setIsSendingRequest(false);
+                return;
+            }
+            
+            const friendshipsRef = collection(firestore, 'friendships');
+            const sortedUserIds = [user.uid, inviterId].sort();
+            const qExisting = query(friendshipsRef, where('userIds', '==', sortedUserIds));
+            const existingSnapshot = await getDocs(qExisting);
+            
+            if (!existingSnapshot.empty) {
+                 toast({ variant: "destructive", title: "Already Connected", description: "You are already friends or have a pending request with this user." });
+                 setIsSendingRequest(false);
+                 return;
+            }
+
+            const batch = writeBatch(firestore);
+            const newFriendshipRef = doc(collection(firestore, 'friendships'));
+            batch.set(newFriendshipRef, {
+                userIds: sortedUserIds,
+                status: 'pending',
+                requesterId: user.uid,
+                createdAt: serverTimestamp()
+            });
+
+            const notificationRef = doc(collection(firestore, 'users', inviterId, 'notifications'));
+            const notificationData = {
+                type: 'friend_request',
+                fromUserId: user.uid,
+                title: 'New Friend Request',
+                message: `${user.displayName || 'A new user'} sent you a friend request!`,
+                isRead: false,
+                createdAt: serverTimestamp(),
+            };
+            batch.set(notificationRef, notificationData);
+    
+            batch.commit()
+                .then(() => {
+                    toast({ title: 'Friend Request Sent!', description: `Your request to ${inviterUsername} has been sent.` });
+                    setFriendCode('');
+                })
+                .catch((error) => {
+                    console.error("Error sending friend request:", error);
+                    toast({ variant: "destructive", title: "Error", description: "Failed to send friend request. Check permissions." });
+                     errorEmitter.emit(
+                        'permission-error',
+                        new FirestorePermissionError({
+                            path: `/users/${inviterId}/notifications`,
+                            operation: 'create',
+                            requestResourceData: notificationData
+                        })
+                    );
+                })
+                .finally(() => {
+                     setIsSendingRequest(false);
+                });
+
+        } catch (error) {
+            console.error("Error querying for friend request:", error);
+            toast({ variant: "destructive", title: "Error", description: "Failed to check for existing friendships." });
+            setIsSendingRequest(false);
+        }
+    };
+
 
     if (isUserLoading || !user) {
         return (
@@ -116,16 +192,32 @@ export default function FriendsPage() {
             <main className="flex-grow container mx-auto p-4 sm:p-6 md:p-8">
                 <Card>
                     <CardHeader>
-                        <CardTitle>Invite Your Friends</CardTitle>
-                        <CardDescription>Share your unique link to add friends and build your accountability circle.</CardDescription>
+                        <CardTitle>Add Friends</CardTitle>
+                        <CardDescription>Share your invite code or enter a friend's code below.</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-6">
                         <div className="p-4 border rounded-lg bg-secondary/50">
-                            <h3 className="font-semibold mb-2 flex items-center gap-2"><LinkIcon className="w-5 h-5"/>Your Invite Link</h3>
+                            <h3 className="font-semibold mb-2 flex items-center gap-2"><UserPlus className="w-5 h-5"/>Your Invite Code</h3>
                             <div className="flex items-center gap-2">
-                                <Input value={inviteLink} readOnly className="font-mono text-base" placeholder="Generating your link..."/>
-                                <Button onClick={handleCopy} size="icon" variant="outline" disabled={!inviteLink}>
+                                <Input value={inviteCode} readOnly className="font-mono text-base" placeholder="Generating..."/>
+                                <Button onClick={handleCopy} size="icon" variant="outline" disabled={!inviteCode}>
                                     {copied ? <Check className="w-5 h-5 text-green-500" /> : <Copy className="w-5 h-5" />}
+                                </Button>
+                            </div>
+                        </div>
+
+                         <div className="p-4 border rounded-lg bg-secondary/50">
+                            <h3 className="font-semibold mb-2 flex items-center gap-2"><Send className="w-5 h-5"/>Enter a Friend's Code</h3>
+                            <div className="flex items-center gap-2">
+                                <Input 
+                                    value={friendCode}
+                                    onChange={(e) => setFriendCode(e.target.value.toUpperCase())}
+                                    className="font-mono text-base" 
+                                    placeholder="FOCUS-XXXX"
+                                    disabled={isSendingRequest}
+                                />
+                                <Button onClick={handleSendRequest} disabled={!friendCode.trim() || isSendingRequest}>
+                                    {isSendingRequest ? 'Sending...' : 'Add Friend'}
                                 </Button>
                             </div>
                         </div>

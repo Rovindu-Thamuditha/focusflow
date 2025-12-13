@@ -5,7 +5,7 @@ import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query, where, doc, getDoc, deleteDoc, limit } from 'firebase/firestore';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Users, Trash2, Eye } from 'lucide-react';
+import { Users, Trash2 } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -19,7 +19,6 @@ import {
 } from "@/components/ui/alert-dialog"
 import { useToast } from '@/hooks/use-toast';
 import { useEffect, useState } from 'react';
-import Link from 'next/link';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { getInitials } from '@/lib/utils';
 
@@ -108,11 +107,6 @@ export function FriendsList({ currentUserId }: { currentUserId: string }) {
                             <span className="font-medium">{friend.username || 'A Friend'}</span>
                         </div>
                         <div className="flex gap-2">
-                             <Link href={`/compare/${friend.id}`}>
-                                <Button size="icon" className="h-8 w-8" variant="outline" title="Compare Stats">
-                                    <Eye className="w-4 h-4" />
-                                </Button>
-                            </Link>
                             <AlertDialog>
                                 <AlertDialogTrigger asChild>
                                     <Button size="icon" className="h-8 w-8" variant="destructive" title="Remove Friend">
@@ -139,5 +133,3 @@ export function FriendsList({ currentUserId }: { currentUserId: string }) {
         </Card>
     );
 }
-
-    

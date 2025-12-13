@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -74,15 +75,12 @@ export default function InvitePage() {
             const friendshipsRef = collection(firestore, 'friendships');
             
             // Check for existing accepted or pending relationships
-            // NOTE: The `array-contains-any` query type might be better here depending on your Firestore rules/indexing
             const sortedUserIds = [currentUser.uid, inviter.id].sort();
-
-            const qAccepted = query(friendshipsRef, where('userIds', '==', sortedUserIds), where('status', '==', 'accepted'));
-            const qPending = query(friendshipsRef, where('userIds', '==', sortedUserIds), where('status', '==', 'pending'));
+            const qExisting = query(friendshipsRef, where('userIds', '==', sortedUserIds));
+            
+            const existingSnapshot = await getDocs(qExisting);
     
-            const [acceptedSnapshot, pendingSnapshot] = await Promise.all([getDocs(qAccepted), getDocs(qPending)]);
-    
-            if (!acceptedSnapshot.empty || !pendingSnapshot.empty) {
+            if (!existingSnapshot.empty) {
                 setRequestStatus('exists');
                 return;
             }
@@ -103,7 +101,6 @@ export default function InvitePage() {
             // Notification Doc for the inviter
             const notificationRef = doc(collection(firestore, 'users', inviter.id, 'notifications'));
             const notificationData = {
-                userId: inviter.id,
                 type: 'friend_request',
                 fromUserId: currentUser.uid,
                 title: 'New Friend Request',
