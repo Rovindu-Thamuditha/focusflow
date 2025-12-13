@@ -2,8 +2,6 @@
 import { sendFeedback, type FeedbackInput } from '@/ai/flows/send-feedback-flow';
 import { NextResponse } from 'next/server';
 
-export const dynamic = 'force-dynamic';
-
 export async function POST(request: Request) {
     try {
         const body = await request.json() as FeedbackInput;
