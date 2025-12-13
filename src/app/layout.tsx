@@ -57,7 +57,7 @@ export default function RootLayout({
             >
               <TooltipProvider>
                 <TimerProvider>
-                  <div className="relative flex min-h-screen flex-col">
+                  <div className="relative flex min-h-screen flex-col pb-20 sm:pb-0">
                     {children}
                   </div>
                   <BottomNav />
