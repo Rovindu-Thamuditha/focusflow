@@ -22,15 +22,6 @@ import type { TimeBlockState } from '@/lib/types';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 
-function generateInviteCode() {
-  const chars = 'ABCDEFGHIJKLMNPQRSTUVWXYZ123456789';
-  let result = 'FOCUS-';
-  for (let i = 0; i < 4; i++) {
-    result += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return result;
-}
-
 
 export default function LoginPage() {
   const router = useRouter();
@@ -146,7 +137,6 @@ export default function LoginPage() {
             id: user.uid,
             username: name,
             email: user.email,
-            inviteCode: generateInviteCode(),
             hasCompletedOnboarding: false,
           };
           batch.set(userDocRef, userData);
