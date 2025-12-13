@@ -1,5 +1,5 @@
 
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
 import { cn } from '@/lib/utils';
@@ -20,16 +20,19 @@ export const metadata: Metadata = {
   title: 'FocusFlow',
   description: 'Track your focus and conquer your day.',
   manifest: '/manifest.json',
-  themeColor: [
-      { media: '(prefers-color-scheme: light)', color: '#ffffff' },
-      { media: '(prefers-color-scheme: dark)', color: '#212529' },
-  ],
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
     title: 'FocusFlow',
   },
 };
+
+export const viewport: Viewport = {
+  themeColor: [
+      { media: '(prefers-color-scheme: light)', color: '#ffffff' },
+      { media: '(prefers-color-scheme: dark)', color: '#212529' },
+  ],
+}
 
 export default function RootLayout({
   children,
