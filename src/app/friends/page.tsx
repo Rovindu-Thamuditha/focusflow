@@ -10,7 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { Copy, Check, UserPlus, Send, ArrowLeft } from 'lucide-react';
+import { Copy, Check, UserPlus, Send } from 'lucide-react';
 import { FriendRequests } from '@/components/friends/friend-requests';
 import { FriendsList } from '@/components/friends/friends-list';
 import { GridFocusLoader } from '@/components/grid-focus-loader';
@@ -51,32 +51,32 @@ export default function FriendsPage() {
         const fetchUserData = async () => {
             if (!firestore || !user) return;
             const userDocRef = doc(firestore, 'users', user.uid);
-            const userDoc = await getDoc(userDocRef);
             
-            if (userDoc.exists()) {
-                const userData = userDoc.data() as AppUser;
-                let code = userData.inviteCode;
+            try {
+                const userDoc = await getDoc(userDocRef);
+                
+                if (userDoc.exists()) {
+                    const userData = userDoc.data() as AppUser;
+                    let code = userData.inviteCode;
 
-                if (!code) {
-                    code = generateInviteCode();
-                    try {
+                    if (!code) {
+                        code = generateInviteCode();
                         await setDoc(userDocRef, { inviteCode: code }, { merge: true });
-                    } catch (error) {
-                        console.error("Failed to save new invite code:", error);
-                        toast({
-                            title: "Error",
-                            description: "Could not generate your invite code. Please refresh.",
-                            variant: "destructive"
-                        });
-                        return;
                     }
+                    setInviteCode(code);
+                } else {
+                     console.error("User document not found for UID:", user.uid);
+                     toast({
+                        title: "Error",
+                        description: "Could not load your user data. Please try logging in again.",
+                        variant: "destructive"
+                    });
                 }
-                setInviteCode(code);
-            } else {
-                 console.error("User document not found for UID:", user.uid);
+            } catch (error) {
+                 console.error("Error fetching user data:", error);
                  toast({
                     title: "Error",
-                    description: "Could not load your user data. Please try logging in again.",
+                    description: "Could not retrieve user details. Please check your connection.",
                     variant: "destructive"
                 });
             }
@@ -156,8 +156,7 @@ export default function FriendsPage() {
                 })
                 .catch((error) => {
                     console.error("Error sending friend request:", error);
-                    toast({ variant: "destructive", title: "Error", description: "Failed to send friend request. Check permissions." });
-                     errorEmitter.emit(
+                    errorEmitter.emit(
                         'permission-error',
                         new FirestorePermissionError({
                             path: `/users/${inviterId}/notifications`,

@@ -107,9 +107,14 @@ export default function Home() {
   useEffect(() => {
     setIsClient(true);
     if (!isUserLoading && !user) {
-        router.push('/login');
+      if (auth) {
+        signInAnonymously(auth).catch(error => {
+          console.error("Anonymous sign-in failed:", error);
+          router.push('/login'); // Fallback to login if anonymous fails
+        });
+      }
     }
-  }, [user, isUserLoading, router]);
+  }, [isUserLoading, user, auth, router]);
   
   useEffect(() => {
     if (isClient) {
@@ -603,3 +608,5 @@ export default function Home() {
     </div>
   );
 }
+
+    
