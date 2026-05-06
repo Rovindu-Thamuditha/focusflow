@@ -53,6 +53,7 @@ export default function Home() {
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [isFeedbackDialogOpen, setIsFeedbackDialogOpen] = useState(false);
   const [streakGoal, setStreakGoal] = useState(2);
+  const [seenWhatsNewVersions, setSeenWhatsNewVersions] = useState<string[]>([]);
 
   // Feature toggles
   const [enableTimer, setEnableTimer] = useState(true);
@@ -125,6 +126,7 @@ export default function Home() {
       setEnableTodoList(s.enableTodoList !== false);
       setDisableEditRestriction(s.disableEditRestriction === true);
       setStreakGoal(s.streakGoal || 2);
+      setSeenWhatsNewVersions(s.seenWhatsNewVersions || []);
       if (!s.hasCompletedOnboarding) setShowOnboarding(true);
       
       const localBlocks = JSON.parse(localStorage.getItem('gridTimeBlocks') || '{}')[format(currentDate, 'yyyy-MM-dd')];
@@ -142,6 +144,7 @@ export default function Home() {
       setEnableTodoList(s.enableTodoList !== false);
       setDisableEditRestriction(s.disableEditRestriction === true);
       setStreakGoal(s.streakGoal || 2);
+      setSeenWhatsNewVersions(userData.seenWhatsNewVersions || []);
       setUserDataLoaded(true);
     }
   }, [user, userData, currentDate]);
@@ -158,8 +161,12 @@ export default function Home() {
   useDebouncedEffect(() => {
     if (!userDataLoaded || showOnboarding) return;
     const settings = { sleepHours, subjects, language, enableTimer, enableDailyChallenge, enableTodoList, disableEditRestriction, streakGoal, hasCompletedOnboarding: true };
-    if (user?.isAnonymous) localStorage.setItem('gridFocusSettings', JSON.stringify(settings));
-    else if (userDocRef) setDoc(userDocRef, { settings }, { merge: true });
+    if (user?.isAnonymous) {
+      const existing = JSON.parse(localStorage.getItem('gridFocusSettings') || '{}');
+      localStorage.setItem('gridFocusSettings', JSON.stringify({ ...existing, ...settings }));
+    } else if (userDocRef) {
+      setDoc(userDocRef, { settings }, { merge: true });
+    }
   }, [subjects, sleepHours, language, enableTimer, enableDailyChallenge, enableTodoList, disableEditRestriction, streakGoal, userDocRef, userDataLoaded, showOnboarding]);
 
   useDebouncedEffect(() => {
@@ -175,7 +182,6 @@ export default function Home() {
       
       timeBlocks.forEach(b => {
         batch.set(doc(firestore, 'users', user.uid, 'time_blocks', `${dateString}_${b.hour}`), b);
-        // Calculate minutes for real focus subjects (not idle, sleep, or class)
         if (b.subject !== 'idle' && b.subject !== 'sleep' && b.subject !== 'class') {
           total += b.duration;
           subjectMins[b.subject] = (subjectMins[b.subject] || 0) + b.duration;
@@ -191,6 +197,18 @@ export default function Home() {
       batch.commit();
     }
   }, [timeBlocks, dateString, user, firestore, userDataLoaded]);
+
+  const handleMarkAsSeen = (version: string) => {
+    const updated = [...new Set([...seenWhatsNewVersions, version])];
+    setSeenWhatsNewVersions(updated);
+    
+    if (user?.isAnonymous) {
+        const s = JSON.parse(localStorage.getItem('gridFocusSettings') || '{}');
+        localStorage.setItem('gridFocusSettings', JSON.stringify({ ...s, seenWhatsNewVersions: updated }));
+    } else if (userDocRef) {
+        setDoc(userDocRef, { seenWhatsNewVersions: updated }, { merge: true });
+    }
+  };
 
   const totalFocusedTime = useMemo(() => timeBlocks.reduce((t, b) => (b.subject !== 'idle' && b.subject !== 'sleep' && b.subject !== 'class' ? t + (b.duration / 60) : t), 0), [timeBlocks]);
 
@@ -226,9 +244,8 @@ export default function Home() {
       </main>
       {enableTimer && <FloatingTimer subjects={subjects} />}
       <FeedbackDialog isOpen={isFeedbackDialogOpen} onOpenChange={setIsFeedbackDialogOpen} />
-      <WhatsNewDialog seenVersions={[]} onMarkAsSeen={() => {}} />
-      <OnboardingDialog isOpen={showOnboarding} onFinish={() => { setDoc(userDocRef!, { hasCompletedOnboarding: true }, { merge: true }); setShowOnboarding(false); }} initialSettings={{ subjects, sleepHours, language, enableTimer, enableDailyChallenge, enableTodoList, enableAiInsights: false, disableEditRestriction }} />
+      <WhatsNewDialog seenVersions={seenWhatsNewVersions} onMarkAsSeen={handleMarkAsSeen} />
+      <OnboardingDialog isOpen={showOnboarding} onFinish={() => { if(userDocRef) setDoc(userDocRef, { hasCompletedOnboarding: true }, { merge: true }); setShowOnboarding(false); }} initialSettings={{ subjects, sleepHours, language, enableTimer, enableDailyChallenge, enableTodoList, enableAiInsights: false, disableEditRestriction }} />
     </div>
   );
 }
-

@@ -295,7 +295,6 @@ export function TodoList() {
     
     try {
         await batch.commit();
-        toast({title: "Tasks reordered"});
     } catch(e) {
         console.error("Failed to reorder tasks", e);
         toast({variant: "destructive", title: "Error", description: "Failed to save new task order."});
