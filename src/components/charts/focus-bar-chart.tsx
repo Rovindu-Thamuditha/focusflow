@@ -1,9 +1,10 @@
 
 'use client';
 
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, Cell } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import type { Subject } from '@/lib/types';
 import { ChartTooltip } from './chart-tooltip';
+import React from 'react';
 
 interface FocusBarChartProps {
   data: any[];
@@ -11,7 +12,7 @@ interface FocusBarChartProps {
   isFullscreen?: boolean;
 }
 
-export function FocusBarChart({ data, subjects, isFullscreen }: FocusBarChartProps) {
+export const FocusBarChart = React.memo(({ data, subjects, isFullscreen }: FocusBarChartProps) => {
   const activeSubjects = subjects.filter(s => 
     s.id !== 'idle' && s.id !== 'sleep' && data.some(d => d[s.id] > 0)
   );
@@ -29,7 +30,7 @@ export function FocusBarChart({ data, subjects, isFullscreen }: FocusBarChartPro
           axisLine={false} 
           tickLine={false}
           tick={{ fontSize: isFullscreen ? 14 : 11, fill: 'hsl(var(--muted-foreground))' }}
-          interval={data.length > 10 ? 2 : 0}
+          interval={data.length > 10 ? Math.floor(data.length / 7) : 0}
         />
         <YAxis 
           axisLine={false} 
@@ -52,10 +53,13 @@ export function FocusBarChart({ data, subjects, isFullscreen }: FocusBarChartPro
             name={subject.name}
             fill={subject.color}
             radius={[4, 4, 0, 0]}
-            animationDuration={1500}
+            animationDuration={500}
+            isAnimationActive={true}
           />
         ))}
       </BarChart>
     </ResponsiveContainer>
   );
-}
+});
+
+FocusBarChart.displayName = 'FocusBarChart';

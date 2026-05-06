@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { useUser, useFirestore, useMemoFirebase, useCollection } from '@/firebase';
 import { useRouter } from 'next/navigation';
 import { collection, query, where, getDoc, doc, orderBy } from 'firebase/firestore';
-import { subDays, startOfDay, format, parseISO, eachDayOfInterval, isSameDay } from 'date-fns';
+import { subDays, startOfDay, format, eachDayOfInterval, differenceInHours } from 'date-fns';
 import type { Subject, DailySummary } from '@/lib/types';
 import { defaultSubjects } from '@/lib/subjects';
 import { cn } from '@/lib/utils';
@@ -32,36 +32,23 @@ export default function StatsPage() {
   const [timeRange, setTimeRange] = useState('7');
   const [chartType, setChartType] = useState('bars');
   const [subjects, setSubjects] = useState<Subject[]>(defaultSubjects);
-  const [enableAiInsights, setEnableAiInsights] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [isOnline, setIsOnline] = useState(true);
+  const [isMounted, setIsMounted] = useState(false);
 
   const isAnonymousUser = user?.isAnonymous;
 
-  // Persist chart type preference
   useEffect(() => {
+    setIsMounted(true);
     const savedType = localStorage.getItem('focusChartPreference');
     if (savedType) setChartType(savedType);
   }, []);
 
   useEffect(() => {
-    localStorage.setItem('focusChartPreference', chartType);
-  }, [chartType]);
-
-  useEffect(() => {
-    const handleOnline = () => setIsOnline(true);
-    const handleOffline = () => setIsOnline(false);
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
-    if (typeof window !== 'undefined' && typeof window.navigator !== 'undefined') {
-      setIsOnline(window.navigator.onLine);
+    if (isMounted) {
+      localStorage.setItem('focusChartPreference', chartType);
     }
-    return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
-    };
-  }, []);
-  
+  }, [chartType, isMounted]);
+
   const summariesQuery = useMemoFirebase(() => {
       if (!user || !firestore || isAnonymousUser) return null;
       const range = parseInt(timeRange);
@@ -84,13 +71,13 @@ export default function StatsPage() {
             const data = userDoc.data();
             const userSettings = data.settings || {};
             setSubjects(userSettings.subjects || defaultSubjects);
-            setEnableAiInsights(userSettings.enableAiInsights === true);
         }
     }
     fetchUserSettings();
   }, [user, firestore, isAnonymousUser]);
   
   const processedData = useMemo(() => {
+    if (!isMounted) return [];
     const range = parseInt(timeRange);
     const now = new Date();
     const startDate = startOfDay(subDays(now, range - 1));
@@ -116,7 +103,7 @@ export default function StatsPage() {
 
       return entry;
     });
-  }, [dailySummaries, subjects, timeRange]);
+  }, [dailySummaries, subjects, timeRange, isMounted]);
 
   const stats = useMemo(() => {
     const totalMinutes = dailySummaries?.reduce((acc, s) => acc + s.totalMinutes, 0) || 0;
@@ -135,7 +122,7 @@ export default function StatsPage() {
     return { totalMinutes, activeDays, topSubject };
   }, [dailySummaries, subjects]);
 
-  if (isUserLoading || summariesLoading) {
+  if (isUserLoading || (summariesLoading && !dailySummaries) || !isMounted) {
     return (
         <div className="flex flex-col items-center justify-center min-h-screen">
           <GridFocusLoader />
@@ -221,11 +208,11 @@ export default function StatsPage() {
                   </div>
               </CardHeader>
               <CardContent className="p-0 sm:p-6 bg-card">
-                  <div className="min-h-[400px] w-full py-6">
+                  <div className="h-[400px] w-full py-6 relative">
                     {processedData.some(d => d.hasData) ? (
                       renderChart()
                     ) : (
-                      <div className="flex flex-col items-center justify-center h-[400px] text-center space-y-4">
+                      <div className="flex flex-col items-center justify-center h-full text-center space-y-4">
                         <div className="p-4 bg-muted rounded-full">
                            <LayoutGrid className="w-12 h-12 text-muted-foreground opacity-20" />
                         </div>
@@ -261,7 +248,6 @@ export default function StatsPage() {
           )}
         </div>
 
-        {/* Mobile Rotation Notice */}
         <div className="sm:hidden text-center px-4 py-8 bg-muted/30 rounded-lg border border-dashed border-muted-foreground/30">
            <Maximize2 className="w-5 h-5 mx-auto mb-2 opacity-50" />
            <p className="text-xs text-muted-foreground">Rotate your device or tap expand for a better chart view.</p>
@@ -271,9 +257,8 @@ export default function StatsPage() {
         </div>
       </main>
 
-      {/* Fullscreen Landscape Modal */}
       <Dialog open={isFullscreen} onOpenChange={setIsFullscreen}>
-        <DialogContent className="max-w-[100vw] w-screen h-screen m-0 p-0 border-none bg-background rounded-none">
+        <DialogContent className="max-w-[100vw] w-screen h-screen m-0 p-0 border-none bg-background rounded-none z-[100]">
           <div className="flex flex-col w-full h-full">
             <div className="flex items-center justify-between p-4 border-b">
               <DialogTitle className="text-lg font-bold">Fullscreen Focus Data</DialogTitle>
@@ -282,8 +267,7 @@ export default function StatsPage() {
               </Button>
             </div>
             <div className="flex-grow p-4 overflow-hidden flex items-center justify-center">
-              {/* Force a horizontal aspect ratio in the modal container */}
-              <div className="w-full h-full max-h-[90vh]">
+              <div className="w-full h-full max-h-[85vh]">
                 {renderChart(true)}
               </div>
             </div>

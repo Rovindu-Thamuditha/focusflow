@@ -1,9 +1,10 @@
 
 'use client';
 
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, Area } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import type { Subject } from '@/lib/types';
 import { ChartTooltip } from './chart-tooltip';
+import React from 'react';
 
 interface FocusLineChartProps {
   data: any[];
@@ -11,7 +12,7 @@ interface FocusLineChartProps {
   isFullscreen?: boolean;
 }
 
-export function FocusLineChart({ data, subjects, isFullscreen }: FocusLineChartProps) {
+export const FocusLineChart = React.memo(({ data, subjects, isFullscreen }: FocusLineChartProps) => {
   const activeSubjects = subjects.filter(s => 
     s.id !== 'idle' && s.id !== 'sleep' && data.some(d => d[s.id] > 0)
   );
@@ -36,7 +37,7 @@ export function FocusLineChart({ data, subjects, isFullscreen }: FocusLineChartP
           axisLine={false} 
           tickLine={false}
           tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
-          interval={data.length > 10 ? 2 : 0}
+          interval={data.length > 10 ? Math.floor(data.length / 7) : 0}
         />
         <YAxis 
           axisLine={false} 
@@ -61,10 +62,12 @@ export function FocusLineChart({ data, subjects, isFullscreen }: FocusLineChartP
             strokeWidth={3}
             dot={{ r: 4, strokeWidth: 2, fill: 'hsl(var(--background))' }}
             activeDot={{ r: 6, strokeWidth: 0 }}
-            animationDuration={1500}
+            animationDuration={500}
           />
         ))}
       </LineChart>
     </ResponsiveContainer>
   );
-}
+});
+
+FocusLineChart.displayName = 'FocusLineChart';

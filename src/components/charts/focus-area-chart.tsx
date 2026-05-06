@@ -4,6 +4,7 @@
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import type { Subject } from '@/lib/types';
 import { ChartTooltip } from './chart-tooltip';
+import React from 'react';
 
 interface FocusAreaChartProps {
   data: any[];
@@ -11,7 +12,7 @@ interface FocusAreaChartProps {
   isFullscreen?: boolean;
 }
 
-export function FocusAreaChart({ data, subjects, isFullscreen }: FocusAreaChartProps) {
+export const FocusAreaChart = React.memo(({ data, subjects, isFullscreen }: FocusAreaChartProps) => {
   const activeSubjects = subjects.filter(s => 
     s.id !== 'idle' && s.id !== 'sleep' && data.some(d => d[s.id] > 0)
   );
@@ -36,6 +37,7 @@ export function FocusAreaChart({ data, subjects, isFullscreen }: FocusAreaChartP
           axisLine={false} 
           tickLine={false}
           tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
+          interval={data.length > 10 ? Math.floor(data.length / 7) : 0}
         />
         <YAxis 
           axisLine={false} 
@@ -53,10 +55,12 @@ export function FocusAreaChart({ data, subjects, isFullscreen }: FocusAreaChartP
             stroke={subject.color}
             fill={`url(#area-color-${subject.id})`}
             stackId="1"
-            animationDuration={1500}
+            animationDuration={500}
           />
         ))}
       </AreaChart>
     </ResponsiveContainer>
   );
-}
+});
+
+FocusAreaChart.displayName = 'FocusAreaChart';

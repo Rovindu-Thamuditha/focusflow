@@ -4,6 +4,7 @@
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import type { Subject } from '@/lib/types';
 import { ChartTooltip } from './chart-tooltip';
+import React from 'react';
 
 interface FocusTotalChartProps {
   data: any[];
@@ -11,7 +12,7 @@ interface FocusTotalChartProps {
   isFullscreen?: boolean;
 }
 
-export function FocusTotalChart({ data, subjects, isFullscreen }: FocusTotalChartProps) {
+export const FocusTotalChart = React.memo(({ data, subjects, isFullscreen }: FocusTotalChartProps) => {
   const filteredSubjects = subjects.filter(s => s.id !== 'idle' && s.id !== 'sleep');
 
   return (
@@ -57,6 +58,7 @@ export function FocusTotalChart({ data, subjects, isFullscreen }: FocusTotalChar
           axisLine={false} 
           tickLine={false}
           tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
+          interval={data.length > 10 ? Math.floor(data.length / 7) : 0}
         />
         <YAxis 
           axisLine={false} 
@@ -67,7 +69,7 @@ export function FocusTotalChart({ data, subjects, isFullscreen }: FocusTotalChar
         <Bar 
           dataKey="total" 
           radius={[6, 6, 0, 0]} 
-          animationDuration={1500}
+          animationDuration={500}
         >
           {data.map((entry, index) => (
             <Cell 
@@ -80,6 +82,6 @@ export function FocusTotalChart({ data, subjects, isFullscreen }: FocusTotalChar
       </BarChart>
     </ResponsiveContainer>
   );
-}
+});
 
-import React from 'react';
+FocusTotalChart.displayName = 'FocusTotalChart';
