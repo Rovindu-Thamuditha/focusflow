@@ -58,28 +58,30 @@ export function MainHeader({ children, totalFocusedTime, enableAiInsights, showB
 
   return (
     <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur-sm">
-      <div className="container flex h-16 items-center justify-between">
+      <div className="container px-4 flex h-16 items-center justify-between">
         <div className="flex gap-2 items-center">
             {showBackButton ? (
                  <Button variant="ghost" size="icon" onClick={() => router.back()}>
                     <ArrowLeft />
                  </Button>
             ) : (
-                <Link href="/" className="flex items-center gap-2 ml-4 sm:ml-0">
-                    <Icons.logo className="h-6 w-6 text-primary" />
-                    <h1 className="text-xl sm:text-2xl font-bold text-primary hidden sm:inline-block">GridFocus</h1>
+                <Link href="/" className="flex items-center gap-3">
+                    <div className="p-1.5 bg-primary/10 rounded-lg">
+                      <Icons.logo className="h-6 w-6 text-primary" />
+                    </div>
+                    <h1 className="text-xl sm:text-2xl font-black tracking-tighter text-foreground hidden sm:inline-block">GridFocus</h1>
                 </Link>
             )}
         </div>
 
-        <div className="flex items-center justify-end flex-1 space-x-1 sm:space-x-2">
+        <div className="flex items-center justify-end flex-1 space-x-1 sm:space-x-3">
           { !isAnonymousUser && <TotalFocusTime totalHours={totalFocusedTime} /> }
           
           <div className="hidden sm:flex items-center">
              <CurrentTime />
           </div>
           
-          <div className="hidden sm:flex">
+          <div className="hidden sm:flex items-center gap-1">
             {!isAnonymousUser && (
                 <Link href="/friends" passHref>
                   <Button variant="ghost" size="icon" title="Friends">
@@ -100,34 +102,34 @@ export function MainHeader({ children, totalFocusedTime, enableAiInsights, showB
           </div>
 
           {/* Desktop-only items */}
-          <div className="hidden sm:flex items-center gap-1">
+          <div className="hidden sm:flex items-center gap-2">
               {isAnonymousUser ? (
                  <Link href="/login" passHref>
-                    <Button>
-                        <UserPlus className="mr-2" />
-                        Sign up to Save
+                    <Button className="font-bold">
+                        <UserPlus className="mr-2 h-4 w-4" />
+                        Sign up
                     </Button>
                  </Link>
               ) : user ? (
                 <div className="flex items-center gap-2">
                 <Link href="/settings" passHref>
                     <Button variant="ghost" size="icon">
-                        <Settings className="h-[1.2rem] w-[1.2rem]" />
+                        <Settings className="h-5 w-5 text-muted-foreground" />
                     </Button>
                 </Link>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-                       <Avatar className="h-8 w-8">
+                    <Button variant="ghost" className="relative h-9 w-9 rounded-full ring-2 ring-primary/20 hover:ring-primary/40 transition-all p-0 overflow-hidden">
+                       <Avatar className="h-full w-full">
                         <AvatarImage src={user.photoURL || ''} alt={user.displayName || 'User'} />
-                        <AvatarFallback>{getInitials(user.displayName, user.email)}</AvatarFallback>
+                        <AvatarFallback className="bg-muted text-xs">{getInitials(user.displayName, user.email)}</AvatarFallback>
                       </Avatar>
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent className="w-56" align="end" forceMount>
                     <DropdownMenuLabel className="font-normal">
                       <div className="flex flex-col space-y-1">
-                        <p className="text-sm font-medium leading-none">{user.displayName}</p>
+                        <p className="text-sm font-bold leading-none">{user.displayName}</p>
                         <p className="text-xs leading-none text-muted-foreground">
                           {user.email}
                         </p>
@@ -135,21 +137,21 @@ export function MainHeader({ children, totalFocusedTime, enableAiInsights, showB
                     </DropdownMenuLabel>
                     <DropdownMenuSeparator />
                      <Link href="/profile" passHref>
-                        <DropdownMenuItem>
+                        <DropdownMenuItem className="cursor-pointer">
                             <User className="mr-2 h-4 w-4" />
                             <span>Profile</span>
                         </DropdownMenuItem>
                     </Link>
                      {user.email === ADMIN_EMAIL && (
                         <Link href="/admin" passHref>
-                            <DropdownMenuItem>
+                            <DropdownMenuItem className="cursor-pointer">
                             <Shield className="mr-2 h-4 w-4" />
                             <span>Admin</span>
                             </DropdownMenuItem>
                         </Link>
                      )}
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={handleSignOut}>
+                    <DropdownMenuItem onClick={handleSignOut} className="text-destructive cursor-pointer focus:text-destructive">
                       <LogOut className="mr-2 h-4 w-4" />
                       <span>Log out</span>
                     </DropdownMenuItem>
@@ -160,11 +162,11 @@ export function MainHeader({ children, totalFocusedTime, enableAiInsights, showB
           </div>
           
           {/* Mobile-only menu */}
-          <div className="sm:hidden flex items-center">
+          <div className="sm:hidden flex items-center gap-1">
             <ThemeToggle />
             <Link href="/settings" passHref>
                 <Button variant="ghost" size="icon">
-                    <Settings className="h-[1.2rem] w-[1.2rem]" />
+                    <Settings className="h-5 w-5" />
                 </Button>
             </Link>
           </div>
