@@ -3,7 +3,7 @@
 
 import { cn } from "@/lib/utils";
 import * as React from 'react';
-import { Book, Zap, Coffee, Bed, Sparkles, BrainCircuit, FlaskConical, Dna, Code, PenTool, Briefcase, Moon, Sun, Timer } from "lucide-react";
+import { Book, Zap, Coffee, Bed, Sparkles, BrainCircuit, FlaskConical, Dna, Code, PenTool, Briefcase, Moon, Sun, Timer, School, GraduationCap } from "lucide-react";
 import type { Subject, TimeBlockState } from "@/lib/types";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger } from "@/components/ui/context-menu";
@@ -33,21 +33,8 @@ const ICONS: { [key: string]: React.FC<React.SVGProps<SVGSVGElement>> } = {
   Briefcase,
   Sparkles,
   Moon,
-};
-
-const formatHoursAndMinutes = (totalMinutes: number): string => {
-    if (totalMinutes === 0) return '0m';
-    const hours = Math.floor(totalMinutes / 60);
-    const minutes = totalMinutes % 60;
-    
-    let result = '';
-    if (hours > 0) {
-        result += `${hours}h `;
-    }
-    if (minutes > 0 || hours === 0) {
-        result += `${minutes}m`;
-    }
-    return result.trim();
+  School,
+  GraduationCap
 };
 
 export function TimeBlock({ 
@@ -55,19 +42,20 @@ export function TimeBlock({
     subjectId, 
     duration, 
     subjects, 
-    allDayBlocks,
     onClick, 
     onStateChange, 
     isEditable, 
     isFuture, 
     isCurrent, 
-    liveTime, 
     activeTimerSubject 
 }: TimeBlockProps) {
   const isSleep = subjectId === 'sleep';
+  const isClass = subjectId === 'class';
 
   const subject = isSleep 
     ? { id: 'sleep', name: 'Sleep', icon: 'Moon', color: 'hsl(210 8% 25%)' }
+    : isClass
+    ? { id: 'class', name: 'Class', icon: 'School', color: '#3b82f6' }
     : subjects.find(s => s.id === subjectId) || { id: 'idle', name: 'Idle', icon: 'Sparkles', color: 'hsl(var(--muted))' };
   
   const formattedHour = (hour % 12 === 0 ? 12 : hour % 12) + (hour < 12 || hour === 24 ? ' AM' : ' PM');
@@ -80,10 +68,13 @@ export function TimeBlock({
 
   const Icon = ICONS[subject.icon] || Sparkles;
 
-  const sleepStyles = "dark:bg-gray-800 dark:text-gray-500 bg-slate-700 text-slate-300";
-  const idleStyles = "dark:text-gray-500 text-slate-500";
-  const finalIsEditable = isEditable && !isFuture;
+  const specialStyles = isSleep 
+    ? "dark:bg-gray-800 dark:text-gray-500 bg-slate-700 text-slate-300"
+    : isClass
+    ? "bg-blue-600 text-white border-blue-400"
+    : (subject.id === 'idle' ? "dark:text-gray-500 text-slate-500" : getBrightness());
 
+  const finalIsEditable = isEditable && !isFuture;
   const isBeingTimed = isCurrent && activeTimerSubject;
   
   const glowStyle = isBeingTimed ? {
@@ -92,7 +83,7 @@ export function TimeBlock({
   } as React.CSSProperties : {};
 
   const handleBlockClick = () => {
-    if (finalIsEditable && !isSleep) {
+    if (finalIsEditable && !isSleep && !isClass) {
         onClick();
     }
   }
@@ -102,28 +93,26 @@ export function TimeBlock({
         onClick={handleBlockClick}
         className={cn(
             "relative w-full h-full aspect-square rounded-lg flex flex-col items-center justify-center p-2 transition-all duration-300 ease-in-out transform border",
-            finalIsEditable && !isSleep && "hover:scale-105",
-            finalIsEditable && !isSleep && "focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-background focus:ring-primary",
-            isSleep ? sleepStyles : (subject.id === 'idle' ? idleStyles : getBrightness()),
+            finalIsEditable && !isSleep && !isClass && "hover:scale-105",
+            finalIsEditable && !isSleep && !isClass && "focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-background focus:ring-primary",
+            specialStyles,
             !finalIsEditable && 'cursor-not-allowed',
             isFuture && 'opacity-50',
             isBeingTimed && 'pulsing-glow',
             'border-border'
         )}
         style={{ 
-            backgroundColor: subject.id !== 'idle' ? subject.color : undefined,
+            backgroundColor: (subject.id !== 'idle' && !isSleep && !isClass) ? subject.color : undefined,
             ...glowStyle,
         } as React.CSSProperties}
         aria-label={`Hour ${hour}:00, current state: ${subject.name}. Click to change.`}
-        disabled={!finalIsEditable && !isSleep}
+        disabled={!finalIsEditable && !isSleep && !isClass}
         >
         <Icon className="w-5 h-5 sm:w-7 sm:h-7" />
-        <span className="text-xs sm:text-sm font-mono mt-1">{formattedHour}</span>
-        {duration > 0 && subject.id !== 'idle' && subject.id !== 'sleep' && (
+        <span className="text-[10px] sm:text-xs font-mono mt-1 font-bold">{formattedHour}</span>
+        {duration > 0 && subject.id !== 'idle' && subject.id !== 'sleep' && subject.id !== 'class' && (
             <div 
-                className={cn(
-                    "absolute inset-0 rounded-lg pointer-events-none",
-                )}
+                className="absolute inset-0 rounded-lg pointer-events-none"
                 style={{boxShadow: `0 0 8px ${subject.color}, 0 0 16px ${subject.color}`}}
             />
         )}
@@ -143,18 +132,18 @@ export function TimeBlock({
             <Icon className="w-4 h-4" style={{color: subject.color}} />
             <div className="flex-grow">
               <p className="font-semibold">{isBeingTimed ? activeTimerSubject?.name : subject.name}</p>
-              {!isSleep && <p className="text-muted-foreground">{`Duration: ${duration} minutes`}</p>}
+              {!isSleep && !isClass && <p className="text-muted-foreground">{`Duration: ${duration} minutes`}</p>}
             </div>
             {isBeingTimed && <p className="text-xs text-red-500 font-semibold animate-pulse">Live</p>}
           </div>
         </TooltipContent>
       </Tooltip>
       <ContextMenuContent>
-          {finalIsEditable && isSleep && (
-                  <ContextMenuItem onClick={() => onStateChange('idle', 0)}>
-                      <Sun className="mr-2 h-4 w-4" />
-                      <span>Wake Up</span>
-                  </ContextMenuItem>
+          {finalIsEditable && (isSleep || isClass) && (
+              <ContextMenuItem onClick={() => onStateChange('idle', 0)}>
+                  <Sun className="mr-2 h-4 w-4" />
+                  <span>Mark as Active (Clear)</span>
+              </ContextMenuItem>
           )}
           {finalIsEditable && !isSleep && (
               <ContextMenuItem onClick={() => onStateChange('sleep', 0)}>
@@ -162,8 +151,13 @@ export function TimeBlock({
                   <span>Mark as Sleep</span>
               </ContextMenuItem>
           )}
+          {finalIsEditable && !isClass && (
+              <ContextMenuItem onClick={() => onStateChange('class', 60)}>
+                  <School className="mr-2 h-4 w-4" />
+                  <span>Mark as Class (Lecture)</span>
+              </ContextMenuItem>
+          )}
       </ContextMenuContent>
     </ContextMenu>
   );
 }
-

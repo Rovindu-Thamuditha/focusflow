@@ -1,7 +1,7 @@
 
 'use client';
 
-import { LogOut, Shield, MoreVertical, BarChart2, Info, UserPlus, Users, User, BrainCircuit, Settings, ArrowLeft } from "lucide-react";
+import { LogOut, Shield, BarChart2, UserPlus, Users, User, Settings, ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import dynamic from 'next/dynamic';
@@ -20,20 +20,17 @@ import {
 import { useUser, useAuth } from "@/firebase";
 import { InfoDialog } from "./info-dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
-
+import { getInitials } from "@/lib/utils";
 
 const CurrentTime = dynamic(() => import('./current-time').then(mod => mod.CurrentTime), { ssr: false });
-
 const ADMIN_EMAIL = 'rovinduthamu@gmail.com';
 
 interface MainHeaderProps {
-  children?: React.ReactNode;
   totalFocusedTime: number;
-  enableAiInsights?: boolean;
   showBackButton?: boolean;
 }
 
-export function MainHeader({ children, totalFocusedTime, enableAiInsights, showBackButton = false }: MainHeaderProps) {
+export function MainHeader({ totalFocusedTime, showBackButton = false }: MainHeaderProps) {
   const { user } = useUser();
   const auth = useAuth();
   const router = useRouter();
@@ -45,131 +42,75 @@ export function MainHeader({ children, totalFocusedTime, enableAiInsights, showB
     }
   }
 
-  const isAnonymousUser = user?.isAnonymous;
-  const getInitials = (name: string | null | undefined, email: string | null | undefined) => {
-    if (name) {
-      return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
-    }
-    if (email) {
-      return email.substring(0, 2).toUpperCase();
-    }
-    return '??';
-  }
-
   return (
-    <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur-sm">
-      <div className="container px-4 flex h-16 items-center justify-between">
-        <div className="flex gap-2 items-center">
+    <header className="sticky top-0 z-40 w-full border-b bg-background/80 backdrop-blur-xl">
+      <div className="container px-6 flex h-16 items-center justify-between">
+        <div className="flex gap-4 items-center">
             {showBackButton ? (
                  <Button variant="ghost" size="icon" onClick={() => router.back()}>
-                    <ArrowLeft />
+                    <ArrowLeft className="w-5 h-5" />
                  </Button>
             ) : (
-                <Link href="/" className="flex items-center gap-3">
-                    <div className="p-1.5 bg-primary/10 rounded-lg">
+                <Link href="/" className="flex items-center gap-3 group">
+                    <div className="p-2 bg-primary/10 rounded-xl group-hover:scale-110 transition-transform">
                       <Icons.logo className="h-6 w-6 text-primary" />
                     </div>
-                    <h1 className="text-xl sm:text-2xl font-black tracking-tighter text-foreground hidden sm:inline-block">GridFocus</h1>
+                    <h1 className="text-xl font-black tracking-tighter text-foreground hidden sm:inline-block">GridFocus</h1>
                 </Link>
             )}
         </div>
 
-        <div className="flex items-center justify-end flex-1 space-x-1 sm:space-x-3">
-          { !isAnonymousUser && <TotalFocusTime totalHours={totalFocusedTime} /> }
+        <div className="flex items-center gap-3">
+          { !user?.isAnonymous && <TotalFocusTime totalHours={totalFocusedTime} /> }
           
-          <div className="hidden sm:flex items-center">
+          <div className="hidden md:flex items-center gap-1">
              <CurrentTime />
-          </div>
-          
-          <div className="hidden sm:flex items-center gap-1">
-            {!isAnonymousUser && (
-                <Link href="/friends" passHref>
-                  <Button variant="ghost" size="icon" title="Friends">
-                      <Users className="h-5 w-5" />
-                  </Button>
+             <div className="w-px h-4 bg-border mx-2" />
+             {!user?.isAnonymous && (
+                <Link href="/friends">
+                  <Button variant="ghost" size="icon" title="Friends"><Users className="w-5 h-5" /></Button>
                 </Link>
             )}
-
-            <Link href="/stats" passHref>
-              <Button variant="ghost" size="icon" title="Statistics">
-                  <BarChart2 className="h-5 w-5" />
-              </Button>
+            <Link href="/stats">
+              <Button variant="ghost" size="icon" title="Stats"><BarChart2 className="w-5 h-5" /></Button>
             </Link>
-            
             <InfoDialog />
-
-            <ThemeToggle />
           </div>
 
-          {/* Desktop-only items */}
-          <div className="hidden sm:flex items-center gap-2">
-              {isAnonymousUser ? (
-                 <Link href="/login" passHref>
-                    <Button className="font-bold">
-                        <UserPlus className="mr-2 h-4 w-4" />
-                        Sign up
-                    </Button>
-                 </Link>
-              ) : user ? (
-                <div className="flex items-center gap-2">
-                <Link href="/settings" passHref>
-                    <Button variant="ghost" size="icon">
-                        <Settings className="h-5 w-5 text-muted-foreground" />
-                    </Button>
-                </Link>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" className="relative h-9 w-9 rounded-full ring-2 ring-primary/20 hover:ring-primary/40 transition-all p-0 overflow-hidden">
-                       <Avatar className="h-full w-full">
-                        <AvatarImage src={user.photoURL || ''} alt={user.displayName || 'User'} />
-                        <AvatarFallback className="bg-muted text-xs">{getInitials(user.displayName, user.email)}</AvatarFallback>
-                      </Avatar>
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent className="w-56" align="end" forceMount>
-                    <DropdownMenuLabel className="font-normal">
-                      <div className="flex flex-col space-y-1">
-                        <p className="text-sm font-bold leading-none">{user.displayName}</p>
-                        <p className="text-xs leading-none text-muted-foreground">
-                          {user.email}
-                        </p>
-                      </div>
-                    </DropdownMenuLabel>
-                    <DropdownMenuSeparator />
-                     <Link href="/profile" passHref>
-                        <DropdownMenuItem className="cursor-pointer">
-                            <User className="mr-2 h-4 w-4" />
-                            <span>Profile</span>
-                        </DropdownMenuItem>
-                    </Link>
-                     {user.email === ADMIN_EMAIL && (
-                        <Link href="/admin" passHref>
-                            <DropdownMenuItem className="cursor-pointer">
-                            <Shield className="mr-2 h-4 w-4" />
-                            <span>Admin</span>
-                            </DropdownMenuItem>
-                        </Link>
-                     )}
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={handleSignOut} className="text-destructive cursor-pointer focus:text-destructive">
-                      <LogOut className="mr-2 h-4 w-4" />
-                      <span>Log out</span>
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-                </div>
-              ) : null}
-          </div>
-          
-          {/* Mobile-only menu */}
-          <div className="sm:hidden flex items-center gap-1">
-            <ThemeToggle />
-            <Link href="/settings" passHref>
-                <Button variant="ghost" size="icon">
-                    <Settings className="h-5 w-5" />
-                </Button>
+          <ThemeToggle />
+
+          {user?.isAnonymous ? (
+            <Link href="/login">
+              <Button size="sm" className="font-bold rounded-full">Sign Up</Button>
             </Link>
-          </div>
+          ) : user ? (
+            <div className="flex items-center gap-1">
+              <Link href="/settings">
+                <Button variant="ghost" size="icon"><Settings className="w-5 h-5" /></Button>
+              </Link>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" className="h-8 w-8 rounded-full ring-2 ring-primary/20 p-0 overflow-hidden">
+                    <Avatar className="h-full w-full">
+                      <AvatarImage src={user.photoURL || ''} />
+                      <AvatarFallback className="text-[10px]">{getInitials(user.displayName, user.email)}</AvatarFallback>
+                    </Avatar>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-56" align="end">
+                  <DropdownMenuLabel className="font-normal">
+                    <p className="text-sm font-bold truncate">{user.displayName}</p>
+                    <p className="text-[10px] text-muted-foreground truncate">{user.email}</p>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <Link href="/profile"><DropdownMenuItem><User className="mr-2 w-4 h-4" />Profile</DropdownMenuItem></Link>
+                  {user.email === ADMIN_EMAIL && <Link href="/admin"><DropdownMenuItem><Shield className="mr-2 w-4 h-4" />Admin</DropdownMenuItem></Link>}
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={handleSignOut} className="text-destructive"><LogOut className="mr-2 w-4 h-4" />Log out</DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          ) : null}
         </div>
       </div>
     </header>

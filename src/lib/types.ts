@@ -1,5 +1,4 @@
 
-
 export interface TimeBlockState {
   hour: number;
   subject: string;
@@ -31,4 +30,17 @@ export interface DailySummary {
   subjectMinutes: {
     [subjectId: string]: number;
   };
+}
+
+export interface UserSettings {
+  sleepHours: number[];
+  subjects: Subject[];
+  language: 'english' | 'sinhala';
+  enableTimer: boolean;
+  enableDailyChallenge: boolean;
+  enableTodoList: boolean;
+  enableAiInsights: boolean;
+  disableEditRestriction: boolean;
+  streakGoal: number; // in hours
+  hasCompletedOnboarding: boolean;
 }

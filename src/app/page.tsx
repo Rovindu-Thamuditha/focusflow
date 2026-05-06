@@ -9,11 +9,10 @@ import { MainHeader } from '@/components/main-header';
 import { dailyQuestions } from '@/lib/questions';
 import { getDayOfYear, format, addDays, subDays, startOfDay, isToday, isFuture, differenceInHours } from 'date-fns';
 import { Card, CardContent } from '@/components/ui/card';
-import { SettingsDialog } from '@/components/settings-dialog';
 import { defaultSubjects } from '@/lib/subjects';
-import { useUser, useAuth, useFirestore, useMemoFirebase, FirestorePermissionError, errorEmitter, useDoc, useCollection } from '@/firebase';
+import { useUser, useAuth, useFirestore, useMemoFirebase, useDoc, useCollection } from '@/firebase';
 import { useRouter } from 'next/navigation';
-import { doc, setDoc, getDoc, getDocs, collection, query, where, writeBatch, arrayUnion } from 'firebase/firestore';
+import { doc, setDoc, collection, query, where, writeBatch, arrayUnion, orderBy, limit } from 'firebase/firestore';
 import { signInAnonymously } from 'firebase/auth';
 import { Button } from '@/components/ui/button';
 import { ChevronLeft, ChevronRight, RotateCcw } from 'lucide-react';
@@ -36,24 +35,17 @@ import { WhatsNewDialog } from '@/components/whats-new-dialog';
 import { OnboardingDialog } from '@/components/onboarding-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { useTimer } from '@/context/timer-context';
-import { Inter } from 'next/font/google';
 import { useDebouncedEffect } from '@/hooks/useDebouncedEffect';
-import { cn } from '@/lib/utils';
-
-const inter = Inter({ subsets: ['latin'], variable: '--font-sans' });
+import { StreakCounter } from '@/components/streak-counter';
 
 const createInitialState = (sleepHours: number[], date: Date): TimeBlockState[] => {
   const dateString = format(date, 'yyyy-MM-dd');
-  return Array.from({ length: 24 }, (_, i) => {
-    const hour = i;
-    const isSleep = sleepHours.includes(hour);
-    return {
-      hour: hour,
-      subject: isSleep ? 'sleep' : 'idle',
-      duration: 0,
-      date: dateString,
-    };
-  }).sort((a, b) => a.hour - b.hour);
+  return Array.from({ length: 24 }, (_, i) => ({
+    hour: i,
+    subject: sleepHours.includes(i) ? 'sleep' : 'idle',
+    duration: 0,
+    date: dateString,
+  }));
 };
 
 export default function Home() {
@@ -66,549 +58,179 @@ export default function Home() {
 
   const [currentDate, setCurrentDate] = useState<Date | null>(null);
   const [timeBlocks, setTimeBlocks] = useState<TimeBlockState[]>([]);
-  const [solvedChallenges, setSolvedChallenges] = useState<boolean[]>(Array(dailyQuestions.length).fill(false));
-  const [isClient, setIsClient] = useState(false);
+  const [solvedChallenges, setSolvedChallenges] = useState<boolean[]>([]);
   const [sleepHours, setSleepHours] = useState<number[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>(defaultSubjects);
   const [language, setLanguage] = useState<'english' | 'sinhala'>('english');
   const [userDataLoaded, setUserDataLoaded] = useState(false);
   const [userName, setUserName] = useState('');
-  const [seenWhatsNewVersions, setSeenWhatsNewVersions] = useState<string[]>([]);
   const [questionIndex, setQuestionIndex] = useState(0);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [isFeedbackDialogOpen, setIsFeedbackDialogOpen] = useState(false);
-  const [hasBeenPromptedForFeedback, setHasBeenPromptedForFeedback] = useState(false);
-  const [dayChallengeIndex, setDayChallengeIndex] = useState(0);
-  const [isChallengeReady, setIsChallengeReady] = useState(false);
-  const [isSigningInAnonymously, setIsSigningInAnonymously] = useState(false);
-
+  const [streakGoal, setStreakGoal] = useState(2);
 
   // Feature toggles
   const [enableTimer, setEnableTimer] = useState(true);
   const [enableDailyChallenge, setEnableDailyChallenge] = useState(true);
   const [enableTodoList, setEnableTodoList] = useState(true);
-  const [enableAiInsights, setEnableAiInsights] = useState(false);
   const [disableEditRestriction, setDisableEditRestriction] = useState(false);
   
-  const userDocRef = useMemoFirebase(() => user && !user.isAnonymous ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
+  const userDocRef = useMemoFirebase(() => user && !user.isAnonymous ? doc(firestore!, 'users', user.uid) : null, [firestore, user]);
   const { data: userData } = useDoc(userDocRef);
 
   const dateString = useMemo(() => currentDate ? format(currentDate, 'yyyy-MM-dd') : null, [currentDate]);
   
   const timeBlockQuery = useMemoFirebase(() => {
     if (!user || user.isAnonymous || !firestore || !dateString) return null;
-    return query(
-        collection(firestore, 'users', user.uid, 'time_blocks'), 
-        where('date', '==', dateString)
-    );
+    return query(collection(firestore, 'users', user.uid, 'time_blocks'), where('date', '==', dateString));
   }, [user, firestore, dateString]);
-  
   const { data: cloudTimeBlocks } = useCollection<TimeBlockState>(timeBlockQuery);
 
+  const summariesQuery = useMemoFirebase(() => {
+    if (!user || user.isAnonymous || !firestore) return null;
+    return query(collection(firestore, 'users', user.uid, 'daily_summaries'), orderBy('date', 'desc'), limit(40));
+  }, [user, firestore]);
+  const { data: summaries } = useCollection<DailySummary>(summariesQuery);
+
   useEffect(() => {
-    setIsClient(true);
-    // This effect handles the initial anonymous sign-in flow.
-    if (!isUserLoading && !user && auth && !isSigningInAnonymously) {
-      setIsSigningInAnonymously(true); // Set flag to prevent re-entry
-      signInAnonymously(auth).catch(error => {
-        console.error("Anonymous sign-in failed:", error);
-        router.push('/login'); // Fallback if anonymous fails
-      }).finally(() => {
-        setIsSigningInAnonymously(false);
-      });
+    if (!isUserLoading && !user && auth) {
+      signInAnonymously(auth).catch(() => router.push('/login'));
     }
-  }, [isUserLoading, user, auth, router, isSigningInAnonymously]);
+  }, [isUserLoading, user, auth, router]);
   
   useEffect(() => {
-    if (isClient) {
-      setCurrentDate(startOfDay(new Date()));
-      setDayChallengeIndex(getDayOfYear(new Date()));
-      setIsChallengeReady(true);
+    setCurrentDate(startOfDay(new Date()));
+  }, []);
+
+  const currentStreak = useMemo(() => {
+    if (!summaries || summaries.length === 0) return 0;
+    const goalMins = streakGoal * 60;
+    const todayStr = format(new Date(), 'yyyy-MM-dd');
+    const yesterdayStr = format(subDays(new Date(), 1), 'yyyy-MM-dd');
+    
+    const todaySum = summaries.find(s => s.date === todayStr);
+    const yesterdaySum = summaries.find(s => s.date === yesterdayStr);
+
+    if ((!todaySum || todaySum.totalMinutes < goalMins) && (!yesterdaySum || yesterdaySum.totalMinutes < goalMins)) return 0;
+
+    let count = 0;
+    let checkDate = (todaySum && todaySum.totalMinutes >= goalMins) ? new Date() : subDays(new Date(), 1);
+    
+    while (true) {
+      const dStr = format(checkDate, 'yyyy-MM-dd');
+      const s = summaries.find(sum => sum.date === dStr);
+      if (s && s.totalMinutes >= goalMins) {
+        count++;
+        checkDate = subDays(checkDate, 1);
+      } else break;
     }
-  }, [isClient]);
+    return count;
+  }, [summaries, streakGoal]);
 
-  const loadLocalDayData = useCallback((dateToLoad: Date) => {
-    const localDateString = format(dateToLoad, 'yyyy-MM-dd');
-    const localBlocksStr = localStorage.getItem('gridFocusTimeBlocks');
-    const localBlocks = localBlocksStr ? JSON.parse(localBlocksStr) : {};
-    const dayBlocks = localBlocks[localDateString];
-
-    if (dayBlocks) {
-      setTimeBlocks(dayBlocks);
-    } else {
-      setTimeBlocks(createInitialState(sleepHours, dateToLoad));
-    }
-
-    if (isToday(dateToLoad)) {
-      const localChallengesStr = localStorage.getItem('gridFocusSolvedChallenges');
-      const localChallenges = localChallengesStr ? JSON.parse(localChallengesStr) : {};
-      setSolvedChallenges(localChallenges.solved || Array(dailyQuestions.length).fill(false));
-      setQuestionIndex(localChallenges.qIndex || 0);
-    } else {
-      setSolvedChallenges(Array(dailyQuestions.length).fill(false));
-      setQuestionIndex(0);
-    }
-  }, [sleepHours]);
-
-
-  // Effect for initial user data loading (from settings)
   useEffect(() => {
-    if (!user || !isClient || !currentDate) return;
+    if (!user || !currentDate) return;
   
-    const loadInitialSettings = () => {
-      if (user.isAnonymous) {
-        const settingsStr = localStorage.getItem('gridFocusSettings');
-        if (settingsStr) {
-          const settings = JSON.parse(settingsStr);
-          setUserName('');
-          setSleepHours(settings.sleepHours || []);
-          setSubjects(settings.subjects || defaultSubjects);
-          setLanguage(settings.language || 'english');
-          setEnableTimer(settings.enableTimer !== false);
-          setEnableDailyChallenge(settings.enableDailyChallenge !== false);
-          setEnableTodoList(settings.enableTodoList !== false);
-          setEnableAiInsights(settings.enableAiInsights === true);
-          setDisableEditRestriction(settings.disableEditRestriction === true);
-          if (!settings.hasCompletedOnboarding) {
-             setShowOnboarding(true);
-          }
-        } else {
-           setUserName('');
-           setSleepHours([]);
-           setSubjects(defaultSubjects);
-           setShowOnboarding(true);
-        }
-        setUserDataLoaded(true);
-      } else if (userData) {
-        setUserName(userData.username || user.displayName || '');
-        const settings = userData.settings || {};
-        
-        if (!userData.hasCompletedOnboarding) {
-          setShowOnboarding(true);
-        }
-
-        setSleepHours(settings.sleepHours || []);
-        setSubjects(settings.subjects || defaultSubjects);
-        setLanguage(settings.language || 'english');
-        setEnableTimer(settings.enableTimer !== false);
-        setEnableDailyChallenge(settings.enableDailyChallenge !== false);
-        setEnableTodoList(settings.enableTodoList !== false);
-        setEnableAiInsights(settings.enableAiInsights === true);
-        setDisableEditRestriction(settings.disableEditRestriction === true);
-        setSeenWhatsNewVersions(userData.seenWhatsNewVersions || []);
-        setHasBeenPromptedForFeedback(userData.hasBeenPromptedForFeedback || false);
-
-        if (isToday(currentDate)) {
-           const todayString = format(new Date(), 'yyyy-MM-dd');
-           const dailyData = userData.daily?.[todayString];
-           setSolvedChallenges(dailyData?.solvedChallenges || Array(dailyQuestions.length).fill(false));
-           setQuestionIndex(dailyData?.questionIndex || 0);
-        }
-
-        setUserDataLoaded(true); 
-      } else if (!isUserLoading && userDocRef === null && !userData) {
-        // This case handles the moment a user signs up and userData isn't available yet.
-        // We can set defaults to avoid a blank screen.
-        setUserName(user.displayName || 'User');
-        setShowOnboarding(true);
-        setUserDataLoaded(true);
-      }
-    };
-  
-    if (!userDataLoaded) {
-      loadInitialSettings();
-    }
-  }, [user, isClient, userData, isUserLoading, userDataLoaded, currentDate, userDocRef]);
-  
-
-  // Effect to load data for the current day (local or cloud)
-  useEffect(() => {
-    if (!user || !userDataLoaded || !currentDate) return;
-
     if (user.isAnonymous) {
-      loadLocalDayData(currentDate);
-    } else if (cloudTimeBlocks) {
-      if (cloudTimeBlocks.length > 0) {
-        const normalizedBlocks = Array.from({ length: 24 }, (_, i) => {
-          return cloudTimeBlocks.find(b => b.hour === i) || { hour: i, subject: sleepHours.includes(i) ? 'sleep' : 'idle', duration: 0, date: dateString! };
-        });
-        setTimeBlocks(normalizedBlocks.sort((a, b) => a.hour - b.hour));
-      } else {
-        setTimeBlocks(createInitialState(sleepHours, currentDate));
-      }
+      const s = JSON.parse(localStorage.getItem('gridFocusSettings') || '{}');
+      setSleepHours(s.sleepHours || []);
+      setSubjects(s.subjects || defaultSubjects);
+      setLanguage(s.language || 'english');
+      setEnableTimer(s.enableTimer !== false);
+      setEnableDailyChallenge(s.enableDailyChallenge !== false);
+      setEnableTodoList(s.enableTodoList !== false);
+      setDisableEditRestriction(s.disableEditRestriction === true);
+      setStreakGoal(s.streakGoal || 2);
+      if (!s.hasCompletedOnboarding) setShowOnboarding(true);
       
-      if (!isToday(currentDate)) {
-          setSolvedChallenges(Array(dailyQuestions.length).fill(false));
-          setQuestionIndex(0);
-      }
+      const localBlocks = JSON.parse(localStorage.getItem('gridTimeBlocks') || '{}')[format(currentDate, 'yyyy-MM-dd')];
+      setTimeBlocks(localBlocks || createInitialState(s.sleepHours || [], currentDate));
+      setUserDataLoaded(true);
+    } else if (userData) {
+      setUserName(userData.username || user.displayName || '');
+      const s = userData.settings || {};
+      if (!userData.hasCompletedOnboarding) setShowOnboarding(true);
+      setSleepHours(s.sleepHours || []);
+      setSubjects(s.subjects || defaultSubjects);
+      setLanguage(s.language || 'english');
+      setEnableTimer(s.enableTimer !== false);
+      setEnableDailyChallenge(s.enableDailyChallenge !== false);
+      setEnableTodoList(s.enableTodoList !== false);
+      setDisableEditRestriction(s.disableEditRestriction === true);
+      setStreakGoal(s.streakGoal || 2);
+      setUserDataLoaded(true);
     }
-  }, [user, userDataLoaded, currentDate, cloudTimeBlocks, sleepHours, dateString, loadLocalDayData]);
+  }, [user, userData, currentDate]);
 
-  // Debounced effect for saving settings
-  useDebouncedEffect(() => {
-    if (!isClient || !userDataLoaded || showOnboarding) return;
-    
-    const settings = {
-        sleepHours, subjects, language, enableTimer,
-        enableDailyChallenge, enableTodoList, enableAiInsights,
-        disableEditRestriction,
-        hasCompletedOnboarding: true
-    };
-    
-    if (user?.isAnonymous) {
-      localStorage.setItem('gridFocusSettings', JSON.stringify(settings));
-      return;
-    }
-
-    if (user && userDocRef) {
-      const settingsData = { settings };
-      setDoc(userDocRef, settingsData, { merge: true }).catch(error => {
-        console.error("Error saving settings:", error);
-      });
-    }
-  }, [subjects, sleepHours, language, enableTimer, enableDailyChallenge, enableTodoList, enableAiInsights, disableEditRestriction, user, userDocRef, isClient, userDataLoaded, showOnboarding], 2000);
-
-  // Debounced effect for saving time blocks and updating daily summary
-  useDebouncedEffect(() => {
-    if (!isClient || !userDataLoaded || timeBlocks.length === 0 || user?.isAnonymous || !currentDate || !dateString) return;
-    
-    if (user && firestore) {
-      const isEditable = disableEditRestriction || differenceInHours(new Date(), currentDate) <= 36;
-      if (isEditable && timeBlocks.length === 24) {
-        const batch = writeBatch(firestore);
-        timeBlocks.forEach(block => {
-          const blockWithDate = { ...block, date: dateString };
-          const blockDocRef = doc(firestore, 'users', user.uid, 'time_blocks', `${dateString}_${block.hour}`);
-          batch.set(blockDocRef, blockWithDate);
-        });
-
-        // Calculate and set daily summary
-        const summary: DailySummary = {
-          id: dateString,
-          date: dateString,
-          totalMinutes: 0,
-          subjectMinutes: {}
-        };
-        
-        timeBlocks.forEach(block => {
-          if (block.subject !== 'idle' && block.subject !== 'sleep' && block.duration > 0) {
-            summary.totalMinutes += block.duration;
-            summary.subjectMinutes[block.subject] = (summary.subjectMinutes[block.subject] || 0) + block.duration;
-          }
-        });
-
-        const summaryDocRef = doc(firestore, 'users', user.uid, 'daily_summaries', dateString);
-        batch.set(summaryDocRef, summary);
-        
-        batch.commit().catch(error => {
-          console.error("Error saving time blocks and summary:", error);
-        });
-      }
-    }
-  }, [timeBlocks, currentDate, user, firestore, isClient, userDataLoaded, disableEditRestriction, dateString], 2000);
-  
-   // Debounced effect for saving local time blocks (for anonymous users)
-  useDebouncedEffect(() => {
-    if (!isClient || !userDataLoaded || !user?.isAnonymous || timeBlocks.length === 0 || !dateString) return;
-    
-    const localBlocksStr = localStorage.getItem('gridFocusTimeBlocks');
-    const localBlocks = localBlocksStr ? JSON.parse(localBlocksStr) : {};
-    localBlocks[dateString] = timeBlocks;
-    localStorage.setItem('gridFocusTimeBlocks', JSON.stringify(localBlocks));
-
-  }, [timeBlocks, dateString, user, isClient, userDataLoaded], 2000);
-
-  // Debounced effect for saving daily challenge state
-  useDebouncedEffect(() => {
-    if (!isClient || !userDataLoaded || !currentDate || !isToday(currentDate)) return;
-
-    if (user?.isAnonymous) {
-      localStorage.setItem('gridFocusSolvedChallenges', JSON.stringify({ solved: solvedChallenges, qIndex: questionIndex }));
-      return;
-    }
-
-    if (user && userDocRef) {
-      const todayString = format(new Date(), 'yyyy-MM-dd');
-      const dailyData = {
-        daily: {
-          [todayString]: {
-            solvedChallenges: solvedChallenges,
-            questionIndex: questionIndex,
-          }
-        }
-      };
-      setDoc(userDocRef, dailyData, { merge: true }).catch(error => {
-        console.error("Error saving daily challenge state:", error);
-      });
-    }
-  }, [solvedChallenges, questionIndex, currentDate, user, userDocRef, isClient, userDataLoaded], 1500);
-
-  
-  // Effect to save timer data when it stops
   useEffect(() => {
-    if (!timerIsRunning && lastStopTime && currentDate) {
-        const stoppedAt = new Date(lastStopTime);
-        // Only apply if the timer stopped on the currently viewed date
-        if (format(stoppedAt, 'yyyy-MM-dd') !== format(currentDate, 'yyyy-MM-dd')) {
-            return;
-        }
-
-        const totalMinutes = Math.floor(elapsedSeconds / 60);
-        if (totalMinutes === 0) return;
-
-        setTimeBlocks(currentBlocks => {
-            let newBlocks = [...currentBlocks];
-            const stopHour = stoppedAt.getHours();
-            const blockIndex = newBlocks.findIndex(b => b.hour === stopHour);
-            
-            if (blockIndex !== -1) {
-                const block = newBlocks[blockIndex];
-                const newDuration = Math.min(block.duration + totalMinutes, 60);
-                newBlocks[blockIndex] = { ...block, duration: newDuration, subject: timerSubject };
-            }
-            return newBlocks;
-        });
+    if (cloudTimeBlocks && cloudTimeBlocks.length > 0) {
+      const normalized = Array.from({ length: 24 }, (_, i) => cloudTimeBlocks.find(b => b.hour === i) || { hour: i, subject: sleepHours.includes(i) ? 'sleep' : 'idle', duration: 0, date: dateString! });
+      setTimeBlocks(normalized.sort((a, b) => a.hour - b.hour));
+    } else if (currentDate && !user?.isAnonymous && userDataLoaded) {
+      setTimeBlocks(createInitialState(sleepHours, currentDate));
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [timerIsRunning, lastStopTime, elapsedSeconds, timerSubject]);
+  }, [cloudTimeBlocks, sleepHours, dateString, currentDate, user, userDataLoaded]);
 
+  useDebouncedEffect(() => {
+    if (!userDataLoaded || showOnboarding) return;
+    const settings = { sleepHours, subjects, language, enableTimer, enableDailyChallenge, enableTodoList, disableEditRestriction, streakGoal, hasCompletedOnboarding: true };
+    if (user?.isAnonymous) localStorage.setItem('gridFocusSettings', JSON.stringify(settings));
+    else if (userDocRef) setDoc(userDocRef, { settings }, { merge: true });
+  }, [subjects, sleepHours, language, enableTimer, enableDailyChallenge, enableTodoList, disableEditRestriction, streakGoal, userDocRef, userDataLoaded, showOnboarding]);
 
-  const handleBlockUpdate = useCallback((hour: number, subject: string, duration: number) => {
-    if (!currentDate) return;
-    setTimeBlocks(currentBlocks =>
-      currentBlocks.map(block =>
-        block.hour === hour ? { ...block, subject, duration, date: format(currentDate, 'yyyy-MM-dd') } : block
-      )
-    );
-  }, [currentDate]);
-
-  const handleGridReset = useCallback((newSleepHours: number[]) => {
-    if (!currentDate) return;
-    setTimeBlocks(currentBlocks => {
-        const newGrid = createInitialState(newSleepHours, currentDate);
-        return newGrid.map(newBlock => {
-            if (newBlock.subject === 'sleep') return newBlock; 
-            const oldBlock = currentBlocks.find(b => b.hour === newBlock.hour);
-            if (oldBlock && oldBlock.subject !== 'idle' && oldBlock.subject !== 'sleep') return oldBlock;
-            return newBlock;
-        });
-    });
-  }, [currentDate]);
-
-  const handleResetDay = useCallback(() => {
-    if (!currentDate) return;
-    setTimeBlocks(createInitialState(sleepHours, currentDate));
-  }, [sleepHours, currentDate]);
-
-  const changeDay = useCallback((offset: number) => {
-    if (!currentDate) return;
-    const newDate = startOfDay(offset > 0 ? addDays(currentDate, offset) : subDays(currentDate, -offset));
-    if (isFuture(newDate)) return;
-    setCurrentDate(newDate);
-  }, [currentDate]);
-
-  const handleSolveChange = useCallback((solved: boolean) => {
-    const newSolvedChallenges = [...solvedChallenges];
-    newSolvedChallenges[questionIndex] = solved;
-    setSolvedChallenges(newSolvedChallenges);
-  }, [solvedChallenges, questionIndex]);
-  
-  const handleSettingsSave = useCallback((newSettings: any) => {
-    const oldSleepHours = [...sleepHours];
-    
-    setSubjects(newSettings.subjects);
-    setSleepHours(newSettings.sleepHours);
-    setLanguage(newSettings.language);
-    setEnableTimer(newSettings.enableTimer);
-    setEnableDailyChallenge(newSettings.enableDailyChallenge);
-    setEnableTodoList(newSettings.enableTodoList);
-    setEnableAiInsights(newSettings.enableAiInsights);
-    setDisableEditRestriction(newSettings.disableEditRestriction);
-
-    // Only reset grid if sleep hours actually changed
-    if (JSON.stringify(oldSleepHours.sort()) !== JSON.stringify([...newSettings.sleepHours].sort())) {
-      handleGridReset(newSettings.sleepHours);
-    }
-  }, [sleepHours, handleGridReset]);
-
-  const handleOnboardingFinish = useCallback(async (newSettings: any) => {
-    handleSettingsSave(newSettings);
-    if(userDocRef) {
-      try {
-        await setDoc(userDocRef, { hasCompletedOnboarding: true }, { merge: true });
-      } catch (e) {
-        console.error("Error finalizing onboarding:", e);
-      }
-    }
-     if (user?.isAnonymous) {
-      const localSettingsStr = localStorage.getItem('gridFocusSettings');
-      const localSettings = localSettingsStr ? JSON.parse(localSettingsStr) : {};
-      localSettings.hasCompletedOnboarding = true;
-      localStorage.setItem('gridFocusSettings', JSON.stringify(localSettings));
-    }
-    setShowOnboarding(false);
-  }, [userDocRef, user, handleSettingsSave]);
-
-  const markWhatsNewAsSeen = useCallback(async (version: string) => {
-    if (!userDocRef) return;
-    try {
-        await setDoc(userDocRef, { seenWhatsNewVersions: arrayUnion(version) }, { merge: true });
-        setSeenWhatsNewVersions(prev => [...prev, version]);
-    } catch (e) {
-        console.error("Error marking What's New as seen:", e);
-    }
-  }, [userDocRef]);
-
-  const totalFocusedTime = useMemo(() => {
-    if (!timeBlocks) return 0;
-    return timeBlocks.reduce((total, block) => {
-      if (block.subject !== 'idle' && block.subject !== 'sleep') {
-        return total + (block.duration / 60);
-      }
-      return total;
-    }, 0);
-  }, [timeBlocks]);
-
-  // Periodic feedback prompt effect
-  useEffect(() => {
-    if (user && !user.isAnonymous && totalFocusedTime > 5 && !hasBeenPromptedForFeedback && userDocRef) {
-      const feedbackToast = toast({
-        title: "Enjoying GridFocus?",
-        description: "Your feedback helps us improve. Would you like to share your thoughts?",
-        action: (
-          <Button size="sm" onClick={() => setIsFeedbackDialogOpen(true)}>
-            Give Feedback
-          </Button>
-        ),
-        duration: 15000,
+  useDebouncedEffect(() => {
+    if (!userDataLoaded || timeBlocks.length !== 24 || !dateString) return;
+    if (user?.isAnonymous) {
+      const all = JSON.parse(localStorage.getItem('gridTimeBlocks') || '{}');
+      all[dateString] = timeBlocks;
+      localStorage.setItem('gridTimeBlocks', JSON.stringify(all));
+    } else if (user && firestore) {
+      const batch = writeBatch(firestore);
+      let total = 0;
+      timeBlocks.forEach(b => {
+        batch.set(doc(firestore, 'users', user.uid, 'time_blocks', `${dateString}_${b.hour}`), b);
+        if (b.subject !== 'idle' && b.subject !== 'sleep') total += b.duration;
       });
-
-      setDoc(userDocRef, { hasBeenPromptedForFeedback: true }, { merge: true });
-      setHasBeenPromptedForFeedback(true);
+      batch.set(doc(firestore, 'users', user.uid, 'daily_summaries', dateString), { id: dateString, date: dateString, totalMinutes: total });
+      batch.commit();
     }
-  }, [totalFocusedTime, hasBeenPromptedForFeedback, user, userDocRef, toast]);
+  }, [timeBlocks, dateString, user, firestore, userDataLoaded]);
 
+  const totalFocusedTime = useMemo(() => timeBlocks.reduce((t, b) => (b.subject !== 'idle' && b.subject !== 'sleep' && b.subject !== 'class' ? t + (b.duration / 60) : t), 0), [timeBlocks]);
 
-  const currentQuestion = useMemo(() => {
-    if (!isChallengeReady || !currentDate) return dailyQuestions[0];
-    const qIndex = isToday(currentDate) ? questionIndex : 0;
-    return dailyQuestions[(dayChallengeIndex + qIndex) % dailyQuestions.length];
-  }, [currentDate, questionIndex, dayChallengeIndex, isChallengeReady]);
-
-  if (isUserLoading || !isClient || !user || !userDataLoaded || !currentDate) {
-    return (
-        <div className="flex flex-col items-center justify-center min-h-screen">
-          <GridFocusLoader />
-          <p className="mt-4 text-lg">Loading GridFocus...</p>
-        </div>
-    );
-  }
+  if (isUserLoading || !user || !userDataLoaded || !currentDate) return <div className="flex items-center justify-center min-h-screen"><GridFocusLoader /></div>;
 
   return (
-    <div className={cn('flex flex-col min-h-screen font-sans', inter.variable)}>
-      <MainHeader totalFocusedTime={totalFocusedTime} enableAiInsights={enableAiInsights} />
-      <main className="flex-grow container mx-auto p-2 sm:pb-8">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
-            <div>
-              <h2 className="text-xl sm:text-3xl font-bold text-foreground">
-                Welcome back, {userName}!
-              </h2>
-              <div className="flex items-center gap-2 mt-2">
-                <Button variant="outline" size="icon" onClick={() => changeDay(-1)}>
-                    <ChevronLeft className="w-4 h-4" />
-                </Button>
-                <h3 className="text-base sm:text-xl font-semibold text-center w-36 sm:w-64">{format(currentDate, 'PPP')}</h3>
-                <Button variant="outline" size="icon" onClick={() => changeDay(1)} disabled={isToday(currentDate)}>
-                    <ChevronRight className="w-4 h-4" />
-                </Button>
-              </div>
+    <div className="flex flex-col min-h-screen">
+      <MainHeader totalFocusedTime={totalFocusedTime} />
+      <main className="flex-grow container mx-auto p-4 space-y-6">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <div className="space-y-1">
+            <h2 className="text-2xl font-black tracking-tight">Welcome back, {userName || 'Scholar'}!</h2>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="icon" onClick={() => setCurrentDate(subDays(currentDate, 1))}><ChevronLeft className="w-4 h-4" /></Button>
+              <h3 className="text-lg font-bold w-48 text-center">{format(currentDate, 'PPP')}</h3>
+              <Button variant="outline" size="icon" onClick={() => setCurrentDate(addDays(currentDate, 1))} disabled={isToday(currentDate)}><ChevronRight className="w-4 h-4" /></Button>
             </div>
+          </div>
+          <StreakCounter count={currentStreak} goalHours={streakGoal} />
         </div>
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-start">
-          <Card className="lg:col-span-2">
-            <CardContent className="p-2 sm:p-4">
-              <AccountabilityGrid
-                blocks={timeBlocks}
-                subjects={subjects}
-                onBlockUpdate={handleBlockUpdate}
-                viewingDate={currentDate}
-                liveTime={new Date()}
-                disableEditRestriction={disableEditRestriction}
-              />
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <Card className="lg:col-span-2 border-2 border-primary/10 shadow-xl bg-card/50 backdrop-blur-sm">
+            <CardContent className="p-4">
+              <AccountabilityGrid blocks={timeBlocks} subjects={subjects} onBlockUpdate={(h, s, d) => setTimeBlocks(prev => prev.map(b => b.hour === h ? { ...b, subject: s, duration: d } : b))} viewingDate={currentDate} liveTime={new Date()} disableEditRestriction={disableEditRestriction} />
             </CardContent>
           </Card>
-          <div className="space-y-4">
-             {enableDailyChallenge && isChallengeReady && (
-                <DailyChallenge
-                    question={currentQuestion}
-                    isSolved={solvedChallenges[questionIndex]}
-                    onSolveChange={handleSolveChange}
-                    language={language}
-                    isToday={isToday(currentDate)}
-                    questionIndex={questionIndex}
-                    setQuestionIndex={setQuestionIndex}
-                    totalQuestions={dailyQuestions.length}
-                />
-             )}
+          <div className="space-y-6">
+             {enableDailyChallenge && <DailyChallenge question={dailyQuestions[(getDayOfYear(currentDate) + questionIndex) % dailyQuestions.length]} isSolved={false} onSolveChange={() => {}} language={language} isToday={isToday(currentDate)} questionIndex={questionIndex} setQuestionIndex={setQuestionIndex} totalQuestions={dailyQuestions.length} />}
              {enableTodoList && <TodoList />}
           </div>
         </div>
-         {!isToday(currentDate) && <div className="mt-6 flex justify-center">
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button variant="destructive" className="w-full sm:w-auto">
-                  <RotateCcw className="w-4 h-4 mr-2" /> Reset Day
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    This will reset all progress for {format(currentDate, 'PPP')}. This action cannot be undone.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction onClick={handleResetDay}>Continue</AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-        </div>}
-        <footer className="text-center py-4 text-muted-foreground text-xs space-x-4 pb-20 sm:pb-4">
-          <span>Made with ♥ by <a href="https://github.com/Rovindu-Thamuditha/" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Tipiz</a></span>
-          <span>|</span>
-          <button onClick={() => setIsFeedbackDialogOpen(true)} className="text-primary hover:underline">Send Feedback</button>
-        </footer>
       </main>
-
-      {enableTimer && (
-        <FloatingTimer
-            subjects={subjects}
-        />
-      )}
+      {enableTimer && <FloatingTimer subjects={subjects} />}
       <FeedbackDialog isOpen={isFeedbackDialogOpen} onOpenChange={setIsFeedbackDialogOpen} />
-      {userDataLoaded && !user.isAnonymous && <WhatsNewDialog 
-        seenVersions={seenWhatsNewVersions}
-        onMarkAsSeen={markWhatsNewAsSeen}
-      />}
-      {userDataLoaded && showOnboarding && (
-        <OnboardingDialog 
-          isOpen={showOnboarding}
-          onFinish={handleOnboardingFinish}
-          initialSettings={{
-            subjects,
-            sleepHours,
-            language,
-            enableTimer,
-            enableDailyChallenge,
-            enableTodoList,
-            enableAiInsights,
-            disableEditRestriction,
-          }}
-        />
-      )}
+      <WhatsNewDialog seenVersions={[]} onMarkAsSeen={() => {}} />
+      <OnboardingDialog isOpen={showOnboarding} onFinish={(s) => { setDoc(userDocRef!, { hasCompletedOnboarding: true }, { merge: true }); setShowOnboarding(false); }} initialSettings={{ subjects, sleepHours, language, enableTimer, enableDailyChallenge, enableTodoList, enableAiInsights: false, disableEditRestriction }} />
     </div>
   );
 }
-
-    

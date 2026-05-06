@@ -1,5 +1,5 @@
 
-import { Book, Code, PenTool, BrainCircuit, FlaskConical, Briefcase, Sparkles, Bed, Dna, Moon, ShieldAlert } from 'lucide-react';
+import { Book, Code, PenTool, BrainCircuit, FlaskConical, Briefcase, Sparkles, Bed, Dna, Moon, ShieldAlert, School, GraduationCap } from 'lucide-react';
 
 export const ALL_ICONS = [
     BrainCircuit,
@@ -13,6 +13,8 @@ export const ALL_ICONS = [
     Bed,
     Moon,
     ShieldAlert,
+    School,
+    GraduationCap
 ];
 
 // Set display names for mapping
@@ -27,5 +29,5 @@ Sparkles.displayName = "Sparkles";
 Bed.displayName = "Bed";
 Moon.displayName = "Moon";
 ShieldAlert.displayName = "ShieldAlert";
-
-    
+School.displayName = "School";
+GraduationCap.displayName = "GraduationCap";

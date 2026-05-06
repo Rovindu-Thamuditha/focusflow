@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Settings, Trash2, PlusCircle, Languages, Sparkles, SlidersHorizontal, Bed, MessageSquarePlus, BrainCircuit, ShieldAlert, Users, ArrowLeft } from 'lucide-react';
+import { Settings, Trash2, PlusCircle, Languages, Sparkles, SlidersHorizontal, Bed, MessageSquarePlus, BrainCircuit, ShieldAlert, Users, Flame, LayoutDashboard } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
@@ -23,14 +23,8 @@ import { MainHeader } from '@/components/main-header';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { defaultSubjects } from '@/lib/subjects';
 import { useDebouncedEffect } from '@/hooks/useDebouncedEffect';
-import Link from 'next/link';
 import { GridFocusLoader } from '@/components/grid-focus-loader';
-
-interface PrivacySettings {
-    shareTotalFocusTime: boolean;
-    participateInLeaderboards: boolean;
-    shareSubjectBreakdown: boolean;
-}
+import { Slider } from '@/components/ui/slider';
 
 const allHours = Array.from({ length: 24 }, (_, i) => i);
 
@@ -38,12 +32,10 @@ export default function SettingsPage() {
     const { user, isUserLoading } = useUser();
     const firestore = useFirestore();
     const router = useRouter();
-    const { toast } = useToast();
-
     const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
     const [initialSettingsLoaded, setInitialSettingsLoaded] = useState(false);
 
-    // Local state for editing
+    // Settings State
     const [subjects, setSubjects] = useState<Subject[]>(defaultSubjects);
     const [sleepHours, setSleepHours] = useState<number[]>([]);
     const [language, setLanguage] = useState<'english' | 'sinhala'>('english');
@@ -52,24 +44,14 @@ export default function SettingsPage() {
     const [enableTodoList, setEnableTodoList] = useState(true);
     const [enableAiInsights, setEnableAiInsights] = useState(false);
     const [disableEditRestriction, setDisableEditRestriction] = useState(false);
+    const [streakGoal, setStreakGoal] = useState(2);
 
-    // Fetch user settings
-    const userDocRef = useMemoFirebase(() => {
-        if (!user || user.isAnonymous || !firestore) return null;
-        return doc(firestore, 'users', user.uid);
-    }, [user, firestore]);
-    const { data: userData } = useDoc(userDocRef);
-
-    // Privacy Settings
-    const privacySettingsRef = useMemoFirebase(() => {
-        if (!user || user.isAnonymous || !firestore) return null;
-        return doc(firestore, 'users', user.uid, 'privacy', 'settings');
-    }, [user, firestore]);
-    const { data: initialPrivacySettings } = useDoc<PrivacySettings>(privacySettingsRef);
-    
+    // Privacy State
     const [shareTotalFocusTime, setShareTotalFocusTime] = useState(false);
     const [participateInLeaderboards, setParticipateInLeaderboards] = useState(false);
-    const [shareSubjectBreakdown, setShareSubjectBreakdown] = useState(false);
+
+    const userDocRef = useMemoFirebase(() => user && !user.isAnonymous ? doc(firestore!, 'users', user.uid) : null, [firestore, user]);
+    const { data: userData } = useDoc(userDocRef);
 
     useEffect(() => {
         if (isUserLoading) return;
@@ -78,269 +60,170 @@ export default function SettingsPage() {
             return;
         }
 
-        if (userData) {
-            const settings = userData.settings || {};
-            setSubjects(settings.subjects || defaultSubjects);
-            setSleepHours(settings.sleepHours || []);
-            setLanguage(settings.language || 'english');
-            setEnableTimer(settings.enableTimer !== false);
-            setEnableDailyChallenge(settings.enableDailyChallenge !== false);
-            setEnableTodoList(settings.enableTodoList !== false);
-            setEnableAiInsights(settings.enableAiInsights === true);
-            setDisableEditRestriction(settings.disableEditRestriction === true);
+        if (user.isAnonymous) {
+            const settingsStr = localStorage.getItem('gridFocusSettings');
+            if (settingsStr) {
+                const s = JSON.parse(settingsStr);
+                setSubjects(s.subjects || defaultSubjects);
+                setSleepHours(s.sleepHours || []);
+                setLanguage(s.language || 'english');
+                setEnableTimer(s.enableTimer !== false);
+                setEnableDailyChallenge(s.enableDailyChallenge !== false);
+                setEnableTodoList(s.enableTodoList !== false);
+                setEnableAiInsights(s.enableAiInsights === true);
+                setDisableEditRestriction(s.disableEditRestriction === true);
+                setStreakGoal(s.streakGoal || 2);
+            }
             setInitialSettingsLoaded(true);
-        } else if (!isUserLoading) {
-            // Handle case where user exists but userData isn't fetched yet or is null
+        } else if (userData) {
+            const s = userData.settings || {};
+            setSubjects(s.subjects || defaultSubjects);
+            setSleepHours(s.sleepHours || []);
+            setLanguage(s.language || 'english');
+            setEnableTimer(s.enableTimer !== false);
+            setEnableDailyChallenge(s.enableDailyChallenge !== false);
+            setEnableTodoList(s.enableTodoList !== false);
+            setEnableAiInsights(s.enableAiInsights === true);
+            setDisableEditRestriction(s.disableEditRestriction === true);
+            setStreakGoal(s.streakGoal || 2);
+            
+            const p = userData.privacy || {};
+            setShareTotalFocusTime(p.shareTotalFocusTime || false);
+            setParticipateInLeaderboards(p.participateInLeaderboards || false);
             setInitialSettingsLoaded(true);
         }
-
-        if (initialPrivacySettings) {
-            setShareTotalFocusTime(initialPrivacySettings.shareTotalFocusTime);
-            setParticipateInLeaderboards(initialPrivacySettings.participateInLeaderboards);
-            setShareSubjectBreakdown(initialPrivacySettings.shareSubjectBreakdown);
-        }
-    }, [user, isUserLoading, router, userData, initialPrivacySettings]);
-
+    }, [user, isUserLoading, router, userData]);
 
     useDebouncedEffect(() => {
-        if (!userDocRef || !initialSettingsLoaded) return;
-        const settingsToSave = {
-            subjects,
-            sleepHours,
-            language,
-            enableTimer,
-            enableDailyChallenge,
-            enableTodoList,
-            enableAiInsights,
-            disableEditRestriction
+        if (!initialSettingsLoaded) return;
+        const settings = {
+            subjects, sleepHours, language, enableTimer,
+            enableDailyChallenge, enableTodoList, enableAiInsights,
+            disableEditRestriction, streakGoal
         };
-        setDoc(userDocRef, { settings: settingsToSave }, { merge: true });
-    }, [subjects, sleepHours, language, enableTimer, enableDailyChallenge, enableTodoList, enableAiInsights, disableEditRestriction, userDocRef, initialSettingsLoaded], 2000);
-
-    useDebouncedEffect(() => {
-        if (!privacySettingsRef || !initialSettingsLoaded) return;
-        const privacyToSave = {
-            id: 'settings',
-            shareTotalFocusTime,
-            participateInLeaderboards,
-            shareSubjectBreakdown
-        };
-        setDoc(privacySettingsRef, privacyToSave, { merge: true });
-    }, [shareTotalFocusTime, participateInLeaderboards, shareSubjectBreakdown, privacySettingsRef, initialSettingsLoaded], 2000);
-
-    const handleSubjectChange = (index: number, field: keyof Subject, value: string) => {
-        const newSubjects = [...subjects];
-        const actualIndex = subjects.findIndex(s => s.id === subjects.filter(s => s.id !== 'idle' && s.id !== 'sleep')[index].id);
-        if(actualIndex !== -1) {
-            (newSubjects[actualIndex] as any)[field] = value;
-            setSubjects(newSubjects);
+        
+        if (user?.isAnonymous) {
+            localStorage.setItem('gridFocusSettings', JSON.stringify(settings));
+        } else if (userDocRef) {
+            setDoc(userDocRef, { 
+                settings, 
+                privacy: { shareTotalFocusTime, participateInLeaderboards } 
+            }, { merge: true });
         }
+    }, [subjects, sleepHours, language, enableTimer, enableDailyChallenge, enableTodoList, enableAiInsights, disableEditRestriction, streakGoal, shareTotalFocusTime, participateInLeaderboards, initialSettingsLoaded], 2000);
+
+    const handleSubjectChange = (id: string, field: keyof Subject, value: string) => {
+        setSubjects(prev => prev.map(s => s.id === id ? { ...s, [field]: value } : s));
     };
 
-    const addSubject = () => {
-        setSubjects([...subjects, { id: `custom-${Date.now()}`, name: 'New Subject', icon: 'Sparkles', color: '#888888' }]);
-    };
+    if (isUserLoading || !initialSettingsLoaded) return <div className="flex items-center justify-center min-h-screen"><GridFocusLoader /></div>;
 
-    const removeSubject = (indexToRemove: number) => {
-        const subjectToRemove = subjects.filter(s => s.id !== 'idle' && s.id !== 'sleep')[indexToRemove];
-        if (subjectToRemove) {
-            setSubjects(subjects.filter(s => s.id !== subjectToRemove.id));
-        }
-    };
-
-    const handleSleepCheckboxChange = (hour: number, checked: boolean) => {
-        setSleepHours(prev => checked ? [...prev, hour] : prev.filter(h => h !== hour));
-    };
-
-    if (isUserLoading || !initialSettingsLoaded) {
-        return <div className="flex items-center justify-center min-h-screen"><GridFocusLoader /></div>;
-    }
-    
     return (
-        <>
-            <div className="flex flex-col min-h-screen">
-                <MainHeader totalFocusedTime={0} showBackButton />
-                <main className="flex-grow container mx-auto p-4 sm:p-6 md:p-8">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Settings</CardTitle>
-                            <CardDescription>
-                                Customize your GridFocus experience. Changes are saved automatically.
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                             <Tabs defaultValue="general">
-                                <TabsList className="grid w-full grid-cols-2 h-auto flex-wrap sm:grid-cols-5">
-                                    <TabsTrigger value="general">General</TabsTrigger>
-                                    <TabsTrigger value="subjects">Subjects</TabsTrigger>
-                                    <TabsTrigger value="sleep">Sleep</TabsTrigger>
-                                    <TabsTrigger value="features">Features</TabsTrigger>
-                                    <TabsTrigger value="privacy" disabled={user?.isAnonymous}>Privacy</TabsTrigger>
-                                </TabsList>
-                                <ScrollArea className="h-[60vh] mt-4">
-                                    <div className="pr-6">
-                                        <TabsContent value="general" className="py-4 px-1 space-y-6">
-                                            <div className="space-y-4">
-                                                <h4 className="font-semibold text-lg flex items-center gap-2"><Languages /> Language & Display</h4>
-                                                <div className="flex items-center justify-between rounded-lg border p-4">
-                                                    <Label htmlFor="language-select">Challenge Language</Label>
-                                                    <Select onValueChange={(value: 'english' | 'sinhala') => setLanguage(value)} defaultValue={language}>
-                                                        <SelectTrigger id="language-select" className="w-[180px]">
-                                                            <SelectValue placeholder="Select language" />
-                                                        </SelectTrigger>
-                                                        <SelectContent>
-                                                            <SelectItem value="english">English</SelectItem>
-                                                            <SelectItem value="sinhala">Sinhala</SelectItem>
-                                                        </SelectContent>
-                                                    </Select>
-                                                </div>
+        <div className="flex flex-col min-h-screen">
+            <MainHeader totalFocusedTime={0} showBackButton />
+            <main className="flex-grow container mx-auto p-4 sm:p-6 md:p-8">
+                <Card className="max-w-4xl mx-auto">
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2"><Settings className="w-6 h-6" />Settings</CardTitle>
+                        <CardDescription>Personalize your study environment. Changes save automatically.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <Tabs defaultValue="subjects" className="space-y-6">
+                            <TabsList className="grid w-full grid-cols-3">
+                                <TabsTrigger value="subjects">Subjects</TabsTrigger>
+                                <TabsTrigger value="schedule">Schedule</TabsTrigger>
+                                <TabsTrigger value="preferences">Preferences</TabsTrigger>
+                            </TabsList>
+
+                            <TabsContent value="subjects" className="space-y-4 pt-4">
+                                <div className="flex justify-between items-center">
+                                    <h3 className="font-bold text-lg flex items-center gap-2"><Sparkles className="w-5 h-5 text-primary" />Custom Subjects</h3>
+                                    <Button size="sm" variant="outline" onClick={() => setSubjects([...subjects, { id: `custom-${Date.now()}`, name: 'New Subject', icon: 'Sparkles', color: '#BE4BFF' }])}>
+                                        <PlusCircle className="mr-2 w-4 h-4" /> Add Subject
+                                    </Button>
+                                </div>
+                                <div className="grid gap-2">
+                                    {subjects.filter(s => s.id !== 'idle' && s.id !== 'sleep').map((subject) => (
+                                        <div key={subject.id} className="flex items-center gap-2 p-2 border rounded-lg bg-card/50">
+                                            <Input type="color" value={subject.color} onChange={(e) => handleSubjectChange(subject.id, 'color', e.target.value)} className="w-10 h-10 p-1 rounded cursor-pointer" />
+                                            <Input value={subject.name} onChange={(e) => handleSubjectChange(subject.id, 'name', e.target.value)} className="flex-grow bg-transparent" />
+                                            <Select onValueChange={(v) => handleSubjectChange(subject.id, 'icon', v)} defaultValue={subject.icon}>
+                                                <SelectTrigger className="w-24"><SelectValue /></SelectTrigger>
+                                                <SelectContent>
+                                                    {ALL_ICONS.map(Icon => <SelectItem key={Icon.displayName} value={Icon.displayName!}><Icon className="w-4 h-4" /></SelectItem>)}
+                                                </SelectContent>
+                                            </Select>
+                                            <Button variant="ghost" size="icon" onClick={() => setSubjects(subjects.filter(s => s.id !== subject.id))}><Trash2 className="w-4 h-4 text-destructive" /></Button>
+                                        </div>
+                                    ))}
+                                </div>
+                            </TabsContent>
+
+                            <TabsContent value="schedule" className="space-y-6 pt-4">
+                                <div>
+                                    <h3 className="font-bold text-lg flex items-center gap-2 mb-2"><Bed className="w-5 h-5 text-primary" />Sleep Hours</h3>
+                                    <p className="text-sm text-muted-foreground mb-4">Select the hours you usually sleep. These blocks are fixed by default on the grid.</p>
+                                    <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
+                                        {allHours.map(hour => (
+                                            <div key={hour} className="flex items-center space-x-2 p-2 rounded border bg-card/50">
+                                                <Checkbox id={`hour-${hour}`} checked={sleepHours.includes(hour)} onCheckedChange={(c) => setSleepHours(prev => c ? [...prev, hour] : prev.filter(h => h !== hour))} />
+                                                <Label htmlFor={`hour-${hour}`} className="text-xs font-mono">{hour}:00</Label>
                                             </div>
-                                            <div className="space-y-4">
-                                                <h4 className="font-semibold text-lg flex items-center gap-2"><ShieldAlert /> Permissions</h4>
-                                                <div className="flex items-center justify-between rounded-lg border p-4">
-                                                    <Label htmlFor="disable-edit-restriction" className="flex flex-col gap-1">
-                                                        <span className="font-medium">Disable 36-Hour Edit Lock</span>
-                                                        <span className="text-xs text-muted-foreground">Allow editing grid entries older than 36 hours.</span>
-                                                    </Label>
-                                                    <Switch id="disable-edit-restriction" checked={disableEditRestriction} onCheckedChange={setDisableEditRestriction} />
-                                                </div>
-                                            </div>
-                                             <div className="space-y-4">
-                                                <h4 className="font-semibold text-lg flex items-center gap-2"><MessageSquarePlus /> Feedback</h4>
-                                                <div className="flex items-center justify-between rounded-lg border p-4">
-                                                    <Label htmlFor="feedback" className="flex flex-col gap-1">
-                                                        <span className="font-medium">Submit Feedback</span>
-                                                        <span className="text-xs text-muted-foreground">Have a suggestion or found a bug? Let us know!</span>
-                                                    </Label>
-                                                    <Button size="sm" onClick={() => setIsFeedbackOpen(true)}>
-                                                        Give Feedback
-                                                    </Button>
-                                                </div>
-                                            </div>
-                                        </TabsContent>
-                                        <TabsContent value="subjects" className="py-4 px-1">
-                                            <h4 className="font-semibold text-lg mb-2 flex items-center gap-2"><Sparkles /> Customize Subjects</h4>
-                                            <p className="text-sm text-muted-foreground mb-4">Add, remove, or edit your focus subjects.</p>
-                                            <div className="space-y-2">
-                                            {subjects.filter(s => s.id !== 'idle' && s.id !== 'sleep').map((subject, index) => (
-                                                <div key={subject.id} className="flex items-center gap-2 p-2 border rounded-lg">
-                                                <Input
-                                                    type="color"
-                                                    value={subject.color}
-                                                    onChange={(e) => handleSubjectChange(index, 'color', e.target.value)}
-                                                    className="w-10 h-10 p-1"
-                                                />
-                                                <Input
-                                                    value={subject.name}
-                                                    onChange={(e) => handleSubjectChange(index, 'name', e.target.value)}
-                                                    className="flex-grow"
-                                                />
-                                                <Select onValueChange={(value) => handleSubjectChange(index, 'icon', value)} defaultValue={subject.icon}>
-                                                    <SelectTrigger className="w-24">
-                                                        <SelectValue placeholder="Icon"/>
-                                                    </SelectTrigger>
-                                                    <SelectContent>
-                                                        {ALL_ICONS.map(Icon => <SelectItem key={Icon.displayName} value={Icon.displayName!}><Icon className="w-4 h-4 inline-block mr-2"/>{Icon.displayName}</SelectItem>)}
-                                                    </SelectContent>
-                                                </Select>
-                                                <Button variant="ghost" size="icon" onClick={() => removeSubject(index)}>
-                                                    <Trash2 className="w-4 h-4 text-destructive" />
-                                                </Button>
-                                                </div>
-                                            ))}
-                                            </div>
-                                            <Button variant="outline" size="sm" onClick={addSubject} className="mt-4 w-full">
-                                            <PlusCircle className="mr-2" /> Add Subject
-                                            </Button>
-                                        </TabsContent>
-                                        <TabsContent value="sleep" className="py-4 px-1">
-                                            <h4 className="font-semibold text-lg mb-2 flex items-center gap-2"><Bed /> Default Sleep Hours</h4>
-                                            <p className="text-sm text-muted-foreground mb-4">Select hours you're usually asleep. The grid will reset to these sleep hours if you reset a day.</p>
-                                            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
-                                                {allHours.map(hour => (
-                                                    <div key={hour} className="flex items-center space-x-2">
-                                                        <Checkbox
-                                                            id={`sleep-hour-${hour}`}
-                                                            checked={sleepHours.includes(hour)}
-                                                            onCheckedChange={(checked) => handleSleepCheckboxChange(hour, !!checked)}
-                                                        />
-                                                        <Label htmlFor={`sleep-hour-${hour}`} className="text-sm font-mono">
-                                                        {String(hour).padStart(2, '0')}:00
-                                                        </Label>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </TabsContent>
-                                        <TabsContent value="features" className="py-4 px-1">
-                                            <h4 className="font-semibold text-lg mb-4 flex items-center gap-2"><SlidersHorizontal /> Toggle Features</h4>
-                                            <div className="space-y-4">
-                                                <div className="flex items-center justify-between rounded-lg border p-4">
-                                                    <Label htmlFor="enable-timer" className="flex flex-col gap-1">
-                                                        <span className="font-semibold">Enable Focus Timer</span>
-                                                        <span className="font-normal text-muted-foreground text-xs">A live timer to track focus sessions.</span>
-                                                    </Label>
-                                                    <Switch id="enable-timer" checked={enableTimer} onCheckedChange={setEnableTimer} />
-                                                </div>
-                                                <div className="flex items-center justify-between rounded-lg border p-4">
-                                                    <Label htmlFor="enable-daily-challenge" className="flex flex-col gap-1">
-                                                        <span className="font-semibold">Enable Daily Challenge</span>
-                                                        <span className="font-normal text-muted-foreground text-xs">An academic question to solve each day.</span>
-                                                    </Label>
-                                                    <Switch id="enable-daily-challenge" checked={enableDailyChallenge} onCheckedChange={setEnableDailyChallenge}/>
-                                                </div>
-                                                <div className="flex items-center justify-between rounded-lg border p-4">
-                                                    <Label htmlFor="enable-todo-list" className="flex flex-col gap-1">
-                                                        <span className="font-semibold">Enable Todo List</span>
-                                                        <span className="font-normal text-muted-foreground text-xs">A simple checklist for your daily tasks.</span>
-                                                    </Label>
-                                                    <Switch id="enable-todo-list" checked={enableTodoList} onCheckedChange={setEnableTodoList} />
-                                                </div>
-                                                <div className="flex items-center justify-between rounded-lg border p-4">
-                                                    <Label htmlFor="enable-ai-insights" className="flex flex-col gap-1">
-                                                        <div className="flex items-center gap-2">
-                                                            <span className="font-semibold">Enable AI Study Analysis</span>
-                                                            <Badge variant="outline">Beta</Badge>
-                                                        </div>
-                                                        <span className="font-normal text-muted-foreground text-xs">Get AI-powered insights on your study habits.</span>
-                                                    </Label>
-                                                    <Switch id="enable-ai-insights" checked={enableAiInsights} onCheckedChange={setEnableAiInsights} />
-                                                </div>
-                                            </div>
-                                        </TabsContent>
-                                        <TabsContent value="privacy" className="py-4 px-1">
-                                            <h4 className="font-semibold text-lg mb-4 flex items-center gap-2"><Users /> Friend & Privacy Settings</h4>
-                                            <div className="space-y-4">
-                                                <div className="flex items-center justify-between rounded-lg border p-4">
-                                                    <Label htmlFor="share-focus-time" className="flex flex-col gap-1">
-                                                        <span className="font-medium">Share Total Focus Time</span>
-                                                        <span className="font-normal text-muted-foreground text-xs">Allow friends to see your total focused hours.</span>
-                                                    </Label>
-                                                    <Switch id="share-focus-time" checked={shareTotalFocusTime} onCheckedChange={setShareTotalFocusTime} disabled={user?.isAnonymous} />
-                                                </div>
-                                                <div className="flex items-center justify-between rounded-lg border p-4">
-                                                    <Label htmlFor="participate-leaderboards" className="flex flex-col gap-1">
-                                                        <span className="font-medium">Participate in Leaderboards</span>
-                                                        <span className="font-normal text-muted-foreground text-xs">Appear on leaderboards visible to your friends.</span>
-                                                    </Label>
-                                                    <Switch id="participate-leaderboards" checked={participateInLeaderboards} onCheckedChange={setParticipateInLeaderboards} disabled={user?.isAnonymous} />
-                                                </div>
-                                                <div className="flex items-center justify-between rounded-lg border p-4">
-                                                    <Label htmlFor="share-subject-breakdown" className="flex flex-col gap-1">
-                                                        <span className="font-medium">Share Subject Breakdown</span>
-                                                        <span className="font-normal text-muted-foreground text-xs">Let friends see how your time is divided by subject.</span>
-                                                    </Label>
-                                                    <Switch id="share-subject-breakdown" checked={shareSubjectBreakdown} onCheckedChange={setShareSubjectBreakdown} disabled={user?.isAnonymous}/>
-                                                </div>
-                                            </div>
-                                        </TabsContent>
+                                        ))}
                                     </div>
-                                </ScrollArea>
-                            </Tabs>
-                        </CardContent>
-                    </Card>
-                </main>
-            </div>
+                                </div>
+                            </TabsContent>
+
+                            <TabsContent value="preferences" className="space-y-6 pt-4">
+                                <div className="space-y-4">
+                                    <div className="p-4 rounded-xl border bg-orange-500/5 border-orange-500/10 space-y-4">
+                                        <div className="flex justify-between items-center">
+                                            <Label className="flex flex-col gap-1">
+                                                <span className="font-bold flex items-center gap-2 text-orange-500"><Flame className="w-4 h-4" />Daily Focus Goal</span>
+                                                <span className="text-xs text-muted-foreground">The threshold needed to maintain your daily streak.</span>
+                                            </Label>
+                                            <span className="text-2xl font-black text-orange-500">{streakGoal}h</span>
+                                        </div>
+                                        <Slider value={[streakGoal]} onValueChange={([v]) => setStreakGoal(v)} max={12} min={1} step={1} className="py-2" />
+                                    </div>
+
+                                    <div className="space-y-3">
+                                        <h4 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Toggles</h4>
+                                        {[
+                                            { id: 'timer', label: 'Live Focus Timer', val: enableTimer, set: setEnableTimer },
+                                            { id: 'challenge', label: 'Daily Challenges', val: enableDailyChallenge, set: setEnableDailyChallenge },
+                                            { id: 'todo', label: 'Todo List', val: enableTodoList, set: setEnableTodoList },
+                                            { id: 'lock', label: '36h Edit Restriction', val: !disableEditRestriction, set: (v: boolean) => setDisableEditRestriction(!v) }
+                                        ].map(f => (
+                                            <div key={f.id} className="flex items-center justify-between p-3 rounded-lg border bg-card/50">
+                                                <Label htmlFor={f.id} className="font-medium">{f.label}</Label>
+                                                <Switch id={f.id} checked={f.val} onCheckedChange={f.set} />
+                                            </div>
+                                        ))}
+                                    </div>
+
+                                    {!user?.isAnonymous && (
+                                        <div className="space-y-3 pt-2">
+                                            <h4 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Social & Privacy</h4>
+                                            <div className="flex items-center justify-between p-3 rounded-lg border bg-card/50">
+                                                <Label className="flex flex-col gap-0.5">
+                                                    <span>Share Profile Data</span>
+                                                    <span className="text-[10px] text-muted-foreground">Friends can see your total hours.</span>
+                                                </Label>
+                                                <Switch checked={shareTotalFocusTime} onCheckedChange={setShareTotalFocusTime} />
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                                <Button variant="outline" className="w-full mt-4" onClick={() => setIsFeedbackOpen(true)}>
+                                    <MessageSquarePlus className="mr-2 w-4 h-4" /> Submit App Feedback
+                                </Button>
+                            </TabsContent>
+                        </Tabs>
+                    </CardContent>
+                </Card>
+            </main>
             <FeedbackDialog isOpen={isFeedbackOpen} onOpenChange={setIsFeedbackOpen} />
-        </>
+        </div>
     );
 }
