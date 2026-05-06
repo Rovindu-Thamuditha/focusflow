@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, useMemo } from 'react';
@@ -201,7 +202,7 @@ export default function Home() {
       <main className="flex-grow container mx-auto p-4 space-y-6">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div className="space-y-1">
-            <h2 className="text-2xl font-black tracking-tight">Welcome back, {userName || 'Scholar'}!</h2>
+            <h2 className="text-2xl font-bold tracking-tight">Welcome back, {userName || 'Scholar'}!</h2>
             <div className="flex items-center gap-2">
               <Button variant="outline" size="icon" onClick={() => setCurrentDate(subDays(currentDate, 1))}><ChevronLeft className="w-4 h-4" /></Button>
               <h3 className="text-lg font-bold w-48 text-center">{format(currentDate, 'PPP')}</h3>
@@ -230,3 +231,4 @@ export default function Home() {
     </div>
   );
 }
+

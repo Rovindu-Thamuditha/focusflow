@@ -55,7 +55,7 @@ export function MainHeader({ totalFocusedTime, showBackButton = false }: MainHea
                     <div className="p-2 bg-primary/10 rounded-xl group-hover:scale-110 transition-transform">
                       <Icons.logo className="h-6 w-6 text-primary" />
                     </div>
-                    <h1 className="text-xl font-black tracking-tighter text-foreground hidden sm:inline-block">GridFocus</h1>
+                    <h1 className="text-xl font-bold tracking-tight text-foreground hidden sm:inline-block">GridFocus</h1>
                 </Link>
             )}
         </div>
@@ -116,3 +116,4 @@ export function MainHeader({ totalFocusedTime, showBackButton = false }: MainHea
     </header>
   );
 }
+

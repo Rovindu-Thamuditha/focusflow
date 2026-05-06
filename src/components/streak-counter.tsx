@@ -33,7 +33,7 @@ export function StreakCounter({ count, goalHours, className }: StreakCounterProp
                 <div className="absolute inset-0 blur-sm bg-orange-500/50 animate-pulse rounded-full" />
               )}
             </div>
-            <span className="font-black text-sm tracking-tighter">{count} DAY STREAK</span>
+            <span className="font-bold text-sm tracking-tighter">{count} DAY STREAK</span>
           </div>
         </TooltipTrigger>
         <TooltipContent>

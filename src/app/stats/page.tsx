@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
@@ -33,6 +34,7 @@ export default function StatsPage() {
   const [subjects, setSubjects] = useState<Subject[]>(defaultSubjects);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
+  const [streakGoal, setStreakGoal] = useState(2);
 
   const isAnonymousUser = user?.isAnonymous;
 
@@ -70,6 +72,7 @@ export default function StatsPage() {
             const data = userDoc.data();
             const userSettings = data.settings || {};
             setSubjects(userSettings.subjects || defaultSubjects);
+            setStreakGoal(userSettings.streakGoal || 2);
         }
     }
     fetchUserSettings();
@@ -110,7 +113,6 @@ export default function StatsPage() {
     
     const subjectTotals: Record<string, number> = {};
     dailySummaries?.forEach(s => {
-      // Safely handle missing subjectMinutes data in older records
       if (s.subjectMinutes) {
         Object.entries(s.subjectMinutes).forEach(([id, mins]) => {
           subjectTotals[id] = (subjectTotals[id] || 0) + mins;
@@ -121,8 +123,33 @@ export default function StatsPage() {
     const topSubjectId = Object.entries(subjectTotals).sort((a, b) => b[1] - a[1])[0]?.[0];
     const topSubject = subjects.find(s => s.id === topSubjectId)?.name || 'N/A';
 
-    return { totalMinutes, activeDays, topSubject };
-  }, [dailySummaries, subjects]);
+    // Streak Logic
+    let currentStreak = 0;
+    if (dailySummaries && dailySummaries.length > 0) {
+        const goalMins = streakGoal * 60;
+        const todayStr = format(new Date(), 'yyyy-MM-dd');
+        const yesterdayStr = format(subDays(new Date(), 1), 'yyyy-MM-dd');
+        
+        const todaySum = dailySummaries.find(s => s.date === todayStr);
+        const yesterdaySum = dailySummaries.find(s => s.date === yesterdayStr);
+
+        if ((todaySum && todaySum.totalMinutes >= goalMins) || (yesterdaySum && yesterdaySum.totalMinutes >= goalMins)) {
+            let count = 0;
+            let checkDate = (todaySum && todaySum.totalMinutes >= goalMins) ? new Date() : subDays(new Date(), 1);
+            while (true) {
+                const dStr = format(checkDate, 'yyyy-MM-dd');
+                const s = dailySummaries.find(sum => sum.date === dStr);
+                if (s && s.totalMinutes >= goalMins) {
+                    count++;
+                    checkDate = subDays(checkDate, 1);
+                } else break;
+            }
+            currentStreak = count;
+        }
+    }
+
+    return { totalMinutes, activeDays, topSubject, currentStreak };
+  }, [dailySummaries, subjects, streakGoal]);
 
   if (isUserLoading || (summariesLoading && !dailySummaries) || !isMounted) {
     return (
@@ -159,6 +186,8 @@ export default function StatsPage() {
           totalMinutes={stats.totalMinutes} 
           topSubject={stats.topSubject} 
           activeDays={stats.activeDays} 
+          streak={stats.currentStreak}
+          streakGoal={streakGoal}
           isAnonymous={!!isAnonymousUser}
         />
 

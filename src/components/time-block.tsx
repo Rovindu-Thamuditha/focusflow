@@ -55,7 +55,7 @@ export function TimeBlock({
   const subject = isSleep 
     ? { id: 'sleep', name: 'Sleep', icon: 'Moon', color: 'hsl(210 8% 25%)' }
     : isClass
-    ? { id: 'class', name: 'Class', icon: 'School', color: '#3b82f6' }
+    ? { id: 'class', name: 'Class', icon: 'School', color: '#6366f1' }
     : subjects.find(s => s.id === subjectId) || { id: 'idle', name: 'Idle', icon: 'Sparkles', color: 'hsl(var(--muted))' };
   
   const formattedHour = (hour % 12 === 0 ? 12 : hour % 12) + (hour < 12 || hour === 24 ? ' AM' : ' PM');
@@ -69,9 +69,9 @@ export function TimeBlock({
   const Icon = ICONS[subject.icon] || Sparkles;
 
   const specialStyles = isSleep 
-    ? "dark:bg-gray-800 dark:text-gray-500 bg-slate-700 text-slate-300"
+    ? "dark:bg-slate-800 dark:text-slate-500 bg-slate-100 text-slate-500 border-slate-200"
     : isClass
-    ? "bg-blue-600 text-white border-blue-400"
+    ? "dark:bg-indigo-950/40 dark:text-indigo-400 bg-indigo-50 text-indigo-600 border-indigo-200"
     : (subject.id === 'idle' ? "dark:text-gray-500 text-slate-500" : getBrightness());
 
   const finalIsEditable = isEditable && !isFuture;
@@ -161,3 +161,4 @@ export function TimeBlock({
     </ContextMenu>
   );
 }
+
