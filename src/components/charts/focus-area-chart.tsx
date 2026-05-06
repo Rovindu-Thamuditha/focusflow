@@ -26,8 +26,8 @@ export const FocusAreaChart = React.memo(({ data, subjects, isFullscreen }: Focu
         <defs>
           {activeSubjects.map(s => (
             <linearGradient key={`area-grad-${s.id}`} id={`area-color-${s.id}`} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor={s.color} stopOpacity={0.12}/>
-              <stop offset="95%" stopColor={s.color} stopOpacity={0}/>
+              <stop offset="5%" stopColor={s.color} stopOpacity={0.35}/>
+              <stop offset="95%" stopColor={s.color} stopOpacity={0.02}/>
             </linearGradient>
           ))}
         </defs>
@@ -83,12 +83,11 @@ export const FocusAreaChart = React.memo(({ data, subjects, isFullscreen }: Focu
             dataKey={subject.id}
             name={subject.name}
             stroke={subject.color}
-            strokeWidth={1.5}
+            strokeWidth={2}
             fill={`url(#area-color-${subject.id})`}
-            // Removing stackId for a more modern unstacked "Linear" style overlap
-            // This provides better visibility of individual subject trends
+            // High-precision monotone curve handles "flat" surfaces smoothly
             activeDot={{ 
-              r: 4, 
+              r: 5, 
               strokeWidth: 4, 
               stroke: `${subject.color}33`, 
               fill: subject.color,
