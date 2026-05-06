@@ -1,39 +1,26 @@
-
 "use client";
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import type { TimeBlockState, Subject, DailySummary } from '@/lib/types';
 import { AccountabilityGrid } from '@/components/accountability-grid';
 import { DailyChallenge } from '@/components/daily-challenge';
 import { MainHeader } from '@/components/main-header';
 import { dailyQuestions } from '@/lib/questions';
-import { getDayOfYear, format, addDays, subDays, startOfDay, isToday, isFuture, differenceInHours } from 'date-fns';
+import { getDayOfYear, format, addDays, subDays, startOfDay, isToday } from 'date-fns';
 import { Card, CardContent } from '@/components/ui/card';
 import { defaultSubjects } from '@/lib/subjects';
 import { useUser, useAuth, useFirestore, useMemoFirebase, useDoc, useCollection } from '@/firebase';
 import { useRouter } from 'next/navigation';
-import { doc, setDoc, collection, query, where, writeBatch, arrayUnion, orderBy, limit } from 'firebase/firestore';
+import { doc, setDoc, collection, query, where, writeBatch, orderBy, limit } from 'firebase/firestore';
 import { signInAnonymously } from 'firebase/auth';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, ChevronRight, RotateCcw } from 'lucide-react';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog"
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { GridFocusLoader } from '@/components/grid-focus-loader';
 import { FeedbackDialog } from '@/components/feedback-dialog';
 import { TodoList } from '@/components/todo-list';
 import { FloatingTimer } from '@/components/floating-timer';
 import { WhatsNewDialog } from '@/components/whats-new-dialog';
 import { OnboardingDialog } from '@/components/onboarding-dialog';
-import { useToast } from '@/hooks/use-toast';
 import { useTimer } from '@/context/timer-context';
 import { useDebouncedEffect } from '@/hooks/useDebouncedEffect';
 import { StreakCounter } from '@/components/streak-counter';
@@ -53,12 +40,9 @@ export default function Home() {
   const auth = useAuth();
   const firestore = useFirestore();
   const router = useRouter();
-  const { toast } = useToast();
-  const { timerSubject, elapsedSeconds, lastStopTime, timerIsRunning } = useTimer();
 
   const [currentDate, setCurrentDate] = useState<Date | null>(null);
   const [timeBlocks, setTimeBlocks] = useState<TimeBlockState[]>([]);
-  const [solvedChallenges, setSolvedChallenges] = useState<boolean[]>([]);
   const [sleepHours, setSleepHours] = useState<number[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>(defaultSubjects);
   const [language, setLanguage] = useState<'english' | 'sinhala'>('english');
@@ -186,11 +170,23 @@ export default function Home() {
     } else if (user && firestore) {
       const batch = writeBatch(firestore);
       let total = 0;
+      const subjectMins: Record<string, number> = {};
+      
       timeBlocks.forEach(b => {
         batch.set(doc(firestore, 'users', user.uid, 'time_blocks', `${dateString}_${b.hour}`), b);
-        if (b.subject !== 'idle' && b.subject !== 'sleep') total += b.duration;
+        // Calculate minutes for real focus subjects (not idle, sleep, or class)
+        if (b.subject !== 'idle' && b.subject !== 'sleep' && b.subject !== 'class') {
+          total += b.duration;
+          subjectMins[b.subject] = (subjectMins[b.subject] || 0) + b.duration;
+        }
       });
-      batch.set(doc(firestore, 'users', user.uid, 'daily_summaries', dateString), { id: dateString, date: dateString, totalMinutes: total });
+      
+      batch.set(doc(firestore, 'users', user.uid, 'daily_summaries', dateString), { 
+        id: dateString, 
+        date: dateString, 
+        totalMinutes: total,
+        subjectMinutes: subjectMins
+      });
       batch.commit();
     }
   }, [timeBlocks, dateString, user, firestore, userDataLoaded]);
@@ -230,7 +226,7 @@ export default function Home() {
       {enableTimer && <FloatingTimer subjects={subjects} />}
       <FeedbackDialog isOpen={isFeedbackDialogOpen} onOpenChange={setIsFeedbackDialogOpen} />
       <WhatsNewDialog seenVersions={[]} onMarkAsSeen={() => {}} />
-      <OnboardingDialog isOpen={showOnboarding} onFinish={(s) => { setDoc(userDocRef!, { hasCompletedOnboarding: true }, { merge: true }); setShowOnboarding(false); }} initialSettings={{ subjects, sleepHours, language, enableTimer, enableDailyChallenge, enableTodoList, enableAiInsights: false, disableEditRestriction }} />
+      <OnboardingDialog isOpen={showOnboarding} onFinish={() => { setDoc(userDocRef!, { hasCompletedOnboarding: true }, { merge: true }); setShowOnboarding(false); }} initialSettings={{ subjects, sleepHours, language, enableTimer, enableDailyChallenge, enableTodoList, enableAiInsights: false, disableEditRestriction }} />
     </div>
   );
 }

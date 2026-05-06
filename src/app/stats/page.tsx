@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
@@ -8,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { useUser, useFirestore, useMemoFirebase, useCollection } from '@/firebase';
 import { useRouter } from 'next/navigation';
 import { collection, query, where, getDoc, doc, orderBy } from 'firebase/firestore';
-import { subDays, startOfDay, format, eachDayOfInterval, differenceInHours } from 'date-fns';
+import { subDays, startOfDay, format, eachDayOfInterval } from 'date-fns';
 import type { Subject, DailySummary } from '@/lib/types';
 import { defaultSubjects } from '@/lib/subjects';
 import { cn } from '@/lib/utils';
@@ -96,7 +95,7 @@ export default function StatsPage() {
       };
 
       subjects.forEach(s => {
-        if (s.id !== 'idle' && s.id !== 'sleep') {
+        if (s.id !== 'idle' && s.id !== 'sleep' && s.id !== 'class') {
           entry[s.id] = summary?.subjectMinutes?.[s.id] || 0;
         }
       });
@@ -111,9 +110,12 @@ export default function StatsPage() {
     
     const subjectTotals: Record<string, number> = {};
     dailySummaries?.forEach(s => {
-      Object.entries(s.subjectMinutes).forEach(([id, mins]) => {
-        subjectTotals[id] = (subjectTotals[id] || 0) + mins;
-      });
+      // Safely handle missing subjectMinutes data in older records
+      if (s.subjectMinutes) {
+        Object.entries(s.subjectMinutes).forEach(([id, mins]) => {
+          subjectTotals[id] = (subjectTotals[id] || 0) + mins;
+        });
+      }
     });
 
     const topSubjectId = Object.entries(subjectTotals).sort((a, b) => b[1] - a[1])[0]?.[0];
