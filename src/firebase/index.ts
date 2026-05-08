@@ -3,20 +3,28 @@
 import { firebaseConfig } from '@/firebase/config';
 import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
-import { getFirestore, initializeFirestore, persistentLocalCache } from 'firebase/firestore';
+import { 
+  initializeFirestore, 
+  persistentLocalCache, 
+  persistentMultipleTabManager,
+  Firestore 
+} from 'firebase/firestore';
 
 // IMPORTANT: DO NOT MODIFY THIS FUNCTION
 export function initializeFirebase() {
   const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
   
-  // Use the simpler getFirestore for broader compatibility in dev environments.
-  // Offline persistence is still enabled by default in most modern browsers for production builds.
-  const firestore = getFirestore(app);
+  // Enable offline persistence for Firestore
+  const firestore = initializeFirestore(app, {
+    localCache: persistentLocalCache({
+      tabManager: persistentMultipleTabManager(),
+    }),
+  });
 
   return getSdks(app, firestore);
 }
 
-export function getSdks(firebaseApp: FirebaseApp, firestore: any) {
+export function getSdks(firebaseApp: FirebaseApp, firestore: Firestore) {
   return {
     firebaseApp,
     auth: getAuth(firebaseApp),

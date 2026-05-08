@@ -1,4 +1,3 @@
-
 import type { Metadata, Viewport } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
@@ -11,6 +10,7 @@ import { TimerProvider } from '@/context/timer-context';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { BottomNav } from '@/components/bottom-nav';
 import { syncOfflineFeedback } from '@/lib/feedback-manager';
+import { OfflineBanner } from '@/components/offline-banner';
 
 import 'katex/dist/katex.min.css';
 
@@ -66,6 +66,7 @@ export default function RootLayout({
               <TooltipProvider>
                 <TimerProvider>
                   <div className="relative flex min-h-screen flex-col pb-20 sm:pb-0">
+                    <OfflineBanner />
                     {children}
                   </div>
                   <BottomNav />

@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -11,15 +10,17 @@ import { FriendsList } from '@/components/friends/friends-list';
 import { GridFocusLoader } from '@/components/grid-focus-loader';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Send } from 'lucide-react';
+import { Send, WifiOff } from 'lucide-react';
 import { collection, query, where, getDocs, writeBatch, doc, serverTimestamp } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
+import { useOnlineStatus } from '@/hooks/use-online-status';
 
 export default function FriendsPage() {
     const { user, isUserLoading } = useUser();
     const firestore = useFirestore();
     const router = useRouter();
     const { toast } = useToast();
+    const isOnline = useOnlineStatus();
     const [friendUsername, setFriendUsername] = useState('');
     const [isSendingRequest, setIsSendingRequest] = useState(false);
     
@@ -32,7 +33,7 @@ export default function FriendsPage() {
     }, [user, isUserLoading, router]);
 
     const handleSendRequest = async () => {
-        if (!firestore || !user || !friendUsername.trim()) return;
+        if (!firestore || !user || !friendUsername.trim() || !isOnline) return;
 
         setIsSendingRequest(true);
         try {
@@ -112,10 +113,17 @@ export default function FriendsPage() {
         <div className="flex flex-col min-h-screen">
             <MainHeader totalFocusedTime={0} showBackButton />
             <main className="flex-grow container mx-auto p-4 sm:p-6 md:p-8">
-                <Card>
+                <Card className={!isOnline ? "opacity-75 grayscale-[0.5] pointer-events-none" : ""}>
                     <CardHeader>
-                        <CardTitle>Add Friends</CardTitle>
-                        <CardDescription>Enter a friend's username below to send a request.</CardDescription>
+                        <CardTitle className="flex items-center gap-2">
+                            Add Friends 
+                            {!isOnline && <WifiOff className="w-4 h-4 text-orange-500" />}
+                        </CardTitle>
+                        <CardDescription>
+                            {isOnline 
+                                ? "Enter a friend's username below to send a request." 
+                                : "Internet connection required to find and add new friends."}
+                        </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-6">
                         <div className="p-4 border rounded-lg bg-secondary/50">
@@ -126,9 +134,9 @@ export default function FriendsPage() {
                                     onChange={(e) => setFriendUsername(e.target.value)}
                                     className="text-base" 
                                     placeholder="Username"
-                                    disabled={isSendingRequest}
+                                    disabled={isSendingRequest || !isOnline}
                                 />
-                                <Button onClick={handleSendRequest} disabled={!friendUsername.trim() || isSendingRequest}>
+                                <Button onClick={handleSendRequest} disabled={!friendUsername.trim() || isSendingRequest || !isOnline}>
                                     {isSendingRequest ? 'Sending...' : 'Add Friend'}
                                 </Button>
                             </div>

@@ -13,32 +13,26 @@ import type { DailySummary, Subject } from '@/lib/types';
 import { format, subDays } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { defaultSubjects } from '@/lib/subjects';
-
-interface StudyInsightCache {
-    id: string;
-    userId: string;
-    generatedAt: any;
-    analysis: StudyAnalysisOutput;
-}
+import { useOnlineStatus } from '@/hooks/use-online-status';
+import { WifiOff, BrainCircuit } from 'lucide-react';
 
 export default function InsightsPage() {
     const { user, isUserLoading } = useUser();
     const firestore = useFirestore();
     const router = useRouter();
     const { toast } = useToast();
+    const isOnline = useOnlineStatus();
 
     const [isLoading, setIsLoading] = useState(true);
     const [insights, setInsights] = useState<StudyAnalysisOutput | null>(null);
 
     const todayStr = format(new Date(), 'yyyy-MM-dd');
 
-    // Reference to today's cached insight document
     const insightDocRef = useMemoFirebase(() => {
         if (!user || user.isAnonymous || !firestore) return null;
         return doc(firestore, 'users', user.uid, 'insights', todayStr);
     }, [user, firestore, todayStr]);
 
-    // Fetch last 30 days of daily summaries
     const summariesQuery = useMemoFirebase(() => {
         if (!user || user.isAnonymous || !firestore) return null;
         const startDate = subDays(new Date(), 30);
@@ -58,13 +52,9 @@ export default function InsightsPage() {
             return;
         }
         
-        // Wait until summaries are loaded before proceeding
-        if (summariesLoading) {
-            return;
-        }
+        if (summariesLoading) return;
 
         const getInsights = async () => {
-            // Guard against null/undefined values
             if (!user || !insightDocRef || !firestore) {
                 setIsLoading(false);
                 return;
@@ -72,17 +62,16 @@ export default function InsightsPage() {
             
             setIsLoading(true);
             try {
-                // 1. Check for a cached insight from today
                 const cachedDoc = await getDoc(insightDocRef);
 
                 if (cachedDoc.exists()) {
-                    // Use the cached version
                     setInsights(cachedDoc.data().analysis);
+                    setIsLoading(false);
+                } else if (!isOnline) {
+                    setIsLoading(false);
                 } else {
-                    // No cache found, generate a new one
                     toast({ title: "Generating your analysis...", description: "This may take a moment. Please wait." });
                     
-                    // Fetch user settings to get custom subjects
                     const userDocRef = doc(firestore, 'users', user.uid);
                     const userDoc = await getDoc(userDocRef);
                     const userSubjects = userDoc.exists() ? (userDoc.data().subjects || defaultSubjects) : defaultSubjects;
@@ -99,13 +88,10 @@ export default function InsightsPage() {
                         body: JSON.stringify(analysisInput)
                     });
 
-                    if (!response.ok) {
-                        throw new Error('Failed to fetch analysis from API.');
-                    }
+                    if (!response.ok) throw new Error('Failed to fetch analysis');
                     
                     const newAnalysis: StudyAnalysisOutput = await response.json();
                     
-                    // Cache the new analysis in Firestore
                     if (Object.keys(newAnalysis).length > 0) {
                         await setDoc(insightDocRef, {
                             id: todayStr,
@@ -116,23 +102,18 @@ export default function InsightsPage() {
                     }
                     
                     setInsights(newAnalysis);
+                    setIsLoading(false);
                 }
             } catch (error) {
                 console.error("Error getting study insights:", error);
-                toast({
-                    variant: "destructive",
-                    title: "Analysis Failed",
-                    description: "Could not generate your study insights. Please try again later.",
-                });
-            } finally {
                 setIsLoading(false);
             }
         };
 
         getInsights();
-    }, [user, isUserLoading, router, insightDocRef, todayStr, toast, dailySummaries, summariesLoading, firestore]);
+    }, [user, isUserLoading, router, insightDocRef, todayStr, toast, dailySummaries, summariesLoading, firestore, isOnline]);
 
-    if (isUserLoading || isLoading || summariesLoading) {
+    if (isUserLoading || (isLoading && isOnline) || summariesLoading) {
         return (
             <div className="flex flex-col items-center justify-center min-h-screen">
                 <GridFocusLoader />
@@ -141,6 +122,23 @@ export default function InsightsPage() {
         );
     }
     
+    if (!isOnline && !insights) {
+        return (
+            <div className="flex flex-col min-h-screen">
+                <MainHeader totalFocusedTime={0} />
+                <main className="flex-grow container mx-auto p-4 flex items-center justify-center">
+                    <Card className="w-full max-w-lg text-center p-8 border-dashed border-primary/20">
+                        <WifiOff className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                        <CardTitle className="text-xl font-bold">Offline Mode</CardTitle>
+                        <CardDescription className="mt-2">
+                            AI Study Analysis requires an internet connection. Previously generated insights will be available here when you are back online.
+                        </CardDescription>
+                    </Card>
+                </main>
+            </div>
+        )
+    }
+
     if (!insights) {
         return (
             <div className="flex flex-col min-h-screen">
