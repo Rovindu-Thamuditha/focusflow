@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useFirestore, useCollection, useMemoFirebase, useUser } from '@/firebase';
@@ -9,6 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { getInitials } from '@/lib/utils';
 import { Trophy, Medal, Timer, TrendingUp } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
+import { GridFocusLoader } from '../grid-focus-loader';
 
 interface LeaderboardEntry {
     id: string;
