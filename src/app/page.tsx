@@ -143,7 +143,8 @@ export default function Home() {
       setUserName(userData.username || user.displayName || '');
       const s = userData.settings || {};
       if (!userData.hasCompletedOnboarding) setShowOnboarding(true);
-      setSleepHours(s.sleepHours || []);
+      const loadedSleepHours = s.sleepHours || [];
+      setSleepHours(loadedSleepHours);
       setSubjects(s.subjects || defaultSubjects);
       setLanguage(s.language || 'english');
       setEnableTimer(s.enableTimer !== false);
@@ -164,10 +165,20 @@ export default function Home() {
     }
 
     if (cloudTimeBlocks && cloudTimeBlocks.length > 0) {
-      const normalized = Array.from({ length: 24 }, (_, i) => 
-        cloudTimeBlocks.find(b => b.hour === i) || 
-        { hour: i, subject: sleepHours.includes(i) ? 'sleep' : 'idle', duration: 0, date: dateString! }
-      );
+      // Robust loading: Re-apply sleep logic to existing empty blocks if settings changed
+      const normalized = Array.from({ length: 24 }, (_, i) => {
+        const found = cloudTimeBlocks.find(b => b.hour === i);
+        if (found) {
+           // If it's a sleep hour in settings AND it's currently Idle/0min, force it back to sleep
+           // This recovers auto-sleep on days that were accidentally clobbered
+           if (sleepHours.includes(i) && found.subject === 'idle' && found.duration === 0) {
+             return { ...found, subject: 'sleep' };
+           }
+           return found;
+        }
+        return { hour: i, subject: sleepHours.includes(i) ? 'sleep' : 'idle', duration: 0, date: dateString! };
+      });
+      
       setTimeBlocks(normalized.sort((a, b) => a.hour - b.hour));
       setHasSuccessfullyLoadedCurrentDay(true);
       setTimeout(() => { isSyncingRef.current = false; }, 200);
@@ -199,6 +210,7 @@ export default function Home() {
   useDebouncedEffect(() => {
     // SYNC LOCAL -> CLOUD
     // CRITICAL: Prevent saving if we haven't successfully loaded the current state from the cloud yet
+    // Also guard against missing sleepHours by checking userDataLoaded
     if (!userDataLoaded || !hasSuccessfullyLoadedCurrentDay || timeBlocks.length !== 24 || !dateString || blocksLoading || isSyncingRef.current) return;
 
     if (user?.isAnonymous) {

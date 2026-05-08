@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Settings, Trash2, PlusCircle, Sparkles, Bed, MessageSquarePlus, ShieldAlert, Flame, Database, RefreshCw, AlertTriangle } from 'lucide-react';
+import { Settings, Trash2, PlusCircle, Sparkles, Bed, MessageSquarePlus, ShieldAlert, Flame, Database, RefreshCw, AlertTriangle, CloudSync } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
@@ -15,7 +15,7 @@ import { ALL_ICONS } from '@/lib/icons';
 import { Switch } from '@/components/ui/switch';
 import { FeedbackDialog } from '@/components/feedback-dialog';
 import { useDoc, useFirestore, useUser, useMemoFirebase } from '@/firebase';
-import { doc, setDoc, writeBatch, collection, getDocs, query, where } from 'firebase/firestore';
+import { doc, setDoc, writeBatch, collection, getDocs, query, where, getDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { MainHeader } from '@/components/main-header';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -117,34 +117,69 @@ export default function SettingsPage() {
         if (!user || user.isAnonymous || !firestore) return;
         
         setIsRepairing(true);
-        toast({ title: "Scanning Cloud Database...", description: "Looking for orphaned focus records. This may take a moment." });
+        toast({ title: "Brute-Force Database Scan Started", description: "Scanning all legacy paths for focus hours. Please do not close the app." });
 
         try {
-            const blocksRef = collection(firestore, 'users', user.uid, 'time_blocks');
-            const blocksSnap = await getDocs(blocksRef);
-            
-            if (blocksSnap.empty) {
-                toast({ title: "No data found", description: "Could not find any orphaned time blocks in the cloud." });
-                setIsRepairing(false);
-                return;
-            }
-
             const batch = writeBatch(firestore);
-            const summaries: Record<string, { total: number, subjectMins: Record<string, number> }> = {};
-            let repairedCount = 0;
+            const recoveredSummaries: Record<string, { total: number, subjectMins: Record<string, number> }> = {};
+            let blocksProcessed = 0;
+            let legacyGridsFound = 0;
 
-            blocksSnap.docs.forEach(doc => {
-                const b = doc.data() as TimeBlockState;
-                if (b.duration > 0 && b.subject !== 'idle' && b.subject !== 'sleep' && b.subject !== 'class') {
-                    if (!summaries[b.date]) {
-                        summaries[b.date] = { total: 0, subjectMins: {} };
-                    }
-                    summaries[b.date].total += b.duration;
-                    summaries[b.date].subjectMins[b.subject] = (summaries[b.date].subjectMins[b.subject] || 0) + b.duration;
+            // 1. Scan Legacy focusGridStates collection (Blueprint defined format)
+            const legacyRef = collection(firestore, 'users', user.uid, 'focusGridStates');
+            const legacySnap = await getDocs(legacyRef);
+            
+            legacySnap.docs.forEach(doc => {
+                const data = doc.data();
+                if (data.gridData) {
+                    try {
+                        const grid = JSON.parse(data.gridData);
+                        // The legacy grid was usually an object of hours
+                        Object.entries(grid).forEach(([hour, block]: [string, any]) => {
+                            if (block.duration > 0) {
+                                const dateStr = data.date ? data.date.split('T')[0] : 'legacy';
+                                if (dateStr === 'legacy') return;
+
+                                // Re-create the time_block document
+                                const blockId = `${dateStr}_${hour}`;
+                                const blockRef = doc(firestore, 'users', user.uid, 'time_blocks', blockId);
+                                const blockData: TimeBlockState = {
+                                    hour: parseInt(hour),
+                                    subject: block.subject || 'idle',
+                                    duration: block.duration,
+                                    date: dateStr
+                                };
+                                batch.set(blockRef, blockData, { merge: true });
+
+                                // Aggregate for summary
+                                if (!recoveredSummaries[dateStr]) recoveredSummaries[dateStr] = { total: 0, subjectMins: {} };
+                                recoveredSummaries[dateStr].total += block.duration;
+                                recoveredSummaries[dateStr].subjectMins[blockData.subject] = (recoveredSummaries[dateStr].subjectMins[blockData.subject] || 0) + block.duration;
+                                blocksProcessed++;
+                            }
+                        });
+                        legacyGridsFound++;
+                    } catch (e) { console.error("Error parsing legacy grid", e); }
                 }
             });
 
-            Object.entries(summaries).forEach(([date, data]) => {
+            // 2. Scan Existing time_blocks to fix corrupted summaries
+            const blocksRef = collection(firestore, 'users', user.uid, 'time_blocks');
+            const blocksSnap = await getDocs(blocksRef);
+            
+            blocksSnap.docs.forEach(doc => {
+                const b = doc.data() as TimeBlockState;
+                if (b.duration > 0 && b.subject !== 'idle' && b.subject !== 'sleep' && b.subject !== 'class') {
+                    if (!recoveredSummaries[b.date]) {
+                        recoveredSummaries[b.date] = { total: 0, subjectMins: {} };
+                    }
+                    recoveredSummaries[b.date].total += b.duration;
+                    recoveredSummaries[b.date].subjectMins[b.subject] = (recoveredSummaries[b.date].subjectMins[b.subject] || 0) + b.duration;
+                }
+            });
+
+            // Commit all reconstructed summaries
+            Object.entries(recoveredSummaries).forEach(([date, data]) => {
                 const summaryRef = doc(firestore, 'users', user.uid, 'daily_summaries', date);
                 batch.set(summaryRef, {
                     id: date,
@@ -152,18 +187,21 @@ export default function SettingsPage() {
                     totalMinutes: data.total,
                     subjectMinutes: data.subjectMins
                 }, { merge: true });
-                repairedCount++;
             });
 
-            if (repairedCount > 0) {
-                await batch.commit();
-                toast({ title: "Repair Complete!", description: `Successfully reconstructed ${repairedCount} days of focus data.` });
+            await batch.commit();
+            
+            if (blocksProcessed > 0 || Object.keys(recoveredSummaries).length > 0) {
+                toast({ 
+                    title: "Deep Recovery Complete!", 
+                    description: `Restored ${Object.keys(recoveredSummaries).length} days of data. (${legacyGridsFound} legacy grids found)` 
+                });
             } else {
-                toast({ title: "Scan Complete", description: "Found records but none required repair." });
+                toast({ title: "Scan Finished", description: "No legacy or orphaned data was found in your account." });
             }
         } catch (error) {
-            console.error("Repair error:", error);
-            toast({ variant: "destructive", title: "Repair Failed", description: "Check your connection and try again." });
+            console.error("Deep repair error:", error);
+            toast({ variant: "destructive", title: "Recovery Failed", description: "Encountered a database error. Check your connection." });
         } finally {
             setIsRepairing(false);
         }
@@ -175,14 +213,12 @@ export default function SettingsPage() {
         setIsMigrating(true);
         try {
             const batch = writeBatch(firestore);
-            
-            // Check both old and new keys for orphaned data
             const oldKey = localStorage.getItem('gridTimeBlocks');
             const newKey = localStorage.getItem('gridFocusTimeBlocks');
             const dataStr = newKey || oldKey;
             
             if (!dataStr) {
-                toast({ title: "No local data found", description: "All your data is already synced or doesn't exist locally." });
+                toast({ title: "No local data found" });
                 setIsMigrating(false);
                 return;
             }
@@ -202,13 +238,11 @@ export default function SettingsPage() {
                 await batch.commit();
                 localStorage.removeItem('gridTimeBlocks');
                 localStorage.removeItem('gridFocusTimeBlocks');
-                toast({ title: "Sync Complete!", description: `Successfully recovered ${count} focus entries.` });
-            } else {
-                toast({ title: "Nothing to sync" });
+                toast({ title: "Local Sync Complete!", description: `Migrated ${count} logs.` });
             }
         } catch (error) {
             console.error("Migration error:", error);
-            toast({ variant: "destructive", title: "Sync Failed", description: "Try again when you have a stable connection." });
+            toast({ variant: "destructive", title: "Sync Failed" });
         } finally {
             setIsMigrating(false);
         }
@@ -293,7 +327,7 @@ export default function SettingsPage() {
                                         <div className="p-4 rounded-xl border bg-primary/5 border-primary/10 space-y-4">
                                              <Label className="flex flex-col gap-1">
                                                 <span className="font-bold flex items-center gap-2 text-primary"><Database className="w-4 h-4" />Data Integrity & Recovery</span>
-                                                <span className="text-xs text-muted-foreground">Tools to find and restore missing or orphaned study records.</span>
+                                                <span className="text-xs text-muted-foreground">Tools to find and restore missing or legacy study records.</span>
                                             </Label>
                                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                                 <Button 
@@ -318,7 +352,7 @@ export default function SettingsPage() {
                                                         {isRepairing ? <RefreshCw className="w-4 h-4 animate-spin" /> : <AlertTriangle className="w-4 h-4" />}
                                                         Deep Cloud Scan
                                                     </div>
-                                                    <span className="text-[10px] text-muted-foreground">Reconstruct missing stats from logs.</span>
+                                                    <span className="text-[10px] text-muted-foreground">Brute-force legacy data recovery.</span>
                                                 </Button>
                                             </div>
                                         </div>
