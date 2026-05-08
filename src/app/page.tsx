@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import type { TimeBlockState, Subject, DailySummary } from '@/lib/types';
 import { AccountabilityGrid } from '@/components/accountability-grid';
 import { DailyChallenge } from '@/components/daily-challenge';
@@ -54,6 +54,9 @@ export default function Home() {
   const [isFeedbackDialogOpen, setIsFeedbackDialogOpen] = useState(false);
   const [streakGoal, setStreakGoal] = useState(2);
   const [seenWhatsNewVersions, setSeenWhatsNewVersions] = useState<string[]>([]);
+  
+  // Guard to prevent saving while initial cloud data is loading
+  const isSyncingRef = useRef(false);
 
   // Feature toggles
   const [enableTimer, setEnableTimer] = useState(true);
@@ -70,7 +73,8 @@ export default function Home() {
     if (!user || user.isAnonymous || !firestore || !dateString) return null;
     return query(collection(firestore, 'users', user.uid, 'time_blocks'), where('date', '==', dateString));
   }, [user, firestore, dateString]);
-  const { data: cloudTimeBlocks } = useCollection<TimeBlockState>(timeBlockQuery);
+  
+  const { data: cloudTimeBlocks, isLoading: blocksLoading } = useCollection<TimeBlockState>(timeBlockQuery);
 
   const summariesQuery = useMemoFirebase(() => {
     if (!user || user.isAnonymous || !firestore) return null;
@@ -87,13 +91,11 @@ export default function Home() {
   useEffect(() => {
     setCurrentDate(startOfDay(new Date()));
     
-    // Legacy Data Recovery: Check if the old key exists and rename it
     if (typeof window !== 'undefined') {
         const oldData = localStorage.getItem('gridTimeBlocks');
         const newData = localStorage.getItem('gridFocusTimeBlocks');
         if (oldData && !newData) {
             localStorage.setItem('gridFocusTimeBlocks', oldData);
-            // We keep the old key for one more session just in case, but migration should now find it.
         }
     }
   }, []);
@@ -160,13 +162,26 @@ export default function Home() {
   }, [user, userData, currentDate]);
 
   useEffect(() => {
-    if (cloudTimeBlocks && cloudTimeBlocks.length > 0) {
-      const normalized = Array.from({ length: 24 }, (_, i) => cloudTimeBlocks.find(b => b.hour === i) || { hour: i, subject: sleepHours.includes(i) ? 'sleep' : 'idle', duration: 0, date: dateString! });
-      setTimeBlocks(normalized.sort((a, b) => a.hour - b.hour));
-    } else if (currentDate && !user?.isAnonymous && userDataLoaded) {
-      setTimeBlocks(createInitialState(sleepHours, currentDate));
+    // SYNC CLOUD -> LOCAL
+    if (blocksLoading) {
+        isSyncingRef.current = true;
+        return;
     }
-  }, [cloudTimeBlocks, sleepHours, dateString, currentDate, user, userDataLoaded]);
+
+    if (cloudTimeBlocks && cloudTimeBlocks.length > 0) {
+      const normalized = Array.from({ length: 24 }, (_, i) => 
+        cloudTimeBlocks.find(b => b.hour === i) || 
+        { hour: i, subject: sleepHours.includes(i) ? 'sleep' : 'idle', duration: 0, date: dateString! }
+      );
+      setTimeBlocks(normalized.sort((a, b) => a.hour - b.hour));
+      // Give a tiny bit of time for state to settle before allowing saves
+      setTimeout(() => { isSyncingRef.current = false; }, 100);
+    } else if (currentDate && !user?.isAnonymous && userDataLoaded) {
+      // Only set initial state if loading is definitely finished and day is empty
+      setTimeBlocks(createInitialState(sleepHours, currentDate));
+      setTimeout(() => { isSyncingRef.current = false; }, 100);
+    }
+  }, [cloudTimeBlocks, blocksLoading, sleepHours, dateString, currentDate, user, userDataLoaded]);
 
   useDebouncedEffect(() => {
     if (!userDataLoaded || showOnboarding) return;
@@ -180,7 +195,10 @@ export default function Home() {
   }, [subjects, sleepHours, language, enableTimer, enableDailyChallenge, enableTodoList, disableEditRestriction, streakGoal, userDocRef, userDataLoaded, showOnboarding]);
 
   useDebouncedEffect(() => {
-    if (!userDataLoaded || timeBlocks.length !== 24 || !dateString) return;
+    // SYNC LOCAL -> CLOUD
+    // CRITICAL: Prevent saving if we are currently loading or updating from the cloud
+    if (!userDataLoaded || timeBlocks.length !== 24 || !dateString || blocksLoading || isSyncingRef.current) return;
+
     if (user?.isAnonymous) {
       const all = JSON.parse(localStorage.getItem('gridFocusTimeBlocks') || '{}');
       all[dateString] = timeBlocks;
@@ -203,10 +221,11 @@ export default function Home() {
         date: dateString, 
         totalMinutes: total,
         subjectMinutes: subjectMins
-      });
-      batch.commit();
+      }, { merge: true });
+
+      batch.commit().catch(e => console.error("Batch save failed:", e));
     }
-  }, [timeBlocks, dateString, user, firestore, userDataLoaded]);
+  }, [timeBlocks, dateString, user, firestore, userDataLoaded, blocksLoading]);
 
   const handleMarkAsSeen = (version: string) => {
     const updated = [...new Set([...seenWhatsNewVersions, version])];
@@ -243,7 +262,11 @@ export default function Home() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <Card className="lg:col-span-2 border-2 border-primary/10 shadow-xl bg-card/50 backdrop-blur-sm">
             <CardContent className="p-4">
-              <AccountabilityGrid blocks={timeBlocks} subjects={subjects} onBlockUpdate={(h, s, d) => setTimeBlocks(prev => prev.map(b => b.hour === h ? { ...b, subject: s, duration: d } : b))} viewingDate={currentDate} liveTime={new Date()} disableEditRestriction={disableEditRestriction} />
+              {blocksLoading && !timeBlocks.length ? (
+                  <div className="h-[400px] flex items-center justify-center"><GridFocusLoader /></div>
+              ) : (
+                  <AccountabilityGrid blocks={timeBlocks} subjects={subjects} onBlockUpdate={(h, s, d) => setTimeBlocks(prev => prev.map(b => b.hour === h ? { ...b, subject: s, duration: d } : b))} viewingDate={currentDate} liveTime={new Date()} disableEditRestriction={disableEditRestriction} />
+              )}
             </CardContent>
           </Card>
           <div className="space-y-6">
