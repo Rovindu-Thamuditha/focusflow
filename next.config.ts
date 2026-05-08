@@ -1,11 +1,9 @@
-
 import type {NextConfig} from 'next';
-
-const isProd = process.env.NODE_ENV === 'production';
 
 const nextConfig: NextConfig = {
   /* config options here */
   images: {
+    unoptimized: true, // Required for static export (Capacitor)
     remotePatterns: [
       {
         protocol: 'https',
@@ -27,7 +25,7 @@ const nextConfig: NextConfig = {
       },
     ],
   },
-  output: isProd ? 'export' : undefined,
+  output: 'export', // Force static export for Capacitor APK generation
 };
 
 export default nextConfig;

@@ -9,6 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useUser } from '@/firebase';
 import { Icons } from './icons';
 import { saveFeedbackOffline, syncOfflineFeedback } from '@/lib/feedback-manager';
+import { sendFeedback } from '@/ai/flows/send-feedback-flow';
 
 interface FeedbackDialogProps {
     isOpen: boolean;
@@ -39,17 +40,8 @@ export function FeedbackDialog({ isOpen, onOpenChange }: FeedbackDialogProps) {
             throw new Error('Offline');
         }
 
-        const response = await fetch('/api/send-feedback', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(feedbackData)
-        });
-
-        if (!response.ok) {
-            throw new Error('API Error');
-        }
-
-        const result = await response.json();
+        // Call the flow directly instead of fetching from an API route (which is unavailable in static export)
+        const result = await sendFeedback(feedbackData);
 
         if (result.success) {
             toast({
@@ -58,7 +50,15 @@ export function FeedbackDialog({ isOpen, onOpenChange }: FeedbackDialogProps) {
             });
             await syncOfflineFeedback(); // Attempt to send any previously queued feedback
         } else {
-            throw new Error(result.details || "API returned an error");
+            // Check for explicit message from stubbed flow
+            if (result.message) {
+                toast({
+                    title: "Action Restricted",
+                    description: result.message,
+                });
+            } else {
+                throw new Error("API returned an error");
+            }
         }
 
     } catch (error) {

@@ -1,3 +1,4 @@
+import { sendFeedback } from '@/ai/flows/send-feedback-flow';
 
 const OFFLINE_FEEDBACK_QUEUE_KEY = 'offline_feedback_queue';
 
@@ -37,7 +38,7 @@ function getOfflineFeedbackQueue(): FeedbackPayload[] {
 }
 
 /**
- * Attempts to send all queued offline feedback to the API.
+ * Attempts to send all queued offline feedback using the sendFeedback flow.
  * Removes successfully sent items from the queue.
  */
 export async function syncOfflineFeedback(): Promise<void> {
@@ -56,15 +57,11 @@ export async function syncOfflineFeedback(): Promise<void> {
   
   for (const feedback of queue) {
     try {
-      const response = await fetch('/api/send-feedback', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(feedback),
-      });
+      // Call flow directly instead of fetch
+      const result = await sendFeedback(feedback);
 
-      if (!response.ok) {
-        // If API returns an error (e.g., 500), keep it in the queue to retry later
-        throw new Error(`API error: ${response.statusText}`);
+      if (!result.success) {
+        throw new Error(result.message || 'Sync failed');
       }
       
       console.log(`Successfully synced feedback from ${feedback.timestamp}`);

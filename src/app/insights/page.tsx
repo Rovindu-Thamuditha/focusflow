@@ -8,7 +8,7 @@ import { MainHeader } from '@/components/main-header';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { GridFocusLoader } from '@/components/grid-focus-loader';
 import { StudyInsights } from '@/components/study-insights';
-import { type StudyAnalysisOutput, type StudyAnalysisInput } from '@/ai/flows/analyze-study-data-flow';
+import { analyzeStudyData, type StudyAnalysisOutput, type StudyAnalysisInput } from '@/ai/flows/analyze-study-data-flow';
 import type { DailySummary, Subject } from '@/lib/types';
 import { format, subDays } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
@@ -82,15 +82,8 @@ export default function InsightsPage() {
                         currentDate: format(new Date(), 'yyyy-MM-dd')
                     };
 
-                    const response = await fetch('/api/analyze-study-data', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(analysisInput)
-                    });
-
-                    if (!response.ok) throw new Error('Failed to fetch analysis');
-                    
-                    const newAnalysis: StudyAnalysisOutput = await response.json();
+                    // Call the flow directly instead of fetching from an API route (which is unavailable in static export)
+                    const newAnalysis = await analyzeStudyData(analysisInput);
                     
                     if (Object.keys(newAnalysis).length > 0) {
                         await setDoc(insightDocRef, {
