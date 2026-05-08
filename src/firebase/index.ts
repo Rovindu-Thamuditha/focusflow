@@ -10,18 +10,23 @@ import {
   Firestore 
 } from 'firebase/firestore';
 
+// Cache the Firestore instance to prevent multiple initialization errors during HMR or Strict Mode
+let cachedFirestore: Firestore | null = null;
+
 // IMPORTANT: DO NOT MODIFY THIS FUNCTION
 export function initializeFirebase() {
   const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
   
-  // Enable offline persistence for Firestore
-  const firestore = initializeFirestore(app, {
-    localCache: persistentLocalCache({
-      tabManager: persistentMultipleTabManager(),
-    }),
-  });
+  if (!cachedFirestore) {
+    // Enable offline persistence for Firestore
+    cachedFirestore = initializeFirestore(app, {
+      localCache: persistentLocalCache({
+        tabManager: persistentMultipleTabManager(),
+      }),
+    });
+  }
 
-  return getSdks(app, firestore);
+  return getSdks(app, cachedFirestore);
 }
 
 export function getSdks(firebaseApp: FirebaseApp, firestore: Firestore) {
