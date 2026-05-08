@@ -1,8 +1,9 @@
+
 'use client';
 
 import { useEffect, useState } from 'react';
 import { MainHeader } from '@/components/main-header';
-import { useUser, useFirestore, errorEmitter, FirestorePermissionError } from '@/firebase';
+import { useUser, useFirestore } from '@/firebase';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { FriendRequests } from '@/components/friends/friend-requests';
@@ -10,7 +11,7 @@ import { FriendsList } from '@/components/friends/friends-list';
 import { GridFocusLoader } from '@/components/grid-focus-loader';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Send, WifiOff } from 'lucide-react';
+import { Send, WifiOff, UserPlus } from 'lucide-react';
 import { collection, query, where, getDocs, writeBatch, doc, serverTimestamp } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { useOnlineStatus } from '@/hooks/use-online-status';
@@ -33,16 +34,18 @@ export default function FriendsPage() {
     }, [user, isUserLoading, router]);
 
     const handleSendRequest = async () => {
-        if (!firestore || !user || !friendUsername.trim() || !isOnline) return;
+        const targetUsername = friendUsername.trim();
+        if (!firestore || !user || !targetUsername || !isOnline) return;
 
         setIsSendingRequest(true);
         try {
             const usersRef = collection(firestore, 'users');
-            const q = query(usersRef, where('username', '==', friendUsername.trim()));
+            // Try to find by exact match, or lowercase if standardized
+            const q = query(usersRef, where('username', '==', targetUsername));
             const querySnapshot = await getDocs(q);
 
             if (querySnapshot.empty) {
-                toast({ variant: "destructive", title: "User Not Found", description: "No user found with that username." });
+                toast({ variant: "destructive", title: "User Not Found", description: "No user found with that exact username. Usernames are case-sensitive." });
                 setIsSendingRequest(false);
                 return;
             }
@@ -95,7 +98,7 @@ export default function FriendsPage() {
 
         } catch (error) {
             console.error("Error sending friend request:", error);
-            toast({ variant: "destructive", title: "Error", description: "Failed to send friend request." });
+            toast({ variant: "destructive", title: "Error", description: "Failed to send friend request. Check your connection." });
         } finally {
             setIsSendingRequest(false);
         }
@@ -112,39 +115,38 @@ export default function FriendsPage() {
     return (
         <div className="flex flex-col min-h-screen">
             <MainHeader totalFocusedTime={0} showBackButton />
-            <main className="flex-grow container mx-auto p-4 sm:p-6 md:p-8">
-                <Card className={!isOnline ? "opacity-75 grayscale-[0.5] pointer-events-none" : ""}>
+            <main className="flex-grow container mx-auto p-4 sm:p-6 md:p-8 space-y-8">
+                <Card className={!isOnline ? "opacity-75 grayscale-[0.5] pointer-events-none" : "border-primary/20 shadow-lg"}>
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2">
+                            <UserPlus className="text-primary" />
                             Add Friends 
                             {!isOnline && <WifiOff className="w-4 h-4 text-orange-500" />}
                         </CardTitle>
                         <CardDescription>
                             {isOnline 
-                                ? "Enter a friend's username below to send a request." 
+                                ? "Enter a friend's exact username below to send a request." 
                                 : "Internet connection required to find and add new friends."}
                         </CardDescription>
                     </CardHeader>
-                    <CardContent className="space-y-6">
-                        <div className="p-4 border rounded-lg bg-secondary/50">
-                            <h3 className="font-semibold mb-2 flex items-center gap-2"><Send className="w-5 h-5"/>Enter a Friend's Username</h3>
-                            <div className="flex items-center gap-2">
-                                <Input 
-                                    value={friendUsername}
-                                    onChange={(e) => setFriendUsername(e.target.value)}
-                                    className="text-base" 
-                                    placeholder="Username"
-                                    disabled={isSendingRequest || !isOnline}
-                                />
-                                <Button onClick={handleSendRequest} disabled={!friendUsername.trim() || isSendingRequest || !isOnline}>
-                                    {isSendingRequest ? 'Sending...' : 'Add Friend'}
-                                </Button>
-                            </div>
+                    <CardContent>
+                        <div className="flex items-center gap-2 p-1 border rounded-lg bg-secondary/30 focus-within:ring-2 focus-within:ring-primary/50 transition-all">
+                            <Input 
+                                value={friendUsername}
+                                onChange={(e) => setFriendUsername(e.target.value)}
+                                className="border-none bg-transparent focus-visible:ring-0 text-base" 
+                                placeholder="Username (case-sensitive)"
+                                disabled={isSendingRequest || !isOnline}
+                            />
+                            <Button onClick={handleSendRequest} disabled={!friendUsername.trim() || isSendingRequest || !isOnline} className="gap-2">
+                                {isSendingRequest ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4"/>}
+                                {isSendingRequest ? 'Sending...' : 'Add'}
+                            </Button>
                         </div>
                     </CardContent>
                 </Card>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-8">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                     <FriendRequests currentUserId={user.uid} />
                     <FriendsList currentUserId={user.uid} />
                 </div>

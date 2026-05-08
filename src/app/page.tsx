@@ -86,6 +86,16 @@ export default function Home() {
   
   useEffect(() => {
     setCurrentDate(startOfDay(new Date()));
+    
+    // Legacy Data Recovery: Check if the old key exists and rename it
+    if (typeof window !== 'undefined') {
+        const oldData = localStorage.getItem('gridTimeBlocks');
+        const newData = localStorage.getItem('gridFocusTimeBlocks');
+        if (oldData && !newData) {
+            localStorage.setItem('gridFocusTimeBlocks', oldData);
+            // We keep the old key for one more session just in case, but migration should now find it.
+        }
+    }
   }, []);
 
   const currentStreak = useMemo(() => {
@@ -129,7 +139,7 @@ export default function Home() {
       setSeenWhatsNewVersions(s.seenWhatsNewVersions || []);
       if (!s.hasCompletedOnboarding) setShowOnboarding(true);
       
-      const localBlocks = JSON.parse(localStorage.getItem('gridTimeBlocks') || '{}')[format(currentDate, 'yyyy-MM-dd')];
+      const localBlocks = JSON.parse(localStorage.getItem('gridFocusTimeBlocks') || '{}')[format(currentDate, 'yyyy-MM-dd')];
       setTimeBlocks(localBlocks || createInitialState(s.sleepHours || [], currentDate));
       setUserDataLoaded(true);
     } else if (userData) {
@@ -172,9 +182,9 @@ export default function Home() {
   useDebouncedEffect(() => {
     if (!userDataLoaded || timeBlocks.length !== 24 || !dateString) return;
     if (user?.isAnonymous) {
-      const all = JSON.parse(localStorage.getItem('gridTimeBlocks') || '{}');
+      const all = JSON.parse(localStorage.getItem('gridFocusTimeBlocks') || '{}');
       all[dateString] = timeBlocks;
-      localStorage.setItem('gridTimeBlocks', JSON.stringify(all));
+      localStorage.setItem('gridFocusTimeBlocks', JSON.stringify(all));
     } else if (user && firestore) {
       const batch = writeBatch(firestore);
       let total = 0;

@@ -16,7 +16,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Icons } from '@/components/icons';
-import { useAuth, useUser, useFirestore, errorEmitter, FirestorePermissionError } from '@/firebase';
+import { useAuth, useUser, useFirestore } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import type { TimeBlockState } from '@/lib/types';
 import Link from 'next/link';
@@ -43,15 +43,17 @@ export default function LoginPage() {
     try {
       const batch = writeBatch(firestore);
   
-      // Note: We're not migrating settings as new users go through onboarding.
-  
-      const timeBlocksStr = localStorage.getItem('gridFocusTimeBlocks');
+      // Standardized local storage key check
+      const oldKeyData = localStorage.getItem('gridTimeBlocks');
+      const newKeyData = localStorage.getItem('gridFocusTimeBlocks');
+      const timeBlocksStr = newKeyData || oldKeyData;
+
       if (timeBlocksStr) {
         const localTimeBlocks: { [date: string]: TimeBlockState[] } = JSON.parse(timeBlocksStr);
         Object.entries(localTimeBlocks).forEach(([date, blocks]) => {
           blocks.forEach(block => {
             const blockDocRef = doc(firestore, 'users', userId, 'time_blocks', `${date}_${block.hour}`);
-            batch.set(blockDocRef, block);
+            batch.set(blockDocRef, block, { merge: true });
           });
         });
       }
@@ -69,6 +71,7 @@ export default function LoginPage() {
       await batch.commit();
   
       // Clear local storage after successful migration
+      localStorage.removeItem('gridTimeBlocks');
       localStorage.removeItem('gridFocusTimeBlocks');
       localStorage.removeItem('gridFocusSettings');
       localStorage.removeItem('gridFocusTodos');
@@ -81,7 +84,7 @@ export default function LoginPage() {
       toast({
         variant: "destructive",
         title: "Data Sync Failed",
-        description: "Could not save your local progress to the account. Your data is still safe on this device.",
+        description: "Could not save your local progress to the account. You can retry from Settings.",
       });
     }
   };
@@ -151,6 +154,7 @@ export default function LoginPage() {
           batch.set(privacySettingsRef, privacyData);
 
           await batch.commit();
+          await migrateLocalDataToFirebase(user.uid); // Migrate if they were using local storage
         }
 
         toast({ title: "Account Created!", description: "Welcome to GridFocus!" });
@@ -158,9 +162,7 @@ export default function LoginPage() {
 
       } else { // --- SIGN IN ---
         const userCredential = await signInWithEmailAndPassword(auth, email, password);
-        if (isAnonymousUser) {
-            await migrateLocalDataToFirebase(userCredential.user.uid);
-        }
+        await migrateLocalDataToFirebase(userCredential.user.uid);
         router.push('/');
       }
     } catch (error: any) {

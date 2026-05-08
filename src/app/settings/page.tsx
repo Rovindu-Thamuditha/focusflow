@@ -3,22 +3,20 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Settings, Trash2, PlusCircle, Languages, Sparkles, SlidersHorizontal, Bed, MessageSquarePlus, BrainCircuit, ShieldAlert, Users, Flame, LayoutDashboard } from 'lucide-react';
+import { Settings, Trash2, PlusCircle, Sparkles, Bed, MessageSquarePlus, ShieldAlert, Flame, CloudSync, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import type { Subject } from '@/lib/types';
+import type { Subject, TimeBlockState } from '@/lib/types';
 import { ALL_ICONS } from '@/lib/icons';
 import { Switch } from '@/components/ui/switch';
 import { FeedbackDialog } from '@/components/feedback-dialog';
 import { useDoc, useFirestore, useUser, useMemoFirebase } from '@/firebase';
-import { doc, setDoc } from 'firebase/firestore';
+import { doc, setDoc, writeBatch, collection } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
-import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { MainHeader } from '@/components/main-header';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { defaultSubjects } from '@/lib/subjects';
@@ -32,8 +30,10 @@ export default function SettingsPage() {
     const { user, isUserLoading } = useUser();
     const firestore = useFirestore();
     const router = useRouter();
+    const { toast } = useToast();
     const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
     const [initialSettingsLoaded, setInitialSettingsLoaded] = useState(false);
+    const [isMigrating, setIsMigrating] = useState(false);
 
     // Settings State
     const [subjects, setSubjects] = useState<Subject[]>(defaultSubjects);
@@ -112,6 +112,51 @@ export default function SettingsPage() {
         }
     }, [subjects, sleepHours, language, enableTimer, enableDailyChallenge, enableTodoList, enableAiInsights, disableEditRestriction, streakGoal, shareTotalFocusTime, participateInLeaderboards, initialSettingsLoaded], 2000);
 
+    const handleForceSync = async () => {
+        if (!user || user.isAnonymous || !firestore) return;
+        
+        setIsMigrating(true);
+        try {
+            const batch = writeBatch(firestore);
+            
+            // Check both old and new keys for orphaned data
+            const oldKey = localStorage.getItem('gridTimeBlocks');
+            const newKey = localStorage.getItem('gridFocusTimeBlocks');
+            const dataStr = newKey || oldKey;
+            
+            if (!dataStr) {
+                toast({ title: "No local data found", description: "All your data is already synced or doesn't exist locally." });
+                setIsMigrating(false);
+                return;
+            }
+
+            const localTimeBlocks: { [date: string]: TimeBlockState[] } = JSON.parse(dataStr);
+            let count = 0;
+
+            Object.entries(localTimeBlocks).forEach(([date, blocks]) => {
+                blocks.forEach(block => {
+                    const blockDocRef = doc(firestore, 'users', user.uid, 'time_blocks', `${date}_${block.hour}`);
+                    batch.set(blockDocRef, block, { merge: true });
+                    count++;
+                });
+            });
+
+            if (count > 0) {
+                await batch.commit();
+                localStorage.removeItem('gridTimeBlocks');
+                localStorage.removeItem('gridFocusTimeBlocks');
+                toast({ title: "Sync Complete!", description: `Successfully recovered ${count} focus entries.` });
+            } else {
+                toast({ title: "Nothing to sync" });
+            }
+        } catch (error) {
+            console.error("Migration error:", error);
+            toast({ variant: "destructive", title: "Sync Failed", description: "Try again when you have a stable connection." });
+        } finally {
+            setIsMigrating(false);
+        }
+    };
+
     const handleSubjectChange = (id: string, field: keyof Subject, value: string) => {
         setSubjects(prev => prev.map(s => s.id === id ? { ...s, [field]: value } : s));
     };
@@ -186,6 +231,24 @@ export default function SettingsPage() {
                                         </div>
                                         <Slider value={[streakGoal]} onValueChange={([v]) => setStreakGoal(v)} max={12} min={1} step={1} className="py-2" />
                                     </div>
+
+                                    {!user?.isAnonymous && (
+                                        <div className="p-4 rounded-xl border bg-primary/5 border-primary/10 space-y-3">
+                                             <Label className="flex flex-col gap-1">
+                                                <span className="font-bold flex items-center gap-2 text-primary"><CloudSync className="w-4 h-4" />Data Recovery</span>
+                                                <span className="text-xs text-muted-foreground">Recover progress made on this device before signing in.</span>
+                                            </Label>
+                                            <Button 
+                                                variant="outline" 
+                                                className="w-full bg-background" 
+                                                onClick={handleForceSync}
+                                                disabled={isMigrating}
+                                            >
+                                                {isMigrating ? <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> : <CloudSync className="mr-2 h-4 w-4" />}
+                                                Sync Local Progress to Account
+                                            </Button>
+                                        </div>
+                                    )}
 
                                     <div className="space-y-3">
                                         <h4 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Toggles</h4>

@@ -1,6 +1,12 @@
 apply plugin: 'com.android.application'
 
 android {
+
+    configurations.all {
+        exclude group: 'org.jetbrains.kotlin', module: 'kotlin-stdlib-jdk7'
+        exclude group: 'org.jetbrains.kotlin', module: 'kotlin-stdlib-jdk8'
+    }
+    
     namespace "com.gridfocus.app"
     compileSdk rootProject.ext.compileSdkVersion
     defaultConfig {
