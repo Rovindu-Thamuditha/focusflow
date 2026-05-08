@@ -11,7 +11,7 @@ import { FriendsList } from '@/components/friends/friends-list';
 import { GridFocusLoader } from '@/components/grid-focus-loader';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Send, WifiOff, UserPlus } from 'lucide-react';
+import { Send, WifiOff, UserPlus, RefreshCw } from 'lucide-react';
 import { collection, query, where, getDocs, writeBatch, doc, serverTimestamp } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { useOnlineStatus } from '@/hooks/use-online-status';

@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Settings, Trash2, PlusCircle, Sparkles, Bed, MessageSquarePlus, ShieldAlert, Flame, CloudSync, RefreshCw } from 'lucide-react';
+import { Settings, Trash2, PlusCircle, Sparkles, Bed, MessageSquarePlus, ShieldAlert, Flame, Database, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
@@ -235,7 +235,7 @@ export default function SettingsPage() {
                                     {!user?.isAnonymous && (
                                         <div className="p-4 rounded-xl border bg-primary/5 border-primary/10 space-y-3">
                                              <Label className="flex flex-col gap-1">
-                                                <span className="font-bold flex items-center gap-2 text-primary"><CloudSync className="w-4 h-4" />Data Recovery</span>
+                                                <span className="font-bold flex items-center gap-2 text-primary"><Database className="w-4 h-4" />Data Recovery</span>
                                                 <span className="text-xs text-muted-foreground">Recover progress made on this device before signing in.</span>
                                             </Label>
                                             <Button 
@@ -244,7 +244,7 @@ export default function SettingsPage() {
                                                 onClick={handleForceSync}
                                                 disabled={isMigrating}
                                             >
-                                                {isMigrating ? <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> : <CloudSync className="mr-2 h-4 w-4" />}
+                                                {isMigrating ? <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> : <Database className="mr-2 h-4 w-4" />}
                                                 Sync Local Progress to Account
                                             </Button>
                                         </div>
