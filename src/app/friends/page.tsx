@@ -8,11 +8,13 @@ import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { FriendRequests } from '@/components/friends/friend-requests';
 import { FriendsList } from '@/components/friends/friends-list';
+import { FriendLeaderboard } from '@/components/friends/friend-leaderboard';
 import { GridFocusLoader } from '@/components/grid-focus-loader';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Send, WifiOff, UserPlus, RefreshCw } from 'lucide-react';
-import { collection, query, where, getDocs, writeBatch, doc, serverTimestamp } from 'firebase/firestore';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Send, WifiOff, UserPlus, RefreshCw, Trophy, Users } from 'lucide-react';
+import { collection, query, where, getDocs, writeBatch, doc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { useOnlineStatus } from '@/hooks/use-online-status';
 
@@ -40,7 +42,6 @@ export default function FriendsPage() {
         setIsSendingRequest(true);
         try {
             const usersRef = collection(firestore, 'users');
-            // Try to find by exact match, or lowercase if standardized
             const q = query(usersRef, where('username', '==', targetUsername));
             const querySnapshot = await getDocs(q);
 
@@ -60,45 +61,45 @@ export default function FriendsPage() {
                 return;
             }
             
-            const friendshipsRef = collection(firestore, 'friendships');
-            const sortedUserIds = [user.uid, friendId].sort();
-            const qExisting = query(friendshipsRef, where('userIds', '==', sortedUserIds));
-            const existingSnapshot = await getDocs(qExisting);
+            const friendshipId = user.uid < friendId ? `${user.uid}_${friendId}` : `${friendId}_${user.uid}`;
+            const friendshipRef = doc(firestore, 'friendships', friendshipId);
             
-            if (!existingSnapshot.empty) {
-                 toast({ variant: "destructive", title: "Already Connected", description: "You are already friends or have a pending request with this user." });
+            // Check if exists
+            const existing = await getDocs(query(collection(firestore, 'friendships'), where('userIds', 'array-contains', user.uid)));
+            const alreadyConnected = existing.docs.some(d => d.data().userIds.includes(friendId));
+
+            if (alreadyConnected) {
+                 toast({ variant: "destructive", title: "Already Connected", description: "You are already friends or have a pending request." });
                  setIsSendingRequest(false);
                  return;
             }
 
             const batch = writeBatch(firestore);
-            const newFriendshipRef = doc(collection(firestore, 'friendships'));
-            batch.set(newFriendshipRef, {
-                userIds: sortedUserIds,
+            batch.set(friendshipRef, {
+                id: friendshipId,
+                userIds: [user.uid, friendId].sort(),
                 status: 'pending',
                 requesterId: user.uid,
                 createdAt: serverTimestamp()
             });
 
             const notificationRef = doc(collection(firestore, 'users', friendId, 'notifications'));
-            const notificationData = {
+            batch.set(notificationRef, {
                 type: 'friend_request',
                 fromUserId: user.uid,
                 title: 'New Friend Request',
-                message: `${user.displayName || 'A new user'} sent you a friend request!`,
+                message: `${user.displayName || 'A user'} sent you a friend request!`,
                 isRead: false,
                 createdAt: serverTimestamp(),
-            };
-            batch.set(notificationRef, notificationData);
+            });
     
             await batch.commit();
-
-            toast({ title: 'Friend Request Sent!', description: `Your request to ${friendData.username} has been sent.` });
+            toast({ title: 'Friend Request Sent!', description: `Request sent to ${friendData.username}.` });
             setFriendUsername('');
 
         } catch (error) {
             console.error("Error sending friend request:", error);
-            toast({ variant: "destructive", title: "Error", description: "Failed to send friend request. Check your connection." });
+            toast({ variant: "destructive", title: "Error", description: "Failed to send request." });
         } finally {
             setIsSendingRequest(false);
         }
@@ -115,41 +116,52 @@ export default function FriendsPage() {
     return (
         <div className="flex flex-col min-h-screen">
             <MainHeader totalFocusedTime={0} showBackButton />
-            <main className="flex-grow container mx-auto p-4 sm:p-6 md:p-8 space-y-8">
+            <main className="flex-grow container mx-auto p-4 sm:p-6 md:p-8 space-y-8 pb-24 sm:pb-8">
                 <Card className={!isOnline ? "opacity-75 grayscale-[0.5] pointer-events-none" : "border-primary/20 shadow-lg"}>
-                    <CardHeader>
+                    <CardHeader className="pb-4">
                         <CardTitle className="flex items-center gap-2">
                             <UserPlus className="text-primary" />
-                            Add Friends 
+                            Connect with Scholars
                             {!isOnline && <WifiOff className="w-4 h-4 text-orange-500" />}
                         </CardTitle>
                         <CardDescription>
-                            {isOnline 
-                                ? "Enter a friend's exact username below to send a request." 
-                                : "Internet connection required to find and add new friends."}
+                            Enter a friend's exact username to challenge them.
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
-                        <div className="flex items-center gap-2 p-1 border rounded-lg bg-secondary/30 focus-within:ring-2 focus-within:ring-primary/50 transition-all">
+                        <div className="flex items-center gap-2 p-1 border rounded-xl bg-secondary/20 focus-within:ring-2 focus-within:ring-primary/30 transition-all">
                             <Input 
                                 value={friendUsername}
                                 onChange={(e) => setFriendUsername(e.target.value)}
-                                className="border-none bg-transparent focus-visible:ring-0 text-base" 
-                                placeholder="Username (case-sensitive)"
+                                className="border-none bg-transparent focus-visible:ring-0 text-base h-11" 
+                                placeholder="Exact Username"
                                 disabled={isSendingRequest || !isOnline}
                             />
-                            <Button onClick={handleSendRequest} disabled={!friendUsername.trim() || isSendingRequest || !isOnline} className="gap-2">
+                            <Button onClick={handleSendRequest} disabled={!friendUsername.trim() || isSendingRequest || !isOnline} className="h-11 px-6 rounded-lg font-bold">
                                 {isSendingRequest ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4"/>}
-                                {isSendingRequest ? 'Sending...' : 'Add'}
+                                {isSendingRequest ? 'Sending...' : 'Add Friend'}
                             </Button>
                         </div>
                     </CardContent>
                 </Card>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    <FriendRequests currentUserId={user.uid} />
-                    <FriendsList currentUserId={user.uid} />
-                </div>
+                <Tabs defaultValue="network" className="space-y-6">
+                    <TabsList className="grid w-full grid-cols-2 max-w-md mx-auto">
+                        <TabsTrigger value="network" className="gap-2"><Users className="w-4 h-4"/> Network</TabsTrigger>
+                        <TabsTrigger value="leaderboard" className="gap-2"><Trophy className="w-4 h-4"/> Rankings</TabsTrigger>
+                    </TabsList>
+
+                    <TabsContent value="network" className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                            <FriendRequests currentUserId={user.uid} />
+                            <FriendsList currentUserId={user.uid} />
+                        </div>
+                    </TabsContent>
+
+                    <TabsContent value="leaderboard" className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                        <FriendLeaderboard currentUserId={user.uid} />
+                    </TabsContent>
+                </Tabs>
             </main>
         </div>
     )

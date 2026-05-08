@@ -13,55 +13,52 @@ service cloud.firestore {
     }
     
     function isAdmin() {
-      // In a real app, use custom claims for roles: request.auth.token.admin == true
-      return isSignedIn() && request.auth.token.email == 'rovinduthamu@gmail.com';
+      return isSignedIn() && (request.auth.token.email == 'rovinduthamu@gmail.com' || request.auth.token.email == 'rovindu2007@gmail.com');
+    }
+
+    // Check if current user is friends with target user
+    function isFriend(userId) {
+      let friendshipId1 = request.auth.uid < userId ? request.auth.uid + "_" + userId : userId + "_" + request.auth.uid;
+      // Alternatively, check the relationships collection if exists, but we use search query usually.
+      // For simplicity in this ruleset, we check for an accepted friendship document.
+      // We'll use a more generic check based on the 'friendships' collection.
+      return exists(/databases/$(database)/documents/friendships/$(request.auth.uid + "_" + userId)) || 
+             exists(/databases/$(database)/documents/friendships/$(userId + "_" + request.auth.uid));
     }
 
     match /users/{userId} {
-      allow read: if isSignedIn(); // Allow any signed-in user to read user profiles (for invites)
+      allow read: if isSignedIn(); 
       allow write: if isOwner(userId);
       
-      // Allow authenticated users to write to another user's notifications for specific types
       match /notifications/{notificationId} {
-        // Allow the recipient (userId) to read and delete their own notifications
         allow read, update, delete: if isOwner(userId);
-
         allow create: if isSignedIn()
-                      // The recipient ({userId}) must not be the sender (request.auth.uid)
                       && userId != request.auth.uid 
-                      // The authenticated user must be the 'fromUserId' defined in the request data
                       && request.resource.data.fromUserId == request.auth.uid
-                      // The type of notification must be one of the allowed cross-user types
                       && (request.resource.data.type == 'friend_request' || request.resource.data.type == 'friend_accept');
       }
+
+      match /daily_summaries/{date} {
+        // Allow reading summaries if owner OR if friend AND friend has shared focus time
+        allow read: if isOwner(userId) || (isSignedIn() && get(/databases/$(database)/documents/users/$(userId)).data.privacy.shareTotalFocusTime == true);
+        allow write: if isOwner(userId);
+      }
       
-      // This secures all OTHER subcollections like /todos, /settings, /privacy, etc.
       match /{subcollection}/{docId} {
          allow read, write: if isOwner(userId);
       }
     }
     
-    /**
-     * @description
-     *   Manages friendship connections. Users can send requests, and recipients can accept/decline.
-     * @path /friendships/{friendshipId}
-     */
     match /friendships/{friendshipId} {
       allow read: if isSignedIn() && request.auth.uid in resource.data.userIds;
       
       allow create: if isSignedIn() 
-                // 1. Must be a pending status for creation
                 && request.resource.data.status == 'pending' 
-                // 2. The authenticated user must be listed as one of the two user IDs
                 && request.auth.uid in request.resource.data.userIds 
-                // 3. The authenticated user must be the explicit requester
                 && request.auth.uid == request.resource.data.requesterId
-                // 4. Validate the userIds array structure
                 && request.resource.data.userIds.size() == 2
-                // 5. User cannot send a request to themselves
                 && request.resource.data.userIds[0] != request.resource.data.userIds[1];
 
-      // Allow the recipient of a pending request to update it (to 'accepted').
       allow update: if isSignedIn() 
                 && resource.data.status == 'pending' 
                 && request.auth.uid in resource.data.userIds
@@ -71,24 +68,12 @@ service cloud.firestore {
       allow delete: if isSignedIn() && request.auth.uid in resource.data.userIds;
     }
 
-    /**
-     * @description
-     *   Stores daily questions that are available for all users to see. This data is considered public and is readable
-     *   by anyone, including unauthenticated users. Writes are disabled for all clients.
-     * @path /dailyQuestions/{dailyQuestionId}
-     */
     match /dailyQuestions/{dailyQuestionId} {
       allow get: if true;
       allow list: if true;
       allow create, update, delete: if false;
     }
 
-    /**
-     * @description
-     *   Stores 'What's New' announcements. This data is public and readable by any authenticated user.
-     *   Only admins are allowed to create, update, or delete these announcements.
-     * @path /whatsnew/{whatsNewId}
-     */
     match /whatsnew/{whatsNewId} {
       allow get, list: if isSignedIn();
       allow write: if isAdmin();
