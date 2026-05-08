@@ -11,6 +11,7 @@ import { TooltipProvider } from '@/components/ui/tooltip';
 import { BottomNav } from '@/components/bottom-nav';
 import { syncOfflineFeedback } from '@/lib/feedback-manager';
 import { OfflineBanner } from '@/components/offline-banner';
+import { UpdateModal } from '@/components/update-modal';
 
 import 'katex/dist/katex.min.css';
 
@@ -67,6 +68,7 @@ export default function RootLayout({
                 <TimerProvider>
                   <div className="relative flex min-h-screen flex-col pb-20 sm:pb-0">
                     <OfflineBanner />
+                    <UpdateModal />
                     {children}
                   </div>
                   <BottomNav />
