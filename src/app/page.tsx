@@ -55,7 +55,8 @@ export default function Home() {
   const [streakGoal, setStreakGoal] = useState(2);
   const [seenWhatsNewVersions, setSeenWhatsNewVersions] = useState<string[]>([]);
   
-  // Guard to prevent saving while initial cloud data is loading
+  // Guard to prevent saving while initial cloud data is loading for a specific day
+  const [hasSuccessfullyLoadedCurrentDay, setHasSuccessfullyLoadedCurrentDay] = useState(false);
   const isSyncingRef = useRef(false);
 
   // Feature toggles
@@ -90,14 +91,6 @@ export default function Home() {
   
   useEffect(() => {
     setCurrentDate(startOfDay(new Date()));
-    
-    if (typeof window !== 'undefined') {
-        const oldData = localStorage.getItem('gridTimeBlocks');
-        const newData = localStorage.getItem('gridFocusTimeBlocks');
-        if (oldData && !newData) {
-            localStorage.setItem('gridFocusTimeBlocks', oldData);
-        }
-    }
   }, []);
 
   const currentStreak = useMemo(() => {
@@ -125,6 +118,7 @@ export default function Home() {
     return count;
   }, [summaries, streakGoal]);
 
+  // Load basic settings
   useEffect(() => {
     if (!user || !currentDate) return;
   
@@ -144,6 +138,7 @@ export default function Home() {
       const localBlocks = JSON.parse(localStorage.getItem('gridFocusTimeBlocks') || '{}')[format(currentDate, 'yyyy-MM-dd')];
       setTimeBlocks(localBlocks || createInitialState(s.sleepHours || [], currentDate));
       setUserDataLoaded(true);
+      setHasSuccessfullyLoadedCurrentDay(true);
     } else if (userData) {
       setUserName(userData.username || user.displayName || '');
       const s = userData.settings || {};
@@ -161,9 +156,9 @@ export default function Home() {
     }
   }, [user, userData, currentDate]);
 
+  // Handle cloud data sync to local state for specific day
   useEffect(() => {
-    // SYNC CLOUD -> LOCAL
-    if (blocksLoading) {
+    if (blocksLoading || !currentDate || (user && !user.isAnonymous && !userDataLoaded)) {
         isSyncingRef.current = true;
         return;
     }
@@ -174,14 +169,21 @@ export default function Home() {
         { hour: i, subject: sleepHours.includes(i) ? 'sleep' : 'idle', duration: 0, date: dateString! }
       );
       setTimeBlocks(normalized.sort((a, b) => a.hour - b.hour));
-      // Give a tiny bit of time for state to settle before allowing saves
-      setTimeout(() => { isSyncingRef.current = false; }, 100);
+      setHasSuccessfullyLoadedCurrentDay(true);
+      setTimeout(() => { isSyncingRef.current = false; }, 200);
     } else if (currentDate && !user?.isAnonymous && userDataLoaded) {
-      // Only set initial state if loading is definitely finished and day is empty
+      // Day is definitely empty in cloud
       setTimeBlocks(createInitialState(sleepHours, currentDate));
-      setTimeout(() => { isSyncingRef.current = false; }, 100);
+      setHasSuccessfullyLoadedCurrentDay(true);
+      setTimeout(() => { isSyncingRef.current = false; }, 200);
     }
   }, [cloudTimeBlocks, blocksLoading, sleepHours, dateString, currentDate, user, userDataLoaded]);
+
+  // Reset loading state when date changes to re-trigger guard
+  useEffect(() => {
+    setHasSuccessfullyLoadedCurrentDay(false);
+    isSyncingRef.current = true;
+  }, [dateString]);
 
   useDebouncedEffect(() => {
     if (!userDataLoaded || showOnboarding) return;
@@ -196,8 +198,8 @@ export default function Home() {
 
   useDebouncedEffect(() => {
     // SYNC LOCAL -> CLOUD
-    // CRITICAL: Prevent saving if we are currently loading or updating from the cloud
-    if (!userDataLoaded || timeBlocks.length !== 24 || !dateString || blocksLoading || isSyncingRef.current) return;
+    // CRITICAL: Prevent saving if we haven't successfully loaded the current state from the cloud yet
+    if (!userDataLoaded || !hasSuccessfullyLoadedCurrentDay || timeBlocks.length !== 24 || !dateString || blocksLoading || isSyncingRef.current) return;
 
     if (user?.isAnonymous) {
       const all = JSON.parse(localStorage.getItem('gridFocusTimeBlocks') || '{}');
@@ -207,15 +209,19 @@ export default function Home() {
       const batch = writeBatch(firestore);
       let total = 0;
       const subjectMins: Record<string, number> = {};
+      let hasProductiveTime = false;
       
       timeBlocks.forEach(b => {
         batch.set(doc(firestore, 'users', user.uid, 'time_blocks', `${dateString}_${b.hour}`), b);
         if (b.subject !== 'idle' && b.subject !== 'sleep' && b.subject !== 'class') {
           total += b.duration;
           subjectMins[b.subject] = (subjectMins[b.subject] || 0) + b.duration;
+          if (b.duration > 0) hasProductiveTime = true;
         }
       });
       
+      // Only write summary if there is productive time or if we explicitly cleared it
+      // This adds another layer of safety against zeroing out existing summaries
       batch.set(doc(firestore, 'users', user.uid, 'daily_summaries', dateString), { 
         id: dateString, 
         date: dateString, 
@@ -225,7 +231,7 @@ export default function Home() {
 
       batch.commit().catch(e => console.error("Batch save failed:", e));
     }
-  }, [timeBlocks, dateString, user, firestore, userDataLoaded, blocksLoading]);
+  }, [timeBlocks, dateString, user, firestore, userDataLoaded, blocksLoading, hasSuccessfullyLoadedCurrentDay]);
 
   const handleMarkAsSeen = (version: string) => {
     const updated = [...new Set([...seenWhatsNewVersions, version])];
@@ -262,7 +268,7 @@ export default function Home() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <Card className="lg:col-span-2 border-2 border-primary/10 shadow-xl bg-card/50 backdrop-blur-sm">
             <CardContent className="p-4">
-              {blocksLoading && !timeBlocks.length ? (
+              {(!hasSuccessfullyLoadedCurrentDay && blocksLoading) ? (
                   <div className="h-[400px] flex items-center justify-center"><GridFocusLoader /></div>
               ) : (
                   <AccountabilityGrid blocks={timeBlocks} subjects={subjects} onBlockUpdate={(h, s, d) => setTimeBlocks(prev => prev.map(b => b.hour === h ? { ...b, subject: s, duration: d } : b))} viewingDate={currentDate} liveTime={new Date()} disableEditRestriction={disableEditRestriction} />

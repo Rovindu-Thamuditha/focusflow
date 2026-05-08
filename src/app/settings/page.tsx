@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Settings, Trash2, PlusCircle, Sparkles, Bed, MessageSquarePlus, ShieldAlert, Flame, Database, RefreshCw } from 'lucide-react';
+import { Settings, Trash2, PlusCircle, Sparkles, Bed, MessageSquarePlus, ShieldAlert, Flame, Database, RefreshCw, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
@@ -15,7 +15,7 @@ import { ALL_ICONS } from '@/lib/icons';
 import { Switch } from '@/components/ui/switch';
 import { FeedbackDialog } from '@/components/feedback-dialog';
 import { useDoc, useFirestore, useUser, useMemoFirebase } from '@/firebase';
-import { doc, setDoc, writeBatch, collection } from 'firebase/firestore';
+import { doc, setDoc, writeBatch, collection, getDocs, query, where } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { MainHeader } from '@/components/main-header';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -34,6 +34,7 @@ export default function SettingsPage() {
     const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
     const [initialSettingsLoaded, setInitialSettingsLoaded] = useState(false);
     const [isMigrating, setIsMigrating] = useState(false);
+    const [isRepairing, setIsRepairing] = useState(false);
 
     // Settings State
     const [subjects, setSubjects] = useState<Subject[]>(defaultSubjects);
@@ -111,6 +112,62 @@ export default function SettingsPage() {
             }, { merge: true });
         }
     }, [subjects, sleepHours, language, enableTimer, enableDailyChallenge, enableTodoList, enableAiInsights, disableEditRestriction, streakGoal, shareTotalFocusTime, participateInLeaderboards, initialSettingsLoaded], 2000);
+
+    const handleDeepRepair = async () => {
+        if (!user || user.isAnonymous || !firestore) return;
+        
+        setIsRepairing(true);
+        toast({ title: "Scanning Cloud Database...", description: "Looking for orphaned focus records. This may take a moment." });
+
+        try {
+            const blocksRef = collection(firestore, 'users', user.uid, 'time_blocks');
+            const blocksSnap = await getDocs(blocksRef);
+            
+            if (blocksSnap.empty) {
+                toast({ title: "No data found", description: "Could not find any orphaned time blocks in the cloud." });
+                setIsRepairing(false);
+                return;
+            }
+
+            const batch = writeBatch(firestore);
+            const summaries: Record<string, { total: number, subjectMins: Record<string, number> }> = {};
+            let repairedCount = 0;
+
+            blocksSnap.docs.forEach(doc => {
+                const b = doc.data() as TimeBlockState;
+                if (b.duration > 0 && b.subject !== 'idle' && b.subject !== 'sleep' && b.subject !== 'class') {
+                    if (!summaries[b.date]) {
+                        summaries[b.date] = { total: 0, subjectMins: {} };
+                    }
+                    summaries[b.date].total += b.duration;
+                    summaries[b.date].subjectMins[b.subject] = (summaries[b.date].subjectMins[b.subject] || 0) + b.duration;
+                }
+            });
+
+            Object.entries(summaries).forEach(([date, data]) => {
+                const summaryRef = doc(firestore, 'users', user.uid, 'daily_summaries', date);
+                batch.set(summaryRef, {
+                    id: date,
+                    date: date,
+                    totalMinutes: data.total,
+                    subjectMinutes: data.subjectMins
+                }, { merge: true });
+                repairedCount++;
+            });
+
+            if (repairedCount > 0) {
+                await batch.commit();
+                toast({ title: "Repair Complete!", description: `Successfully reconstructed ${repairedCount} days of focus data.` });
+            } else {
+                toast({ title: "Scan Complete", description: "Found records but none required repair." });
+            }
+        } catch (error) {
+            console.error("Repair error:", error);
+            toast({ variant: "destructive", title: "Repair Failed", description: "Check your connection and try again." });
+        } finally {
+            setIsRepairing(false);
+        }
+    };
 
     const handleForceSync = async () => {
         if (!user || user.isAnonymous || !firestore) return;
@@ -233,20 +290,37 @@ export default function SettingsPage() {
                                     </div>
 
                                     {!user?.isAnonymous && (
-                                        <div className="p-4 rounded-xl border bg-primary/5 border-primary/10 space-y-3">
+                                        <div className="p-4 rounded-xl border bg-primary/5 border-primary/10 space-y-4">
                                              <Label className="flex flex-col gap-1">
-                                                <span className="font-bold flex items-center gap-2 text-primary"><Database className="w-4 h-4" />Data Recovery</span>
-                                                <span className="text-xs text-muted-foreground">Recover progress made on this device before signing in.</span>
+                                                <span className="font-bold flex items-center gap-2 text-primary"><Database className="w-4 h-4" />Data Integrity & Recovery</span>
+                                                <span className="text-xs text-muted-foreground">Tools to find and restore missing or orphaned study records.</span>
                                             </Label>
-                                            <Button 
-                                                variant="outline" 
-                                                className="w-full bg-background" 
-                                                onClick={handleForceSync}
-                                                disabled={isMigrating}
-                                            >
-                                                {isMigrating ? <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> : <Database className="mr-2 h-4 w-4" />}
-                                                Sync Local Progress to Account
-                                            </Button>
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                                <Button 
+                                                    variant="outline" 
+                                                    className="bg-background h-auto py-3 px-4 flex-col items-start text-left gap-1" 
+                                                    onClick={handleForceSync}
+                                                    disabled={isMigrating}
+                                                >
+                                                    <div className="flex items-center gap-2 font-bold">
+                                                        {isMigrating ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Database className="w-4 h-4" />}
+                                                        Local Device Sync
+                                                    </div>
+                                                    <span className="text-[10px] text-muted-foreground">Migrate data from guest sessions.</span>
+                                                </Button>
+                                                <Button 
+                                                    variant="outline" 
+                                                    className="bg-background h-auto py-3 px-4 flex-col items-start text-left gap-1 border-yellow-500/30 hover:border-yellow-500" 
+                                                    onClick={handleDeepRepair}
+                                                    disabled={isRepairing}
+                                                >
+                                                    <div className="flex items-center gap-2 font-bold text-yellow-500">
+                                                        {isRepairing ? <RefreshCw className="w-4 h-4 animate-spin" /> : <AlertTriangle className="w-4 h-4" />}
+                                                        Deep Cloud Scan
+                                                    </div>
+                                                    <span className="text-[10px] text-muted-foreground">Reconstruct missing stats from logs.</span>
+                                                </Button>
+                                            </div>
                                         </div>
                                     )}
 
