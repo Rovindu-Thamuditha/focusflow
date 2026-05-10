@@ -1,5 +1,5 @@
 {
-  "latestVersion": "0.1.0",
-  "apkUrl": "https://your-domain.com/releases/gridfocus.apk",
-  "releaseNotes": "Performance improvements and better offline synchronization."
+  "latestVersion": "1.0.0",
+  "apkUrl": "https://gridfocu.vercel.app/downloads/gridfocus.apk",
+  "releaseNotes": "Bug fixes and performance improvements."
 }
