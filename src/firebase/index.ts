@@ -1,42 +1,6 @@
 'use client';
 
-import { firebaseConfig } from '@/firebase/config';
-import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
-import { 
-  initializeFirestore, 
-  persistentLocalCache, 
-  persistentMultipleTabManager,
-  Firestore 
-} from 'firebase/firestore';
-
-// Cache the Firestore instance to prevent multiple initialization errors during HMR or Strict Mode
-let cachedFirestore: Firestore | null = null;
-
-// IMPORTANT: DO NOT MODIFY THIS FUNCTION
-export function initializeFirebase() {
-  const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
-  
-  if (!cachedFirestore) {
-    // Enable offline persistence for Firestore
-    cachedFirestore = initializeFirestore(app, {
-      localCache: persistentLocalCache({
-        tabManager: persistentMultipleTabManager(),
-      }),
-    });
-  }
-
-  return getSdks(app, cachedFirestore);
-}
-
-export function getSdks(firebaseApp: FirebaseApp, firestore: Firestore) {
-  return {
-    firebaseApp,
-    auth: getAuth(firebaseApp),
-    firestore: firestore
-  };
-}
-
+export * from './init';
 export * from './provider';
 export * from './client-provider';
 export * from './firestore/use-collection';

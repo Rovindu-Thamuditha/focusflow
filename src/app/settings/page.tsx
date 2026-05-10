@@ -14,7 +14,7 @@ import { ALL_ICONS } from '@/lib/icons';
 import { Switch } from '@/components/ui/switch';
 import { FeedbackDialog } from '@/components/feedback-dialog';
 import { useDoc, useFirestore, useUser, useMemoFirebase } from '@/firebase';
-import { doc, setDoc, writeBatch, collection, getDocs, query, where, getDoc } from 'firebase/firestore';
+import { doc, setDoc, writeBatch, collection, getDocs, query, where } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { MainHeader } from '@/components/main-header';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -124,7 +124,7 @@ export default function SettingsPage() {
             let blocksProcessed = 0;
             let legacyGridsFound = 0;
 
-            // 1. Scan Legacy focusGridStates collection (Blueprint defined format)
+            // 1. Scan Legacy focusGridStates collection
             const legacyRef = collection(firestore, 'users', user.uid, 'focusGridStates');
             const legacySnap = await getDocs(legacyRef);
             
@@ -133,13 +133,11 @@ export default function SettingsPage() {
                 if (data.gridData) {
                     try {
                         const grid = JSON.parse(data.gridData);
-                        // The legacy grid was usually an object of hours
                         Object.entries(grid).forEach(([hour, block]: [string, any]) => {
                             if (block.duration > 0) {
                                 const dateStr = data.date ? data.date.split('T')[0] : 'legacy';
                                 if (dateStr === 'legacy') return;
 
-                                // Re-create the time_block document
                                 const blockId = `${dateStr}_${hour}`;
                                 const blockRef = doc(firestore, 'users', user.uid, 'time_blocks', blockId);
                                 const blockData: TimeBlockState = {
@@ -150,7 +148,6 @@ export default function SettingsPage() {
                                 };
                                 batch.set(blockRef, blockData, { merge: true });
 
-                                // Aggregate for summary
                                 if (!recoveredSummaries[dateStr]) recoveredSummaries[dateStr] = { total: 0, subjectMins: {} };
                                 recoveredSummaries[dateStr].total += block.duration;
                                 recoveredSummaries[dateStr].subjectMins[blockData.subject] = (recoveredSummaries[dateStr].subjectMins[blockData.subject] || 0) + block.duration;
@@ -162,7 +159,7 @@ export default function SettingsPage() {
                 }
             });
 
-            // 2. Scan Existing time_blocks to fix corrupted summaries
+            // 2. Scan Existing time_blocks
             const blocksRef = collection(firestore, 'users', user.uid, 'time_blocks');
             const blocksSnap = await getDocs(blocksRef);
             
@@ -177,7 +174,6 @@ export default function SettingsPage() {
                 }
             });
 
-            // Commit all reconstructed summaries
             Object.entries(recoveredSummaries).forEach(([date, data]) => {
                 const summaryRef = doc(firestore, 'users', user.uid, 'daily_summaries', date);
                 batch.set(summaryRef, {
