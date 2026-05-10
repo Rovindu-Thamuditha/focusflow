@@ -1,4 +1,3 @@
-
 'use client';
 
 import Link from 'next/link';
@@ -17,7 +16,7 @@ export function BottomNav() {
   const pathname = usePathname();
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 border-t bg-background/95 backdrop-blur-sm sm:hidden">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 border-t bg-background/95 backdrop-blur-sm sm:hidden pb-[env(safe-area-inset-bottom,0px)]">
       <div className="grid h-16 grid-cols-4 items-center justify-items-center">
         {navItems.map(({ href, label, icon: Icon }) => {
           const isActive = pathname === href;

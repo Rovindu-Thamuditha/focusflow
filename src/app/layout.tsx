@@ -34,6 +34,7 @@ export const viewport: Viewport = {
       { media: '(prefers-color-scheme: light)', color: '#ffffff' },
       { media: '(prefers-color-scheme: dark)', color: '#212529' },
   ],
+  viewportFit: 'cover',
 }
 
 // Global sync trigger for offline feedback
@@ -66,7 +67,7 @@ export default function RootLayout({
             >
               <TooltipProvider>
                 <TimerProvider>
-                  <div className="relative flex min-h-screen flex-col pb-20 sm:pb-0">
+                  <div className="relative flex min-h-screen flex-col pb-[calc(5rem+env(safe-area-inset-bottom,0px))] sm:pb-0">
                     <OfflineBanner />
                     <UpdateModal />
                     {children}

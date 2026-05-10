@@ -1,4 +1,3 @@
-
 'use client';
 
 import { LogOut, Shield, BarChart2, UserPlus, Users, User, Settings, ArrowLeft } from "lucide-react";
@@ -43,7 +42,7 @@ export function MainHeader({ totalFocusedTime, showBackButton = false }: MainHea
   }
 
   return (
-    <header className="sticky top-0 z-40 w-full border-b bg-background/80 backdrop-blur-xl">
+    <header className="sticky top-0 z-40 w-full border-b bg-background/80 backdrop-blur-xl pt-[env(safe-area-inset-top,0px)]">
       <div className="container px-6 flex h-16 items-center justify-between">
         <div className="flex gap-4 items-center">
             {showBackButton ? (
@@ -116,4 +115,3 @@ export function MainHeader({ totalFocusedTime, showBackButton = false }: MainHea
     </header>
   );
 }
-
