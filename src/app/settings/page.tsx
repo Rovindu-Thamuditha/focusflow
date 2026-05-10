@@ -128,8 +128,8 @@ export default function SettingsPage() {
             const legacyRef = collection(firestore, 'users', user.uid, 'focusGridStates');
             const legacySnap = await getDocs(legacyRef);
             
-            legacySnap.docs.forEach(doc => {
-                const data = doc.data();
+            legacySnap.docs.forEach(snapshotDoc => {
+                const data = snapshotDoc.data();
                 if (data.gridData) {
                     try {
                         const grid = JSON.parse(data.gridData);
@@ -163,8 +163,8 @@ export default function SettingsPage() {
             const blocksRef = collection(firestore, 'users', user.uid, 'time_blocks');
             const blocksSnap = await getDocs(blocksRef);
             
-            blocksSnap.docs.forEach(doc => {
-                const b = doc.data() as TimeBlockState;
+            blocksSnap.docs.forEach(snapshotDoc => {
+                const b = snapshotDoc.data() as TimeBlockState;
                 if (b.duration > 0 && b.subject !== 'idle' && b.subject !== 'sleep' && b.subject !== 'class') {
                     if (!recoveredSummaries[b.date]) {
                         recoveredSummaries[b.date] = { total: 0, subjectMins: {} };
