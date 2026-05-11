@@ -1,5 +1,5 @@
 {
-  "latestVersion": "1.0.0",
+  "latestVersion": "1.0.2",
   "apkUrl": "https://gridfocus.vercel.app/downloads/gridfocus.apk",
-  "releaseNotes": "Bug fixes and performance improvements."
+  "releaseNotes": "Update Checker"
 }
