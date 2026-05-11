@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { Settings, Trash2, PlusCircle, Languages, Sparkles, SlidersHorizontal, Bed, MessageSquarePlus, BrainCircuit, ShieldAlert, Users } from 'lucide-react';
+import { Settings, Trash2, PlusCircle, Languages, Sparkles, SlidersHorizontal, Bed, MessageSquarePlus, BrainCircuit, ShieldAlert, Users, Info, RefreshCw } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -19,6 +19,8 @@ import { doc, setDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from './ui/badge';
 import { ScrollArea } from './ui/scroll-area';
+import packageJson from '@/../package.json'; 
+import appVersion from '@/../public/version.json';
 
 interface PrivacySettings {
     shareTotalFocusTime: boolean;
@@ -165,6 +167,20 @@ export function SettingsDialog({
     }
   };
 
+  const handleUpdateCheck = () => {
+    if (appVersion.latestVersion !== packageJson.version) {
+      toast({
+        title: 'Update Available',
+        description: `A new version (${appVersion.latestVersion}) is available. You are on ${packageJson.version}.`,
+      });
+    } else {
+      toast({
+        title: 'No Updates',
+        description: 'You are on the latest version.',
+      });
+    }
+  };
+
 
   return (
     <>
@@ -230,6 +246,18 @@ export function SettingsDialog({
                                 </Button>
                             </div>
                         </div>
+                        <div className="space-y-4">
+                            <h4 className="font-semibold text-lg flex items-center gap-2"><Info /> Version Information</h4>
+                            <div className="flex items-center justify-between rounded-lg border p-4">
+                                <div className='flex flex-col'>
+                                    <span className="font-medium">App Version</span>
+                                    <span className="text-xs text-muted-foreground">You are currently on version {packageJson.version}</span>
+                                </div>
+                                <Button size="sm" onClick={handleUpdateCheck}>
+                                    <RefreshCw className="mr-2 h-4 w-4" /> Check for Updates
+                                </Button>
+                            </div>
+                        </div>
                     </TabsContent>
                     <TabsContent value="subjects" className="py-4 px-1">
                         <h4 className="font-semibold text-lg mb-2 flex items-center gap-2"><Sparkles /> Customize Subjects</h4>
@@ -253,7 +281,7 @@ export function SettingsDialog({
                                     <SelectValue placeholder="Icon"/>
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {ALL_ICONS.map(Icon => <SelectItem key={Icon.displayName} value={Icon.displayName!}><Icon className="w-4 h-4 inline-block mr-2"/>{Icon.displayName}</SelectItem>)}
+                                    {ALL_ICONS.map(Icon => <SelectItem key={Icon.displayName} value={Icon.displayName!}><Icon className="w-4 h-4 inline-block mr-2" />{Icon.displayName}</SelectItem>)}
                                 </SelectContent>
                             </Select>
                             <Button variant="ghost" size="icon" onClick={() => removeSubject(index)}>
