@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -8,8 +7,8 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
 // Hardcoded target date for G.C.E. A/L Exam (Sri Lanka)
-// Usually starts late November. Adjusting to a target for 2025.
-const TARGET_DATE = new Date('2025-11-24T08:30:00');
+// Target set to 2026 August 09th.
+const TARGET_DATE = new Date('2026-08-09T08:30:00');
 
 export function ExamCountdown() {
   const [timeLeft, setTimeLeft] = useState({
@@ -68,7 +67,7 @@ export function ExamCountdown() {
               "w-5 h-5 text-primary mb-1",
               timeLeft.days < 30 ? "animate-pulse text-red-500" : "animate-spin-[duration:10s]"
             )} />
-            <span className="text-[8px] font-black uppercase text-muted-foreground tracking-tighter">A/L 2025</span>
+            <span className="text-[8px] font-black uppercase text-muted-foreground tracking-tighter">A/L 2026</span>
           </div>
 
           {!isMinimized && (

@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -172,8 +171,6 @@ export default function SettingsPage() {
 
         try {
             const backup = JSON.parse(backupStr);
-            // In a real scenario, we might want to prompt which date to restore. 
-            // For now, let's just notify the user it's there.
             toast({ title: "Local Backup Found", description: "Your local backup is safe. If you need manual recovery, contact support." });
         } catch (e) {
             toast({ variant: "destructive", title: "Corrupt Backup" });
@@ -251,11 +248,11 @@ export default function SettingsPage() {
                     </CardHeader>
                     <CardContent>
                         <Tabs defaultValue="subjects" className="space-y-6">
-                            <TabsList className="grid w-full grid-cols-4 bg-muted/50 p-1 rounded-xl">
-                                <TabsTrigger value="general" className="rounded-lg">General</TabsTrigger>
-                                <TabsTrigger value="subjects" className="rounded-lg">Subjects</TabsTrigger>
-                                <TabsTrigger value="schedule" className="rounded-lg">Schedule</TabsTrigger>
-                                <TabsTrigger value="preferences" className="rounded-lg">Prefs</TabsTrigger>
+                            <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 bg-muted/50 p-1 rounded-xl h-auto gap-1">
+                                <TabsTrigger value="subjects" className="rounded-lg py-2">Subjects</TabsTrigger>
+                                <TabsTrigger value="schedule" className="rounded-lg py-2">Schedule</TabsTrigger>
+                                <TabsTrigger value="preferences" className="rounded-lg py-2">Preferences</TabsTrigger>
+                                <TabsTrigger value="general" className="rounded-lg py-2">App & Updates</TabsTrigger>
                             </TabsList>
 
                             <TabsContent value="general" className="space-y-6 pt-4">

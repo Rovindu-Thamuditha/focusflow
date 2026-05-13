@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect, useMemo, useRef } from 'react';
@@ -176,7 +175,8 @@ export default function Home() {
         const found = cloudTimeBlocks.find(b => b.hour === i);
         if (found) return found;
         // Fallback for completely missing blocks in cloud
-        return { hour: i, subject: sleepHours.includes(i) ? 'sleep' : 'idle', duration: 0, date: dateString!, updatedAt: Date.now() };
+        // FIX: use updatedAt 0 for fallback so manual overrides win if sync is pending
+        return { hour: i, subject: sleepHours.includes(i) ? 'sleep' : 'idle', duration: 0, date: dateString!, updatedAt: 0 };
       });
       
       // Multi-device protection: Only update local state if the cloud set is newer OR we haven't successfully loaded yet
@@ -197,8 +197,11 @@ export default function Home() {
       setTimeout(() => { isSyncingRef.current = false; }, 200);
     } else if (currentDate && !user?.isAnonymous && userDataLoaded) {
       // Day is definitely empty in cloud
-      setTimeBlocks(createInitialState(sleepHours, currentDate));
-      setHasSuccessfullyLoadedCurrentDay(true);
+      // ONLY initialize if we haven't loaded anything yet to avoid wiping local unsynced edits
+      if (!hasSuccessfullyLoadedCurrentDay) {
+          setTimeBlocks(createInitialState(sleepHours, currentDate));
+          setHasSuccessfullyLoadedCurrentDay(true);
+      }
       setTimeout(() => { isSyncingRef.current = false; }, 200);
     }
   }, [cloudTimeBlocks, blocksLoading, sleepHours, dateString, currentDate, user, userDataLoaded, hasSuccessfullyLoadedCurrentDay]);
@@ -317,7 +320,12 @@ export default function Home() {
                     <p className="text-[10px] text-muted-foreground text-center italic">You can disable challenges in Settings.</p>
                 </div>
              )}
-             {enableTodoList && <TodoList />}
+             {enableTodoList && (
+                <div className="space-y-1">
+                    <TodoList />
+                    <p className="text-[10px] text-muted-foreground text-center italic">You can disable this in Settings.</p>
+                </div>
+             )}
           </div>
         </div>
       </main>
