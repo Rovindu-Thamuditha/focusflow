@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Settings, Trash2, PlusCircle, Sparkles, Bed, MessageSquarePlus, ShieldAlert, Flame, Database, RefreshCw, AlertTriangle, Info, Clock, Download, Undo2 } from 'lucide-react';
+import { Settings, Trash2, PlusCircle, Sparkles, Bed, MessageSquarePlus, ShieldAlert, Flame, Database, RefreshCw, AlertTriangle, Info, Clock, Download, Undo2, CheckCircle2, WifiOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
@@ -22,6 +22,9 @@ import { defaultSubjects } from '@/lib/subjects';
 import { useDebouncedEffect } from '@/hooks/useDebouncedEffect';
 import { GridFocusLoader } from '@/components/grid-focus-loader';
 import { Slider } from '@/components/ui/slider';
+import { checkAppUpdate } from '@/lib/update-check';
+import { App } from '@capacitor/app';
+import { Capacitor } from '@capacitor/core';
 import packageJson from '@/../package.json';
 
 const allHours = Array.from({ length: 24 }, (_, i) => i);
@@ -35,6 +38,11 @@ export default function SettingsPage() {
     const [initialSettingsLoaded, setInitialSettingsLoaded] = useState(false);
     const [isMigrating, setIsMigrating] = useState(false);
     const [isRepairing, setIsRepairing] = useState(false);
+
+    // Update States
+    const [isCheckingUpdates, setIsCheckingCheckingUpdates] = useState(false);
+    const [installedVersion, setInstalledVersion] = useState(packageJson.version);
+    const [latestFoundVersion, setLatestFoundVersion] = useState<string | null>(null);
 
     // Settings State
     const [subjects, setSubjects] = useState<Subject[]>(defaultSubjects);
@@ -54,6 +62,16 @@ export default function SettingsPage() {
 
     const userDocRef = useMemoFirebase(() => user && !user.isAnonymous ? doc(firestore!, 'users', user.uid) : null, [firestore, user]);
     const { data: userData } = useDoc(userDocRef);
+
+    useEffect(() => {
+        const getVer = async () => {
+            if (Capacitor.isNativePlatform()) {
+                const info = await App.getInfo();
+                setInstalledVersion(info.version);
+            }
+        };
+        getVer();
+    }, []);
 
     useEffect(() => {
         if (isUserLoading) return;
@@ -116,79 +134,37 @@ export default function SettingsPage() {
         }
     }, [subjects, sleepHours, language, enableTimer, enableDailyChallenge, enableTodoList, enableAiInsights, enableExamCountdown, disableEditRestriction, streakGoal, shareTotalFocusTime, participateInLeaderboards, initialSettingsLoaded], 2000);
 
-    const handleDeepRepair = async () => {
-        if (!user || user.isAnonymous || !firestore) return;
-        
-        setIsRepairing(true);
-        toast({ title: "Database Scan Started", description: "Scanning all legacy paths. Please do not close the app." });
-
-        try {
-            const batch = writeBatch(firestore);
-            const recoveredSummaries: Record<string, { total: number, subjectMins: Record<string, number> }> = {};
-            let blocksProcessed = 0;
-
-            const blocksRef = collection(firestore, 'users', user.uid, 'time_blocks');
-            const blocksSnap = await getDocs(blocksRef);
-            
-            blocksSnap.docs.forEach(snapshotDoc => {
-                const b = snapshotDoc.data() as TimeBlockState;
-                if (b.duration > 0 && b.subject !== 'idle' && b.subject !== 'sleep' && b.subject !== 'class') {
-                    if (!recoveredSummaries[b.date]) {
-                        recoveredSummaries[b.date] = { total: 0, subjectMins: {} };
-                    }
-                    recoveredSummaries[b.date].total += b.duration;
-                    recoveredSummaries[b.date].subjectMins[b.subject] = (recoveredSummaries[b.date].subjectMins[b.subject] || 0) + b.duration;
-                    blocksProcessed++;
-                }
+    const handleUpdateCheck = async () => {
+        if (!navigator.onLine) {
+            toast({ 
+                variant: "destructive", 
+                title: "You are offline", 
+                description: "Cannot check for updates without an internet connection." 
             });
-
-            Object.entries(recoveredSummaries).forEach(([date, data]) => {
-                const summaryRef = doc(firestore, 'users', user.uid, 'daily_summaries', date);
-                batch.set(summaryRef, {
-                    id: date,
-                    date: date,
-                    totalMinutes: data.total,
-                    subjectMinutes: data.subjectMins
-                }, { merge: true });
-            });
-
-            await batch.commit();
-            toast({ title: "Recovery Complete!", description: `Restored ${Object.keys(recoveredSummaries).length} days of data.` });
-        } catch (error) {
-            console.error("Deep repair error:", error);
-            toast({ variant: "destructive", title: "Recovery Failed" });
-        } finally {
-            setIsRepairing(false);
-        }
-    };
-
-    const handleRestoreBackup = () => {
-        const backupStr = localStorage.getItem('gridFocusTimeBlocks_backup');
-        if (!backupStr) {
-            toast({ variant: "destructive", title: "No backup found", description: "A backup is only created before significant cloud updates." });
             return;
         }
 
+        setIsCheckingCheckingUpdates(true);
         try {
-            const backup = JSON.parse(backupStr);
-            toast({ title: "Local Backup Found", description: "Your local backup is safe. If you need manual recovery, contact support." });
-        } catch (e) {
-            toast({ variant: "destructive", title: "Corrupt Backup" });
-        }
-    }
-
-    const handleUpdateCheck = async () => {
-        toast({ title: "Checking for updates...", description: "Connecting to the update server." });
-        try {
-            const res = await fetch('https://gridfocu.vercel.app/version.json', { cache: 'no-store' });
-            const data = await res.json();
-            if (data.latestVersion !== packageJson.version) {
-                toast({ title: "Update Available!", description: `Version ${data.latestVersion} is ready. Please refresh or update your app.` });
+            const update = await checkAppUpdate();
+            if (update) {
+                setLatestFoundVersion(update.latestVersion);
+                toast({ 
+                    title: "Update Available!", 
+                    description: `New version ${update.latestVersion} is ready to download.` 
+                });
             } else {
-                toast({ title: "Up to date", description: "You are running the latest version of GridFocus." });
+                setLatestFoundVersion(installedVersion);
+                toast({ 
+                    title: "App Up to Date", 
+                    description: `You are running the latest version (${installedVersion}).` 
+                });
             }
         } catch (e) {
-            toast({ variant: "destructive", title: "Update check failed", description: "Check your internet connection." });
+            console.error(e);
+            toast({ variant: "destructive", title: "Check Failed", description: "Failed to connect to update server." });
+        } finally {
+            setIsCheckingCheckingUpdates(false);
         }
     };
 
@@ -257,17 +233,47 @@ export default function SettingsPage() {
 
                             <TabsContent value="general" className="space-y-6 pt-4">
                                 <div className="space-y-4">
-                                    <h3 className="font-bold text-lg flex items-center gap-2"><Info className="w-5 h-5 text-primary" />Version Information</h3>
-                                    <div className="flex items-center justify-between p-4 rounded-xl border bg-card/50">
-                                        <div className='flex flex-col'>
-                                            <span className="font-bold text-sm">App Version</span>
-                                            <span className="text-xs text-muted-foreground">You are currently on v{packageJson.version}</span>
+                                    <h3 className="font-bold text-lg flex items-center gap-2"><Info className="w-5 h-5 text-primary" />System Status</h3>
+                                    <div className="grid gap-3">
+                                        <div className="flex items-center justify-between p-4 rounded-xl border bg-card/50">
+                                            <div className='flex flex-col'>
+                                                <span className="font-bold text-sm">Installed Version</span>
+                                                <span className="text-xs text-muted-foreground">Local Build: v{installedVersion}</span>
+                                            </div>
+                                            <Button 
+                                                size="sm" 
+                                                variant="outline" 
+                                                onClick={handleUpdateCheck} 
+                                                className="gap-2 h-9"
+                                                disabled={isCheckingUpdates}
+                                            >
+                                                {isCheckingUpdates ? (
+                                                    <><RefreshCw className="w-4 h-4 animate-spin" /> Checking...</>
+                                                ) : latestFoundVersion === installedVersion ? (
+                                                    <><CheckCircle2 className="w-4 h-4 text-green-500" /> Up to Date</>
+                                                ) : (
+                                                    <><RefreshCw className="w-4 h-4" /> Check for Updates</>
+                                                )}
+                                            </Button>
                                         </div>
-                                        <Button size="sm" variant="outline" onClick={handleUpdateCheck} className="gap-2">
-                                            <RefreshCw className="w-4 h-4" /> Check for Updates
-                                        </Button>
+
+                                        {latestFoundVersion && latestFoundVersion !== installedVersion && (
+                                            <div className="flex items-center justify-between p-4 rounded-xl border border-primary/30 bg-primary/5 animate-in fade-in slide-in-from-top-2">
+                                                <div className="flex flex-col">
+                                                    <span className="font-bold text-sm text-primary">New Update Available!</span>
+                                                    <span className="text-xs text-muted-foreground">Version {latestFoundVersion} is ready.</span>
+                                                </div>
+                                                <Button size="sm" onClick={() => window.location.reload()}>
+                                                    Restart App
+                                                </Button>
+                                            </div>
+                                        )}
                                     </div>
-                                    <p className="text-[10px] text-muted-foreground italic px-2">Regularly checking for updates ensures you have the latest stability fixes and security patches.</p>
+                                    
+                                    <div className="flex items-center gap-2 p-3 bg-secondary/30 rounded-lg text-[10px] text-muted-foreground italic">
+                                        <Database className="w-3 h-3" />
+                                        <span>Updates preserve your local IndexedDB and Firebase sessions using persistent storage matching.</span>
+                                    </div>
                                 </div>
 
                                 <div className="space-y-4">
@@ -362,7 +368,14 @@ export default function SettingsPage() {
                                                 <Button 
                                                     variant="outline" 
                                                     className="bg-background h-auto py-3 px-4 flex-col items-start text-left gap-1 border-yellow-500/30 hover:border-yellow-500" 
-                                                    onClick={handleRestoreBackup}
+                                                    onClick={() => {
+                                                        const backupStr = localStorage.getItem('gridFocusTimeBlocks_backup');
+                                                        if (!backupStr) {
+                                                            toast({ variant: "destructive", title: "No backup found" });
+                                                            return;
+                                                        }
+                                                        toast({ title: "Local Backup Ready", description: "Contact support for manual recovery instructions." });
+                                                    }}
                                                 >
                                                     <div className="flex items-center gap-2 font-bold text-yellow-500">
                                                         <Undo2 className="w-4 h-4" />
@@ -371,15 +384,6 @@ export default function SettingsPage() {
                                                     <span className="text-[10px] text-muted-foreground">Recover from sync conflict.</span>
                                                 </Button>
                                             </div>
-                                            <Button 
-                                                variant="ghost" 
-                                                size="sm" 
-                                                className="w-full text-[10px] text-muted-foreground hover:bg-transparent"
-                                                onClick={handleDeepRepair}
-                                                disabled={isRepairing}
-                                            >
-                                                {isRepairing ? "Scanning..." : "Perform Deep Cloud Scan"}
-                                            </Button>
                                         </div>
                                     )}
 
