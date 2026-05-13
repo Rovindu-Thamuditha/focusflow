@@ -3,7 +3,8 @@ export interface TimeBlockState {
   hour: number;
   subject: string;
   duration: number; // in minutes
-  date: string; // ISO string
+  date: string; // YYYY-MM-DD
+  updatedAt?: number; // timestamp for conflict resolution
 }
 
 export interface Subject {
@@ -40,6 +41,7 @@ export interface UserSettings {
   enableDailyChallenge: boolean;
   enableTodoList: boolean;
   enableAiInsights: boolean;
+  enableExamCountdown: boolean; // New feature toggle
   disableEditRestriction: boolean;
   streakGoal: number; // in hours
   hasCompletedOnboarding: boolean;

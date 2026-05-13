@@ -25,6 +25,7 @@ import { OnboardingDialog } from '@/components/onboarding-dialog';
 import { useTimer } from '@/context/timer-context';
 import { useDebouncedEffect } from '@/hooks/useDebouncedEffect';
 import { StreakCounter } from '@/components/streak-counter';
+import { ExamCountdown } from '@/components/exam-countdown';
 
 const createInitialState = (sleepHours: number[], date: Date): TimeBlockState[] => {
   const dateString = format(date, 'yyyy-MM-dd');
@@ -33,6 +34,7 @@ const createInitialState = (sleepHours: number[], date: Date): TimeBlockState[] 
     subject: sleepHours.includes(i) ? 'sleep' : 'idle',
     duration: 0,
     date: dateString,
+    updatedAt: Date.now(),
   }));
 };
 
@@ -63,6 +65,7 @@ export default function Home() {
   const [enableTimer, setEnableTimer] = useState(true);
   const [enableDailyChallenge, setEnableDailyChallenge] = useState(true);
   const [enableTodoList, setEnableTodoList] = useState(true);
+  const [enableExamCountdown, setEnableExamCountdown] = useState(true);
   const [disableEditRestriction, setDisableEditRestriction] = useState(false);
   
   const userDocRef = useMemoFirebase(() => user && !user.isAnonymous ? doc(firestore!, 'users', user.uid) : null, [firestore, user]);
@@ -130,6 +133,7 @@ export default function Home() {
       setEnableTimer(s.enableTimer !== false);
       setEnableDailyChallenge(s.enableDailyChallenge !== false);
       setEnableTodoList(s.enableTodoList !== false);
+      setEnableExamCountdown(s.enableExamCountdown !== false);
       setDisableEditRestriction(s.disableEditRestriction === true);
       setStreakGoal(s.streakGoal || 2);
       setSeenWhatsNewVersions(s.seenWhatsNewVersions || []);
@@ -150,6 +154,7 @@ export default function Home() {
       setEnableTimer(s.enableTimer !== false);
       setEnableDailyChallenge(s.enableDailyChallenge !== false);
       setEnableTodoList(s.enableTodoList !== false);
+      setEnableExamCountdown(s.enableExamCountdown !== false);
       setDisableEditRestriction(s.disableEditRestriction === true);
       setStreakGoal(s.streakGoal || 2);
       setSeenWhatsNewVersions(userData.seenWhatsNewVersions || []);
@@ -165,21 +170,29 @@ export default function Home() {
     }
 
     if (cloudTimeBlocks && cloudTimeBlocks.length > 0) {
-      // Robust loading: Re-apply sleep logic to existing empty blocks if settings changed
+      // Robust loading: Trust the cloud subject if it exists, even if it's 'idle' during a sleep hour
+      // This allows manual sleep overrides to stick
       const normalized = Array.from({ length: 24 }, (_, i) => {
         const found = cloudTimeBlocks.find(b => b.hour === i);
-        if (found) {
-           // If it's a sleep hour in settings AND it's currently Idle/0min, force it back to sleep
-           // This recovers auto-sleep on days that were accidentally clobbered
-           if (sleepHours.includes(i) && found.subject === 'idle' && found.duration === 0) {
-             return { ...found, subject: 'sleep' };
-           }
-           return found;
-        }
-        return { hour: i, subject: sleepHours.includes(i) ? 'sleep' : 'idle', duration: 0, date: dateString! };
+        if (found) return found;
+        // Fallback for completely missing blocks in cloud
+        return { hour: i, subject: sleepHours.includes(i) ? 'sleep' : 'idle', duration: 0, date: dateString!, updatedAt: Date.now() };
       });
       
-      setTimeBlocks(normalized.sort((a, b) => a.hour - b.hour));
+      // Multi-device protection: Only update local state if the cloud set is newer OR we haven't successfully loaded yet
+      setTimeBlocks(prev => {
+        if (!hasSuccessfullyLoadedCurrentDay) return normalized.sort((a, b) => a.hour - b.hour);
+        
+        // Merge strategy: only take cloud blocks if they have a newer updatedAt timestamp than local
+        return prev.map(p => {
+          const cloud = normalized.find(c => c.hour === p.hour);
+          if (cloud && (cloud.updatedAt || 0) > (p.updatedAt || 0)) {
+            return cloud;
+          }
+          return p;
+        });
+      });
+      
       setHasSuccessfullyLoadedCurrentDay(true);
       setTimeout(() => { isSyncingRef.current = false; }, 200);
     } else if (currentDate && !user?.isAnonymous && userDataLoaded) {
@@ -188,7 +201,7 @@ export default function Home() {
       setHasSuccessfullyLoadedCurrentDay(true);
       setTimeout(() => { isSyncingRef.current = false; }, 200);
     }
-  }, [cloudTimeBlocks, blocksLoading, sleepHours, dateString, currentDate, user, userDataLoaded]);
+  }, [cloudTimeBlocks, blocksLoading, sleepHours, dateString, currentDate, user, userDataLoaded, hasSuccessfullyLoadedCurrentDay]);
 
   // Reset loading state when date changes to re-trigger guard
   useEffect(() => {
@@ -198,20 +211,24 @@ export default function Home() {
 
   useDebouncedEffect(() => {
     if (!userDataLoaded || showOnboarding) return;
-    const settings = { sleepHours, subjects, language, enableTimer, enableDailyChallenge, enableTodoList, disableEditRestriction, streakGoal, hasCompletedOnboarding: true };
+    const settings = { sleepHours, subjects, language, enableTimer, enableDailyChallenge, enableTodoList, enableExamCountdown, disableEditRestriction, streakGoal, hasCompletedOnboarding: true };
     if (user?.isAnonymous) {
       const existing = JSON.parse(localStorage.getItem('gridFocusSettings') || '{}');
       localStorage.setItem('gridFocusSettings', JSON.stringify({ ...existing, ...settings }));
     } else if (userDocRef) {
       setDoc(userDocRef, { settings }, { merge: true });
     }
-  }, [subjects, sleepHours, language, enableTimer, enableDailyChallenge, enableTodoList, disableEditRestriction, streakGoal, userDocRef, userDataLoaded, showOnboarding]);
+  }, [subjects, sleepHours, language, enableTimer, enableDailyChallenge, enableTodoList, enableExamCountdown, disableEditRestriction, streakGoal, userDocRef, userDataLoaded, showOnboarding]);
 
   useDebouncedEffect(() => {
     // SYNC LOCAL -> CLOUD
-    // CRITICAL: Prevent saving if we haven't successfully loaded the current state from the cloud yet
-    // Also guard against missing sleepHours by checking userDataLoaded
     if (!userDataLoaded || !hasSuccessfullyLoadedCurrentDay || timeBlocks.length !== 24 || !dateString || blocksLoading || isSyncingRef.current) return;
+
+    // Create local backup before overwrite for data safety
+    const backupKey = 'gridFocusTimeBlocks_backup';
+    const currentBackup = JSON.parse(localStorage.getItem(backupKey) || '{}');
+    currentBackup[dateString] = timeBlocks;
+    localStorage.setItem(backupKey, JSON.stringify(currentBackup));
 
     if (user?.isAnonymous) {
       const all = JSON.parse(localStorage.getItem('gridFocusTimeBlocks') || '{}');
@@ -221,19 +238,17 @@ export default function Home() {
       const batch = writeBatch(firestore);
       let total = 0;
       const subjectMins: Record<string, number> = {};
-      let hasProductiveTime = false;
       
       timeBlocks.forEach(b => {
-        batch.set(doc(firestore, 'users', user.uid, 'time_blocks', `${dateString}_${b.hour}`), b);
+        // Ensure updatedAt is always set during sync
+        const blockToSave = { ...b, updatedAt: b.updatedAt || Date.now() };
+        batch.set(doc(firestore, 'users', user.uid, 'time_blocks', `${dateString}_${b.hour}`), blockToSave);
         if (b.subject !== 'idle' && b.subject !== 'sleep' && b.subject !== 'class') {
           total += b.duration;
           subjectMins[b.subject] = (subjectMins[b.subject] || 0) + b.duration;
-          if (b.duration > 0) hasProductiveTime = true;
         }
       });
       
-      // Only write summary if there is productive time or if we explicitly cleared it
-      // This adds another layer of safety against zeroing out existing summaries
       batch.set(doc(firestore, 'users', user.uid, 'daily_summaries', dateString), { 
         id: dateString, 
         date: dateString, 
@@ -244,6 +259,14 @@ export default function Home() {
       batch.commit().catch(e => console.error("Batch save failed:", e));
     }
   }, [timeBlocks, dateString, user, firestore, userDataLoaded, blocksLoading, hasSuccessfullyLoadedCurrentDay]);
+
+  const handleBlockUpdate = (hour: number, subject: string, duration: number) => {
+    setTimeBlocks(prev => prev.map(b => 
+      b.hour === hour 
+        ? { ...b, subject, duration, updatedAt: Date.now() } 
+        : b
+    ));
+  };
 
   const handleMarkAsSeen = (version: string) => {
     const updated = [...new Set([...seenWhatsNewVersions, version])];
@@ -283,20 +306,26 @@ export default function Home() {
               {(!hasSuccessfullyLoadedCurrentDay && blocksLoading) ? (
                   <div className="h-[400px] flex items-center justify-center"><GridFocusLoader /></div>
               ) : (
-                  <AccountabilityGrid blocks={timeBlocks} subjects={subjects} onBlockUpdate={(h, s, d) => setTimeBlocks(prev => prev.map(b => b.hour === h ? { ...b, subject: s, duration: d } : b))} viewingDate={currentDate} liveTime={new Date()} disableEditRestriction={disableEditRestriction} />
+                  <AccountabilityGrid blocks={timeBlocks} subjects={subjects} onBlockUpdate={handleBlockUpdate} viewingDate={currentDate} liveTime={new Date()} disableEditRestriction={disableEditRestriction} />
               )}
             </CardContent>
           </Card>
           <div className="space-y-6">
-             {enableDailyChallenge && <DailyChallenge question={dailyQuestions[(getDayOfYear(currentDate) + questionIndex) % dailyQuestions.length]} isSolved={false} onSolveChange={() => {}} language={language} isToday={isToday(currentDate)} questionIndex={questionIndex} setQuestionIndex={setQuestionIndex} totalQuestions={dailyQuestions.length} />}
+             {enableDailyChallenge && (
+                <div className="space-y-1">
+                    <DailyChallenge question={dailyQuestions[(getDayOfYear(currentDate) + questionIndex) % dailyQuestions.length]} isSolved={false} onSolveChange={() => {}} language={language} isToday={isToday(currentDate)} questionIndex={questionIndex} setQuestionIndex={setQuestionIndex} totalQuestions={dailyQuestions.length} />
+                    <p className="text-[10px] text-muted-foreground text-center italic">You can disable challenges in Settings.</p>
+                </div>
+             )}
              {enableTodoList && <TodoList />}
           </div>
         </div>
       </main>
       {enableTimer && <FloatingTimer subjects={subjects} />}
+      {enableExamCountdown && <ExamCountdown />}
       <FeedbackDialog isOpen={isFeedbackDialogOpen} onOpenChange={setIsFeedbackDialogOpen} />
       <WhatsNewDialog seenVersions={seenWhatsNewVersions} onMarkAsSeen={handleMarkAsSeen} />
-      <OnboardingDialog isOpen={showOnboarding} onFinish={() => { if(userDocRef) setDoc(userDocRef, { hasCompletedOnboarding: true }, { merge: true }); setShowOnboarding(false); }} initialSettings={{ subjects, sleepHours, language, enableTimer, enableDailyChallenge, enableTodoList, enableAiInsights: false, disableEditRestriction }} />
+      <OnboardingDialog isOpen={showOnboarding} onFinish={() => { if(userDocRef) setDoc(userDocRef, { hasCompletedOnboarding: true }, { merge: true }); setShowOnboarding(false); }} initialSettings={{ subjects, sleepHours, language, enableTimer, enableDailyChallenge, enableTodoList, enableAiInsights: false, enableExamCountdown: true, disableEditRestriction }} />
     </div>
   );
 }

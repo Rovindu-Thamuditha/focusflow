@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { Settings, Trash2, PlusCircle, Sparkles, SlidersHorizontal, Bed, Palette, Moon, Sun, ListTodo, Timer, Trophy, BrainCircuit, ShieldAlert } from 'lucide-react';
+import { Settings, Trash2, PlusCircle, Sparkles, SlidersHorizontal, Bed, Palette, Moon, Sun, ListTodo, Timer, Trophy, BrainCircuit, ShieldAlert, Clock } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -29,6 +29,7 @@ interface OnboardingDialogProps {
     enableDailyChallenge: boolean;
     enableTodoList: boolean;
     enableAiInsights: boolean;
+    enableExamCountdown: boolean;
     disableEditRestriction: boolean;
   };
 }
@@ -45,10 +46,21 @@ export function OnboardingDialog({ isOpen, onFinish, initialSettings }: Onboardi
   const [enableDailyChallenge, setEnableDailyChallenge] = useState(initialSettings.enableDailyChallenge);
   const [enableTodoList, setEnableTodoList] = useState(initialSettings.enableTodoList);
   const [enableAiInsights, setEnableAiInsights] = useState(initialSettings.enableAiInsights);
+  const [enableExamCountdown, setEnableExamCountdown] = useState(initialSettings.enableExamCountdown);
   const [disableEditRestriction, setDisableEditRestriction] = useState(initialSettings.disableEditRestriction);
 
   const handleFinish = () => {
-    onFinish({ subjects, sleepHours, enableTimer, enableDailyChallenge, enableTodoList, language: initialSettings.language, enableAiInsights, disableEditRestriction });
+    onFinish({ 
+        subjects, 
+        sleepHours, 
+        enableTimer, 
+        enableDailyChallenge, 
+        enableTodoList, 
+        enableExamCountdown,
+        language: initialSettings.language, 
+        enableAiInsights, 
+        disableEditRestriction 
+    });
   };
 
   const handleNext = () => setStep(s => Math.min(s + 1, TOTAL_STEPS));
@@ -146,6 +158,13 @@ export function OnboardingDialog({ isOpen, onFinish, initialSettings }: Onboardi
                                 <Switch id="enable-timer-onboarding" checked={enableTimer} onCheckedChange={setEnableTimer} />
                             </div>
                             <div className="flex items-center justify-between rounded-lg border p-4">
+                                <Label htmlFor="enable-countdown-onboarding" className="flex flex-col gap-1">
+                                    <span className="font-semibold flex items-center gap-2"><Clock /> Exam Countdown</span>
+                                    <span className="font-normal text-muted-foreground text-xs">A floating widget for your next big goal.</span>
+                                </Label>
+                                <Switch id="enable-countdown-onboarding" checked={enableExamCountdown} onCheckedChange={setEnableExamCountdown} />
+                            </div>
+                            <div className="flex items-center justify-between rounded-lg border p-4">
                                 <Label htmlFor="enable-daily-challenge-onboarding" className="flex flex-col gap-1">
                                     <span className="font-semibold flex items-center gap-2"><Trophy /> Daily Challenge</span>
                                     <span className="font-normal text-muted-foreground text-xs">A daily academic question to solve.</span>
@@ -158,13 +177,6 @@ export function OnboardingDialog({ isOpen, onFinish, initialSettings }: Onboardi
                                     <span className="font-normal text-muted-foreground text-xs">A simple task list for your day.</span>
                                 </Label>
                                 <Switch id="enable-todo-list-onboarding" checked={enableTodoList} onCheckedChange={setEnableTodoList} />
-                            </div>
-                             <div className="flex items-center justify-between rounded-lg border p-4">
-                                <Label htmlFor="enable-ai-insights-onboarding" className="flex flex-col gap-1">
-                                    <span className="font-semibold flex items-center gap-2"><BrainCircuit /> AI Study Analysis <Badge variant="outline">Beta</Badge></span>
-                                    <span className="font-normal text-muted-foreground text-xs">Get AI-powered insights on your study habits.</span>
-                                </Label>
-                                <Switch id="enable-ai-insights-onboarding" checked={enableAiInsights} onCheckedChange={setEnableAiInsights} />
                             </div>
                             <div className="flex items-center justify-between rounded-lg border p-4">
                                 <Label htmlFor="disable-edit-restriction-onboarding" className="flex flex-col gap-1">
@@ -194,5 +206,3 @@ export function OnboardingDialog({ isOpen, onFinish, initialSettings }: Onboardi
     </Dialog>
   );
 }
-
-    
